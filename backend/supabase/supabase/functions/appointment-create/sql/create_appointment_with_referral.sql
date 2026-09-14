@@ -1,0 +1,9 @@
+-- Canonical source:
+--   supabase/migrations/20260905190000_anon_location_select_public_booking.sql
+--   supabase/migrations/20260906074848_cutover_stop_writing_client_company.sql
+--     (existing-link + write via client_location⋈location.company_id)
+--   supabase/migrations/20260906075929_drop_client_company.sql
+--     (DROP public.client_company; RPCs unchanged)
+-- v1 create_appointment_with_referral now accepts optional p_location_id and
+-- forwards it to create_appointment.
+-- Do not apply this copy; Glenn applies the migration file.

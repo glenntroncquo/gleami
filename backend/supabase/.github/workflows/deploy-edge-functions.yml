@@ -1,0 +1,160 @@
+name: Deploy Edge Functions
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/functions/**"
+      - ".github/workflows/deploy-edge-functions.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-edge-functions-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID || vars.SUPABASE_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Detect functions to deploy
+        id: detect
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          FUNCTIONS_ROOT="supabase/functions"
+
+          list_all_functions() {
+            local dir name
+            for dir in "$FUNCTIONS_ROOT"/*/; do
+              [ -d "$dir" ] || continue
+              name="$(basename "$dir")"
+              if [ "$name" != "_shared" ]; then
+                printf '%s\n' "$name"
+              fi
+            done | sort
+          }
+
+          is_shared_change() {
+            case "$1" in
+              "${FUNCTIONS_ROOT}/_shared"|"${FUNCTIONS_ROOT}/_shared"/*)
+                return 0
+                ;;
+              "${FUNCTIONS_ROOT}/import_map.json"|"${FUNCTIONS_ROOT}/import_map.ts")
+                return 0
+                ;;
+              "${FUNCTIONS_ROOT}/deno.json"|"${FUNCTIONS_ROOT}/deno.jsonc"|"${FUNCTIONS_ROOT}/deno.lock")
+                return 0
+                ;;
+            esac
+            return 1
+          }
+
+          function_name_from_path() {
+            local file="$1"
+            local prefix="${FUNCTIONS_ROOT}/"
+            case "$file" in
+              "$prefix"*)
+                local rest="${file#"$prefix"}"
+                local name="${rest%%/*}"
+                if [ -n "$name" ] && [ "$name" != "_shared" ] && [ -d "${FUNCTIONS_ROOT}/${name}" ]; then
+                  printf '%s\n' "$name"
+                fi
+                ;;
+            esac
+          }
+
+          deploy_all=false
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "Manual dispatch: deploying all functions."
+            deploy_all=true
+          elif [ -z "${BEFORE_SHA:-}" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "No previous commit on this ref: deploying all functions."
+            deploy_all=true
+          else
+            if ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+              echo "Fetching previous commit ${BEFORE_SHA}"
+              git fetch --no-tags --depth=1 origin "$BEFORE_SHA"
+            fi
+          fi
+
+          functions_to_deploy=""
+          if [ "$deploy_all" = true ]; then
+            functions_to_deploy="$(list_all_functions)"
+          else
+            changed_files="$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA")"
+            echo "Changed files vs ${BEFORE_SHA}:"
+            printf '%s\n' "$changed_files"
+
+            shared=false
+            selected=""
+            while IFS= read -r file; do
+              [ -z "$file" ] && continue
+              if is_shared_change "$file"; then
+                shared=true
+                break
+              fi
+              name="$(function_name_from_path "$file" || true)"
+              if [ -n "${name:-}" ]; then
+                selected="${selected}${name}"$'\n'
+              fi
+            done <<< "$changed_files"
+
+            if [ "$shared" = true ]; then
+              echo "Shared path changed (_shared / import_map / deno.*): deploying all functions."
+              functions_to_deploy="$(list_all_functions)"
+            else
+              functions_to_deploy="$(printf '%s' "$selected" | sed '/^$/d' | sort -u)"
+            fi
+          fi
+
+          if [ -z "$functions_to_deploy" ]; then
+            echo "No Edge Functions to deploy."
+            echo "functions=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Functions to deploy:"
+          printf '%s\n' "$functions_to_deploy"
+          {
+            echo "functions<<EOF"
+            printf '%s\n' "$functions_to_deploy"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Deploy functions
+        if: steps.detect.outputs.functions != ''
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SUPABASE_ACCESS_TOKEN:-}" ]; then
+            echo "Missing secret SUPABASE_ACCESS_TOKEN"
+            exit 1
+          fi
+          if [ -z "${SUPABASE_PROJECT_ID:-}" ]; then
+            echo "Missing secret or variable SUPABASE_PROJECT_ID"
+            exit 1
+          fi
+
+          while IFS= read -r name; do
+            [ -z "$name" ] && continue
+            echo "Deploying ${name}"
+            supabase functions deploy "$name" --project-ref "$SUPABASE_PROJECT_ID"
+          done <<< "${{ steps.detect.outputs.functions }}"

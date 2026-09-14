@@ -1,0 +1,7 @@
+-- Canonical source:
+--   supabase/migrations/20260905190000_anon_location_select_public_booking.sql
+--     (optional p_location_id; location timezone)
+--   supabase/migrations/20260906063207_schedule_location_and_staff_tz.sql
+--     (threads appointment location into staff_is_on_schedule)
+-- Pointer only — do not apply this file.
+-- Parent applies the migration on SalonFlow after merge.

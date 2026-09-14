@@ -1,0 +1,1181 @@
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import {
+  format,
+  addDays,
+  isSameDay,
+  startOfWeek,
+  isBefore,
+  isAfter,
+  endOfWeek,
+  addMonths,
+} from "date-fns";
+import { toast, Toaster } from "sonner";
+import confetti from "canvas-confetti";
+import { createClient } from "@supabase/supabase-js";
+
+import {
+  cn,
+  uniqueStaffIds,
+  daySlotCount,
+  calculateTotalPrice,
+  calculateTotalDuration,
+  isValidPhone,
+  toIsoInstant,
+} from "./utils";
+import { useMediaQuery } from "./components/use-mobile";
+
+import {
+  SalonBookingProps,
+  defaultTheme,
+  DayAvailability,
+  Service,
+  BookingData,
+  TimeSlot,
+} from "./types/types";
+import { ServiceSelection } from "./ServiceSelection";
+import { DateTimeSelection } from "./DateTimeSelection";
+import { CustomerDetails } from "./CustomerDetails";
+import { BookingConfirmation } from "./BookingConfirmation";
+import { BookingStepper } from "./BookingStepper";
+import { BookingFooter } from "./BookingFooter";
+import { StaffSelector } from "./StaffSelector";
+import {
+  useBookingState,
+  useAvailability,
+  useImageUpload,
+  useStaff,
+} from "./hooks";
+import {
+  invokeAppointmentCreate,
+  invokeServiceList,
+  normalizeServiceList,
+} from "./api";
+
+export function SalonBooking({
+  companyId,
+  supabaseConfig,
+  theme = defaultTheme,
+  maxDate = addMonths(new Date(), 3),
+  shouldShowStaff = true,
+  initialStaffIds = [],
+  initialStaffSlugs = [],
+}: SalonBookingProps) {
+  const supabase = useMemo(() => {
+    return createClient(supabaseConfig.url, supabaseConfig.anonKey);
+  }, [supabaseConfig.url, supabaseConfig.anonKey]);
+  const themeStyles = {
+    "--salon-primary": theme.primary,
+    "--salon-primary-hover": theme.primaryHover,
+    "--salon-primary-light": theme.primaryLight,
+    "--salon-secondary": theme.secondary,
+    "--salon-text": theme.text,
+    "--salon-background": theme.background,
+    "--salon-button": theme.buttonText,
+  } as React.CSSProperties;
+
+  const isMobile = useMediaQuery("(max-width: 448px)");
+
+  const bookingState = useBookingState(maxDate, initialStaffIds);
+  const availability = useAvailability(
+    supabase,
+    companyId,
+    bookingState.selectedServices,
+    bookingState.selectedStaffIds
+  );
+  const staffList = useStaff(supabase, companyId);
+  const imageUpload = useImageUpload();
+
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmedBookingData, setConfirmedBookingData] =
+    useState<BookingData | null>(null);
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [emailInputClosing, setEmailInputClosing] = useState(false);
+  const [email, setEmail] = useState("");
+  const [emailSubmitting, setEmailSubmitting] = useState(false);
+  const [emailSuccess, setEmailSuccess] = useState(false);
+  const [emailError, setEmailError] = useState("");
+
+  const handleCloseEmailInput = () => {
+    setEmailInputClosing(true);
+    setTimeout(() => {
+      setShowEmailInput(false);
+      setEmailInputClosing(false);
+      setEmailSuccess(false);
+      setEmailError("");
+      setEmail("");
+    }, 300);
+  };
+
+  const isValidEmail = (emailValue: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(emailValue);
+  };
+
+  const handleEmailSubmit = async () => {
+    if (!email.trim()) {
+      setEmailError("Vul een e-mailadres in");
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      setEmailError("Vul een geldig e-mailadres in");
+      return;
+    }
+
+    setEmailSubmitting(true);
+    setEmailError("");
+
+    try {
+      const response = await supabase.functions.invoke(
+        "appointment-notify-history-email",
+        {
+          body: {
+            email: email.trim(),
+            companyId: companyId,
+          },
+        }
+      );
+
+      if (response.data) {
+        if (
+          response.data.success === false &&
+          response.data.message?.includes("No appointments found")
+        ) {
+          setEmailError("Geen afspraken gevonden voor dit e-mailadres.");
+          return;
+        }
+
+        if (response.data.success === false) {
+          setEmailError(response.data.error || "Er is een fout opgetreden.");
+          return;
+        }
+      }
+
+      setEmailSuccess(true);
+
+      setTimeout(() => {
+        handleCloseEmailInput();
+      }, 3000);
+    } catch (error) {
+      console.error("Error submitting email:e", error);
+
+      const errorMessage =
+        error instanceof Error ? error.message : "Onbekende fout";
+
+      if (errorMessage.includes("Failed to send a request")) {
+        setEmailError(
+          "Kan geen verbinding maken met de server. Controleer je internetverbinding."
+        );
+      } else if (errorMessage.includes("Function not found")) {
+        setEmailError(
+          "De functie is niet beschikbaar. Neem contact op met de beheerder."
+        );
+      } else {
+        setEmailError(`Er is een fout opgetreden: ${errorMessage}`);
+      }
+    } finally {
+      setEmailSubmitting(false);
+    }
+  };
+
+  const staffFilterKey = JSON.stringify(bookingState.selectedStaffIds);
+  const staffSlugKey = JSON.stringify(initialStaffSlugs);
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchServices() {
+      setLoading(true);
+      try {
+        const staffIds: string[] = JSON.parse(staffFilterKey);
+        const { data, error } = await invokeServiceList(supabase, {
+          company_id: companyId,
+          ...(staffIds.length > 0 ? { staff_ids: staffIds } : {}),
+        });
+
+        if (cancelled) return;
+
+        if (error) {
+          console.error("Error fetching services:", error);
+          return;
+        }
+
+        setServices(normalizeServiceList(data));
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Failed to fetch services:", err);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchServices();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, companyId, staffFilterKey]);
+
+  const slugSelectionAppliedRef = useRef(false);
+  useEffect(() => {
+    if (slugSelectionAppliedRef.current) return;
+    if (bookingState.hasUserChangedStaff.current) {
+      slugSelectionAppliedRef.current = true;
+      return;
+    }
+    if (initialStaffSlugs.length === 0) return;
+    if (staffList.loading || staffList.staff.length === 0) return;
+
+    const slugSet = new Set(initialStaffSlugs);
+    const matchedIds = staffList.staff
+      .filter((member) => member.slug != null && slugSet.has(member.slug))
+      .map((member) => member.id);
+
+    slugSelectionAppliedRef.current = true;
+    if (matchedIds.length > 0) {
+      bookingState.setSelectedStaffIds((prev) =>
+        Array.from(new Set([...prev, ...matchedIds]))
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staffSlugKey, staffList.loading, staffList.staff]);
+
+  const updateTimeSlotsForSelectedDay = useCallback(
+    (day: Date, staffId?: string) => {
+      if (!availability.availabilities) {
+        return;
+      }
+
+      const dateKey = format(day, "yyyy-MM-dd");
+      const dayAvailability = availability.availabilities.dates[dateKey];
+      if (!dayAvailability) {
+        bookingState.setTimeSlots([]);
+        return;
+      }
+
+      if (dayAvailability.slots && dayAvailability.slots.length > 0) {
+        bookingState.setTimeSlots(
+          dayAvailability.slots.map((slot) => {
+            const startTime = slot.start_time;
+            return {
+              time: startTime,
+              selected: false,
+              staffId: slot.staff_id,
+              startTime: slot.start_time,
+              endTime: slot.end_time,
+              availableStart: slot.available_start,
+              availableEnd: slot.available_end,
+              segments: slot.segments?.map((segment) => ({
+                serviceId: segment.service_id,
+                serviceVariantId: segment.service_variant_id,
+                staffId: segment.staff_id,
+                startsAt: segment.starts_at,
+                endsAt: segment.ends_at,
+              })),
+            };
+          })
+        );
+        return;
+      }
+
+      if (dayAvailability.staff && staffId) {
+        const staffMember = dayAvailability.staff[staffId];
+
+        if (staffMember && staffMember.slots && staffMember.slots.length > 0) {
+          const newTimeSlots = staffMember.slots.map((slot) => {
+            const startTime = slot.start_time;
+            return {
+              time: startTime,
+              selected: false,
+              staffId: slot.staff_id || staffId,
+              startTime: slot.start_time,
+              endTime: slot.end_time,
+              availableStart: slot.available_start,
+              availableEnd: slot.available_end,
+            };
+          });
+
+          bookingState.setTimeSlots(newTimeSlots);
+        } else {
+          bookingState.setTimeSlots([]);
+        }
+      } else {
+        bookingState.setTimeSlots([]);
+      }
+    },
+    [availability.availabilities, bookingState.setTimeSlots]
+  );
+
+  const updateWeekAvailabilityFromApi = useCallback(() => {
+    if (!availability.availabilities || !availability.availabilities.dates) {
+      return;
+    }
+
+    availability.updateWeekAvailabilityFromApi(bookingState.currentEndOfWeek);
+
+    if (bookingState.selectedDay) {
+      updateTimeSlotsForSelectedDay(bookingState.selectedDay);
+    }
+  }, [
+    availability.availabilities,
+    availability.updateWeekAvailabilityFromApi,
+    bookingState.currentEndOfWeek,
+    bookingState.selectedDay,
+    updateTimeSlotsForSelectedDay,
+  ]);
+
+  useEffect(() => {
+    if (availability.availabilities && availability.availabilities.dates) {
+      updateWeekAvailabilityFromApi();
+    }
+  }, [
+    bookingState.currentEndOfWeek,
+    availability.availabilities,
+    updateWeekAvailabilityFromApi,
+  ]);
+
+  const selectedServiceKey = JSON.stringify(
+    bookingState.selectedServices.map((item) => ({
+      serviceId: item.service.id,
+      variantId: item.variant.id,
+    }))
+  );
+
+  useEffect(() => {
+    availability.resetAvailability();
+    bookingState.setSelectedDay(null);
+    bookingState.setSelectedStaffId(null);
+    bookingState.setSelectedTimeSlot(null);
+    bookingState.setSelectedSlotData(null);
+    bookingState.setTimeSlots([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedServiceKey]);
+
+  useEffect(() => {
+    availability.resetAvailability();
+    bookingState.setSelectedDay(null);
+    bookingState.setSelectedStaffId(null);
+    bookingState.setSelectedTimeSlot(null);
+    bookingState.setSelectedSlotData(null);
+    bookingState.setTimeSlots([]);
+
+    if (
+      bookingState.currentStep === 2 &&
+      bookingState.selectedServices.length > 0
+    ) {
+      availability.fetchRequiredMonths(bookingState.currentEndOfWeek, 2);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(bookingState.selectedStaffIds)]);
+
+  useEffect(() => {
+    if (
+      bookingState.currentStep === 2 &&
+      bookingState.selectedServices.length > 0
+    ) {
+      availability.fetchRequiredMonths(bookingState.currentEndOfWeek, 2);
+    }
+  }, [
+    bookingState.currentStep,
+    bookingState.currentEndOfWeek,
+    bookingState.selectedServices,
+    availability,
+  ]);
+
+  const handlePreviousWeek = () => {
+    const currentWeekStart = addDays(bookingState.currentEndOfWeek, -7);
+    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+    if (isBefore(currentWeekStart, weekStart)) return;
+
+    const newWeekEnd = addDays(bookingState.currentEndOfWeek, -7);
+    bookingState.setCurrentEndOfWeek(newWeekEnd);
+
+    if (bookingState.selectedServices.length > 0) {
+      availability.fetchRequiredMonths(newWeekEnd, 2);
+    }
+  };
+
+  const handleNextWeek = () => {
+    const nextWeekStart = addDays(bookingState.currentEndOfWeek, 1);
+    const maxDateOnly = new Date(maxDate);
+    maxDateOnly.setHours(0, 0, 0, 0);
+    if (isAfter(nextWeekStart, maxDateOnly)) return;
+
+    const newWeekEnd = addDays(bookingState.currentEndOfWeek, 7);
+    bookingState.setCurrentEndOfWeek(newWeekEnd);
+
+    if (bookingState.selectedServices.length > 0) {
+      availability.fetchRequiredMonths(newWeekEnd, 2);
+    }
+  };
+
+  const handleDaySelect = (day: DayAvailability) => {
+    bookingState.isManuallySelecting.current = true;
+    bookingState.setSelectedDay(day.date);
+    bookingState.setSelectedStaffId(null);
+    bookingState.resetTimeSlotSelection();
+
+    setTimeout(() => {
+      bookingState.isManuallySelecting.current = false;
+    }, 10);
+  };
+
+  const handleStaffSelect = (staffId: string) => {
+    bookingState.setSelectedStaffId(staffId);
+    bookingState.resetTimeSlotSelection();
+
+    if (bookingState.selectedDay && availability.availabilities) {
+      updateTimeSlotsForSelectedDay(bookingState.selectedDay, staffId);
+    }
+  };
+
+  const isPreviousWeekDisabled = () => {
+    const currentWeekStart = addDays(bookingState.currentEndOfWeek, -7);
+    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+    return isBefore(currentWeekStart, weekStart);
+  };
+
+  const isNextWeekDisabled = () => {
+    const nextWeekStart = addDays(bookingState.currentEndOfWeek, 1);
+    const maxDateOnly = new Date(maxDate);
+    maxDateOnly.setHours(0, 0, 0, 0);
+    return isAfter(nextWeekStart, maxDateOnly);
+  };
+
+  const handleCalendarSelect = (date: Date | undefined) => {
+    if (date) {
+      bookingState.isManuallySelecting.current = true;
+      bookingState.setSelectedDay(date);
+
+      const selectedWeekEnd = endOfWeek(date, { weekStartsOn: 1 });
+      if (!isSameDay(selectedWeekEnd, bookingState.currentEndOfWeek)) {
+        bookingState.setCurrentEndOfWeek(selectedWeekEnd);
+      }
+
+      bookingState.setSelectedStaffId(null);
+      bookingState.resetTimeSlotSelection();
+      bookingState.setCalendarOpen(false);
+
+      setTimeout(() => {
+        bookingState.isManuallySelecting.current = false;
+      }, 10);
+    }
+  };
+
+  const dateHasAvailability = (date: Date): boolean => {
+    if (!availability.availabilities || !availability.availabilities.dates)
+      return false;
+    if (bookingState.selectedDay && isSameDay(date, bookingState.selectedDay))
+      return false;
+
+    const dateKey = format(date, "yyyy-MM-dd");
+    return daySlotCount(availability.availabilities.dates[dateKey]) > 0;
+  };
+
+  const isDateDisabled = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dateOnly = new Date(date);
+    dateOnly.setHours(0, 0, 0, 0);
+
+    const maxDateOnly = new Date(maxDate);
+    maxDateOnly.setHours(0, 0, 0, 0);
+
+    return isBefore(dateOnly, today) || isAfter(dateOnly, maxDateOnly);
+  };
+
+  const validateForm = (): boolean => {
+    if (!bookingState.firstName.trim()) {
+      toast.error("Vul alstublieft uw voornaam in");
+      return false;
+    }
+
+    if (!bookingState.lastName.trim()) {
+      toast.error("Vul alstublieft uw achternaam in");
+      return false;
+    }
+
+    if (!bookingState.email.trim()) {
+      toast.error("Vul alstublieft uw e-mailadres in");
+      return false;
+    }
+
+    if (!isValidEmail(bookingState.email)) {
+      toast.error("Vul een geldig e-mailadres in");
+      return false;
+    }
+
+    if (!bookingState.phone.trim()) {
+      toast.error("Vul alstublieft uw telefoonnummer in");
+      return false;
+    }
+
+    if (!isValidPhone(bookingState.phone)) {
+      toast.error("Vul een geldig telefoonnummer in");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    const isRecord = (value: unknown): value is Record<string, unknown> =>
+      typeof value === "object" && value !== null;
+
+    const readErrorBody = async (
+      error: unknown
+    ): Promise<Record<string, unknown> | undefined> => {
+      if (!isRecord(error)) return undefined;
+      const ctx = error.context;
+      if (!ctx || typeof (ctx as Response).text !== "function") return undefined;
+      try {
+        const text = await (ctx as Response).text();
+        const parsed = JSON.parse(text);
+        return isRecord(parsed) ? parsed : undefined;
+      } catch {
+        return undefined;
+      }
+    };
+
+    const friendlyErrorMessage = (
+      errorKeyOrMessage: string
+    ): string | undefined => {
+      switch (errorKeyOrMessage) {
+        case "REFERRAL_INVALID":
+          return "Referral code bestaat niet.";
+        case "REFERRAL_INACTIVE":
+          return "Deze referralcode is niet meer actief.";
+        case "REFERRAL_EXPIRED":
+          return "Deze referralcode is verlopen.";
+        case "REFERRAL_NOT_NEW_CLIENT":
+          return "Referral codes zijn enkel geldig voor nieuwe klanten.";
+        case "REFERRAL_REDEMPTION_CONFLICT":
+          return "Deze referral kan niet worden toegepast op deze boeking.";
+        case "CONFLICT_DETECTED":
+        case "TIME_SLOT_ALREADY_BOOKED":
+        case "BOOKING_SLOT_TAKEN":
+          return "Dit tijdslot is net geboekt—kies een ander tijdstip.";
+        case "NOT_AVAILABLE":
+          return "Dit tijdstip valt buiten de beschikbaarheid van de medewerker.";
+        case "CONCURRENCY_RETRY":
+          return "Het ging net mis door drukte. Probeer het nog eens.";
+        case "BOOKING_FAILED":
+          return "Boeken is niet gelukt. Probeer het opnieuw.";
+        default:
+          break;
+      }
+
+      const lower = errorKeyOrMessage.toLowerCase();
+      if (lower.includes("method not allowed") || lower.includes("405")) {
+        return "Boeken is tijdelijk niet mogelijk. Probeer het later opnieuw.";
+      }
+      if (
+        lower.includes("could not serialize") ||
+        lower.includes("serialization failure") ||
+        lower.includes("deadlock detected")
+      ) {
+        return "Het ging net mis door drukte. Probeer het nog eens.";
+      }
+      if (lower.includes("duplicate key") || lower.includes("unique constraint")) {
+        return "Dit tijdslot is net geboekt—kies een ander tijdstip.";
+      }
+      if (lower.includes("invalid image data format")) {
+        return "De afbeelding is ongeldig. Upload een andere afbeelding of boek zonder afbeelding.";
+      }
+      if (lower.includes("image upload failed")) {
+        return "Uploaden van de afbeelding is mislukt. Probeer het opnieuw of boek zonder afbeelding.";
+      }
+      if (
+        lower.includes("missing required fields") ||
+        lower.includes("invalid treatments array") ||
+        lower.includes("invalid services array")
+      ) {
+        return "Controleer je gegevens en probeer opnieuw.";
+      }
+      if (
+        lower.includes("each treatment must have treatmentid") ||
+        lower.includes("priceoptionid") ||
+        lower.includes("each service must have") ||
+        lower.includes("servicevariantid") ||
+        lower.includes("staffid")
+      ) {
+        return "Er is iets misgegaan met de gekozen dienst(en). Probeer opnieuw.";
+      }
+      if (lower.includes("internal server error")) {
+        return "Er ging iets mis aan onze kant. Probeer het later opnieuw.";
+      }
+
+      return undefined;
+    };
+
+    try {
+      bookingState.setSubmitting(true);
+      if (
+        !bookingState.selectedDay ||
+        !bookingState.selectedTimeSlot ||
+        !bookingState.selectedSlotData
+      ) {
+        toast.error(
+          "Er is een probleem met de geselecteerde datum, medewerker of tijd."
+        );
+        return;
+      }
+
+      const slotStaffId =
+        bookingState.selectedSlotData?.staffId ||
+        bookingState.selectedStaffId ||
+        "";
+
+      const servicesPayload = bookingState.selectedServices.map(
+        (item, index) => {
+          const segmentStaffId =
+            bookingState.selectedSlotData?.segments?.[index]?.staffId ||
+            bookingState.selectedSlotData?.segments?.find(
+              (segment) =>
+                segment.serviceId === item.service.id &&
+                segment.serviceVariantId === item.variant.id
+            )?.staffId;
+          return {
+            serviceId: item.service.id,
+            serviceVariantId: item.variant.id,
+            staffId: segmentStaffId || item.staffId || slotStaffId,
+          };
+        }
+      );
+
+      const staffId = slotStaffId || servicesPayload[0]?.staffId || "";
+
+      if (!staffId || servicesPayload.some((item) => !item.staffId)) {
+        toast.error(
+          "Er is een probleem met de geselecteerde datum, medewerker of tijd."
+        );
+        return;
+      }
+
+      // Client visit length (busy + free). Buffer is staff lock only.
+      const totalDuration = calculateTotalDuration(
+        bookingState.selectedServices
+      );
+      const start = toIsoInstant(bookingState.selectedSlotData.availableStart);
+      const slotEnd = toIsoInstant(bookingState.selectedSlotData.availableEnd);
+      const end =
+        slotEnd ??
+        (start
+          ? new Date(
+              Date.parse(start) + totalDuration * 60 * 1000
+            ).toISOString()
+          : null);
+
+      if (!start || !end) {
+        toast.error(
+          "Er is een probleem met de geselecteerde datum, medewerker of tijd."
+        );
+        return;
+      }
+
+      const totalPrice = bookingState.selectedServices.reduce(
+        (sum, item) => sum + item.variant.price,
+        0
+      );
+
+      const referralCodeTrimmed = bookingState.referralCode.trim();
+
+      const response = await invokeAppointmentCreate(supabase, {
+        start,
+        end,
+        companyId,
+        staffId,
+        services: servicesPayload,
+        price: totalPrice,
+        duration: totalDuration,
+        firstName: bookingState.firstName,
+        lastName: bookingState.lastName,
+        email: bookingState.email,
+        phone: bookingState.phone,
+        notes: bookingState.notes || "",
+        imageData: imageUpload.imageData,
+        ...(referralCodeTrimmed.length > 0
+          ? { referralCode: referralCodeTrimmed }
+          : {}),
+      });
+
+      const hasReferralCode = referralCodeTrimmed.length > 0;
+      const functionReturnedFailure =
+        isRecord(response.data) && response.data.success === false;
+
+      if (response.error || functionReturnedFailure) {
+        const errorBody = await readErrorBody(response.error);
+
+        const errorKey =
+          typeof errorBody?.errorKey === "string"
+            ? errorBody.errorKey
+            : typeof errorBody?.error === "string"
+              ? errorBody.error
+              : undefined;
+
+        console.error("Error booking appointment:", {
+          errorKey,
+          errorBody,
+          hasReferralCode,
+          error: response.error,
+          data: response.data,
+        });
+
+        toast.error(
+          (errorKey ? friendlyErrorMessage(errorKey) : undefined) ??
+            "Er is een fout opgetreden bij het boeken van uw afspraak. Probeer het opnieuw."
+        );
+        return;
+      }
+
+      const staffName = (() => {
+        const ids = uniqueStaffIds(bookingState.selectedServices);
+        const names = ids
+          .map((id) => {
+            const member = staffList.staff.find((s) => s.id === id);
+            if (member) return `${member.first_name} ${member.last_name}`;
+            if (
+              availability.availabilities &&
+              bookingState.selectedDay
+            ) {
+              const dateKey = format(bookingState.selectedDay, "yyyy-MM-dd");
+              const fromSlot =
+                availability.availabilities.dates[dateKey]?.staff?.[id];
+              if (fromSlot) {
+                return `${fromSlot.first_name} ${fromSlot.last_name}`;
+              }
+            }
+            return "";
+          })
+          .filter(Boolean);
+        return names.join(" · ");
+      })();
+
+      setConfirmedBookingData({
+        date: bookingState.selectedDay,
+        timeSlot: bookingState.selectedTimeSlot,
+        staffName,
+        services: [...bookingState.selectedServices],
+        totalPrice: calculateTotalPrice(bookingState.selectedServices),
+        referralApplied: referralCodeTrimmed.length > 0,
+      });
+
+      toast.success(
+        "Afspraak succesvol ingepland! Wij hebben een bevestiging naar uw e-mailadres gestuurd."
+      );
+      setShowConfirmation(true);
+
+      if (isMobile) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    } catch (err) {
+      console.error("Failed to book appointment:", {
+        error: err,
+        hasReferralCode: bookingState.referralCode.trim().length > 0,
+      });
+      toast.error(
+        "Er is een fout opgetreden bij het boeken van uw afspraak. Probeer het opnieuw."
+      );
+    } finally {
+      bookingState.setSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showConfirmation && confirmedBookingData) {
+      const timer1 = setTimeout(() => {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ["#FF6B9D", "#FFB3D1", "#FFF0F5", "#E91E63"],
+        });
+      }, 300);
+
+      const timer2 = setTimeout(() => {
+        confetti({
+          particleCount: 50,
+          spread: 60,
+          origin: { y: 0.6, x: 0.25 },
+          colors: ["#FF6B9D", "#FFB3D1", "#FFF0F5", "#E91E63"],
+        });
+      }, 500);
+
+      const timer3 = setTimeout(() => {
+        confetti({
+          particleCount: 50,
+          spread: 60,
+          origin: { y: 0.6, x: 0.75 },
+          colors: ["#FF6B9D", "#FFB3D1", "#FFF0F5", "#E91E63"],
+        });
+      }, 700);
+
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+        clearTimeout(timer3);
+      };
+    }
+  }, [showConfirmation, confirmedBookingData]);
+
+  if (showConfirmation && confirmedBookingData) {
+    return (
+      <>
+        <Toaster position="bottom-right" />
+        <style>
+          {`
+            .bg-salon-primary { background-color: var(--salon-primary) !important; }
+            .hover\\:bg-salon-primary-hover:hover { background-color: var(--salon-primary-hover) !important; }
+            .bg-salon-primary-hover { background-color: var(--salon-primary-hover) !important; }
+            .bg-salon-primary-light { background-color: var(--salon-primary-light) !important; }
+            .bg-salon-secondary { background-color: var(--salon-secondary) !important; }
+            .bg-salon-background { background-color: var(--salon-background) !important; }
+            .text-salon-primary { color: var(--salon-primary) !important; }
+            .text-salon-text { color: var(--salon-text) !important; }
+            .border-salon-primary { border-color: var(--salon-primary) !important; }
+            .hover\\:border-salon-primary:hover { border-color: var(--salon-primary) !important; }
+          `}
+        </style>
+        <BookingConfirmation
+          bookingData={confirmedBookingData}
+          selectedStaffId={bookingState.selectedStaffId}
+          availabilities={availability.availabilities}
+          staff={staffList.staff}
+          theme={theme}
+          supabase={supabase}
+          onResetToStep1={() => {
+            bookingState.resetToStep1();
+            setShowConfirmation(false);
+            setConfirmedBookingData(null);
+          }}
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Toaster position="bottom-right" />
+      <style>
+        {`
+          .bg-salon-primary { background-color: var(--salon-primary) !important; }
+          .hover\\:bg-salon-primary-hover:hover { background-color: var(--salon-primary-hover) !important; }
+          .bg-salon-primary-hover { background-color: var(--salon-primary-hover) !important; }
+          .bg-salon-primary-light { background-color: var(--salon-primary-light) !important; }
+          .bg-salon-secondary { background-color: var(--salon-secondary) !important; }
+          .bg-salon-background { background-color: var(--salon-background) !important; }
+          .text-salon-primary { color: var(--salon-primary) !important; }
+          .text-salon-text { color: var(--salon-primary) !important; }
+          .border-salon-primary { border-color: var(--salon-primary) !important; }
+          .hover\\:border-salon-primary:hover { border-color: var(--salon-primary) !important; }
+          .text-salon-button { color: var(--salon-button) !important; }
+          
+          .calendar-available-date {
+            position: relative !important;
+            font-weight: 600 !important;
+            background-color: rgb(220, 252, 231) !important;
+          }
+          
+          @keyframes slideInFromBottom {
+            from {
+              transform: translateY(100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateY(0);
+              opacity: 1;
+            }
+          }
+          
+          @keyframes fadeIn {
+            from {
+              opacity: 0;
+            }
+            to {
+              opacity: 1;
+            }
+          }
+          
+          @keyframes slideOutToBottom {
+            from {
+              transform: translateY(0);
+              opacity: 1;
+            }
+            to {
+              transform: translateY(100%);
+              opacity: 0;
+            }
+          }
+        `}
+      </style>
+
+      <div
+        className={cn(
+          "w-full bg-white overflow-hidden relative flex flex-col",
+          isMobile
+            ? "h-full"
+            : "shadow-xl rounded-xl border border-gray-100 max-w-md mx-auto"
+        )}
+        style={themeStyles}
+      >
+        <BookingStepper
+          currentStep={bookingState.currentStep}
+          selectedServices={bookingState.selectedServices}
+          canOpenStep2={bookingState.canProceedFromStep1}
+          canOpenStep3={
+            bookingState.canProceedFromStep1 && bookingState.canProceedFromStep2
+          }
+          onStepClick={bookingState.handleStepClick}
+          headerRight={
+            shouldShowStaff &&
+            (bookingState.currentStep === 1 ||
+              bookingState.currentStep === 2) &&
+            (staffList.staff.length > 0 || staffList.loading) ? (
+              <StaffSelector
+                staff={staffList.staff}
+                selectedStaffIds={bookingState.selectedStaffIds}
+                loading={staffList.loading}
+                supabase={supabase}
+                onChange={bookingState.handleStaffSelectionChange}
+              />
+            ) : null
+          }
+        />
+
+        <div
+          className={cn(
+            "p-4 overflow-y-auto",
+            isMobile ? "flex-1 min-h-0" : "h-[500px]"
+          )}
+        >
+            {bookingState.currentStep === 1 && (
+              <ServiceSelection
+                services={services}
+                selectedServices={bookingState.selectedServices}
+                loading={loading}
+                theme={theme}
+                supabase={supabase}
+                onServiceSelect={bookingState.handleServiceVariantSelect}
+                onRemoveService={bookingState.removeService}
+              />
+            )}
+
+            {bookingState.currentStep === 2 && (
+              <DateTimeSelection
+                selectedServices={bookingState.selectedServices}
+                availabilities={availability.availabilities}
+                loadingAvailabilities={availability.loadingAvailabilities}
+                weekAvailability={availability.weekAvailability}
+                currentEndOfWeek={bookingState.currentEndOfWeek}
+                selectedDay={bookingState.selectedDay}
+                calendarOpen={bookingState.calendarOpen}
+                calendarMonth={bookingState.calendarMonth}
+                selectedStaffId={bookingState.selectedStaffId}
+                selectedTimeSlot={bookingState.selectedTimeSlot}
+                timeSlots={bookingState.timeSlots}
+                maxDate={maxDate}
+                theme={theme}
+                supabase={supabase}
+                shouldShowStaff={shouldShowStaff}
+                onPreviousWeek={handlePreviousWeek}
+                onNextWeek={handleNextWeek}
+                onDaySelect={handleDaySelect}
+                onStaffSelect={handleStaffSelect}
+                onTimeSlotSelect={(timeSlot: string, slotData: TimeSlot) => {
+                  bookingState.setSelectedTimeSlot(timeSlot);
+                  bookingState.setSelectedSlotData(slotData);
+                  bookingState.applyStaffFromSlot(slotData);
+                }}
+                onCalendarOpenChange={bookingState.setCalendarOpen}
+                onCalendarSelect={handleCalendarSelect}
+                onCalendarMonthChange={(month) => {
+                  bookingState.setCalendarMonth(month);
+                  if (bookingState.selectedServices.length > 0) {
+                    availability.fetchMonthAvailabilities(month);
+                  }
+                }}
+                dateHasAvailability={dateHasAvailability}
+                isDateDisabled={isDateDisabled}
+                isPreviousWeekDisabled={isPreviousWeekDisabled}
+                isNextWeekDisabled={isNextWeekDisabled}
+              />
+            )}
+
+            {bookingState.currentStep === 3 && (
+              <CustomerDetails
+                selectedServices={bookingState.selectedServices}
+                selectedDay={bookingState.selectedDay}
+                selectedTimeSlot={bookingState.selectedTimeSlot}
+                selectedStaffId={bookingState.selectedStaffId}
+                availabilities={availability.availabilities}
+                staff={staffList.staff}
+                firstName={bookingState.firstName}
+                lastName={bookingState.lastName}
+                email={bookingState.email}
+                phone={bookingState.phone}
+                referralCode={bookingState.referralCode}
+                notes={bookingState.notes}
+                imagePreview={imageUpload.imagePreview}
+                imageUploading={imageUpload.imageUploading}
+                theme={theme}
+                supabase={supabase}
+                onFirstNameChange={bookingState.setFirstName}
+                onLastNameChange={bookingState.setLastName}
+                onEmailChange={bookingState.setEmail}
+                onPhoneChange={bookingState.setPhone}
+                onReferralCodeChange={bookingState.setReferralCode}
+                onNotesChange={bookingState.setNotes}
+                onImageUpload={imageUpload.handleImageUpload}
+                onRemoveImage={imageUpload.removeImage}
+              />
+            )}
+        </div>
+
+        <BookingFooter
+          isMobile={isMobile}
+          currentStep={bookingState.currentStep}
+          selectedServices={bookingState.selectedServices}
+          submitting={bookingState.submitting}
+          onPreviousStep={bookingState.handlePreviousStep}
+          onNextStep={bookingState.handleNextStep}
+          onSubmit={handleSubmit}
+          onShowEmailInput={() => setShowEmailInput(true)}
+        />
+
+        {showEmailInput && (
+          <>
+            <div
+              className="absolute inset-0 bg-black bg-opacity-50 z-40"
+              onClick={handleCloseEmailInput}
+              style={{
+                animation: "fadeIn 0.3s ease-out",
+              }}
+            />
+
+            <div
+              className="absolute bottom-0 left-0 right-0 z-50 bg-white border-t rounded-b-xl shadow-2xl"
+              style={{
+                animation: emailInputClosing
+                  ? "slideOutToBottom 0.3s ease-in"
+                  : "slideInFromBottom 0.3s ease-out",
+                boxShadow: "0 -4px 25px rgba(0, 0, 0, 0.15)",
+              }}
+            >
+              <div className="p-4">
+                {!emailSuccess && (
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-medium text-gray-900">
+                      Heb je hier al eerder geboekt?
+                    </h3>
+                    <button
+                      onClick={handleCloseEmailInput}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+                {emailSuccess ? (
+                  <div className="text-center py-6">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg
+                        className="w-8 h-8 text-green-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      E-mail verstuurd!
+                    </h3>
+                    <p className="text-gray-600 mb-1">
+                      Je ontvangt binnen enkele minuten een e-mail met je
+                      afspraken.
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Controleer ook je spam folder
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Voer het e-mailadres in waarmee is geboekt en ontvang een
+                      e-mail met jouw geplande afspraken.
+                    </p>
+                    <div className="space-y-3">
+                      <input
+                        type="email"
+                        placeholder="E-mailadres*"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-salon-primary focus:border-transparent ${
+                          emailError ? "border-red-300" : "border-gray-300"
+                        }`}
+                      />
+                      {emailError && (
+                        <p className="text-sm text-red-600">{emailError}</p>
+                      )}
+                      <button
+                        onClick={handleEmailSubmit}
+                        disabled={!email.trim() || emailSubmitting}
+                        className="w-full bg-salon-primary hover:bg-salon-primary-hover text-white px-4 py-3 rounded-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ backgroundColor: "var(--salon-primary)" }}
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                          />
+                        </svg>
+                        {emailSubmitting ? "Bezig..." : "Afspraken ontvangen"}
+                      </button>
+                      <p className="text-xs text-gray-500 text-center">
+                        Geen e-mail ontvangen? Dat betekent dat het e-mailadres
+                        niet bij ons bekend is.
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </>
+  );
+}

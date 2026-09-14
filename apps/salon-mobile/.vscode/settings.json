@@ -1,0 +1,11 @@
+{
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit",
+    "source.organizeImports": "explicit",
+    "source.sortMembers": "explicit"
+  },
+  "i18n-ally.localesPaths": [
+    "lib/i18n",
+    "lib/i18n/locales"
+  ]
+}

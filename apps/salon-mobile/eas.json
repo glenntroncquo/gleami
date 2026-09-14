@@ -1,0 +1,42 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "SENTRY_ORG": "gleami",
+        "SENTRY_PROJECT": "gleami",
+        "SENTRY_URL": "https://de.sentry.io/"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "SENTRY_ORG": "gleami",
+        "SENTRY_PROJECT": "gleami",
+        "SENTRY_URL": "https://de.sentry.io/"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "SENTRY_ORG": "gleami",
+        "SENTRY_PROJECT": "gleami",
+        "SENTRY_URL": "https://de.sentry.io/"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

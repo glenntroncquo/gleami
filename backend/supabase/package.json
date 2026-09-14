@@ -1,0 +1,24 @@
+{
+  "name": "backend-salonify",
+  "version": "1.0.0",
+  "type": "es2022",
+  "description": "Backend for Salonify project",
+  "scripts": {
+    "test": "npx vitest run",
+    "test:integration": "npx vitest run",
+    "codegen": "npx supabase gen types typescript --project-id kvhinnhnwgvdpzggdnxs --schema public > types/supabase-types.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.50.5",
+    "date-fns": "^4.1.0",
+    "dotenv": "^17.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.13",
+    "@vitest/coverage-v8": "^3.2.4",
+    "supabase": "^2.30.4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

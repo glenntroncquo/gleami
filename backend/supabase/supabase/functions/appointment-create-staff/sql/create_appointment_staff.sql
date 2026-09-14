@@ -1,0 +1,19 @@
+-- Canonical source:
+--   supabase/migrations/20260903115536_create_appointment_staff_find_or_create_person.sql
+--   supabase/migrations/20260905132250_phase3_membership_auth_cutover.sql
+--     (authenticated/anon gate: membership set, not JWT company_ids)
+--   supabase/migrations/20260905142314_phase4_multilocation_enabled.sql
+--     (optional p_location_id; writes location_id on appointment/segments)
+--   supabase/migrations/20260906063207_schedule_location_and_staff_tz.sql
+--     (location.timezone like public create; no longer hardcoded Europe/Brussels)
+--   supabase/migrations/20260906074848_cutover_stop_writing_client_company.sql
+--     (no INSERT client_company; keep client_location from appointment.location_id)
+--   supabase/migrations/20260906075929_drop_client_company.sql
+--     (DROP public.client_company; RPCs unchanged)
+-- Pointer only — do not apply this file.
+--
+-- Live SalonFlow appointment INSERT does NOT write leftover columns
+-- actual_start / actual_end / duration_in_minutes (dropped on appointment).
+-- The RPC signature still accepts p_actual_start / p_actual_end /
+-- p_duration_in_minutes for PostgREST; occupancy is appointment_segment_phase.
+-- Glenn applies the migration file after review.

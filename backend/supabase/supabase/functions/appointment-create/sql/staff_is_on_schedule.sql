@@ -1,0 +1,6 @@
+-- Canonical source:
+--   supabase/migrations/20260906063207_schedule_location_and_staff_tz.sql
+-- Optional p_location_id (default null) filters schedule rules/exceptions
+-- by location and uses location.timezone (else primary, else Europe/Brussels).
+-- Pointer only — do not apply this file.
+-- Parent applies the migration on SalonFlow after merge.

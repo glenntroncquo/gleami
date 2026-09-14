@@ -1,0 +1,42 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* page itself must not scroll */
+  }
+
+  body {
+    font-family: "Inter", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Full-viewport booking shell: no padding/margin around the iframe so the
+   widget fills the entire visible viewport. The iframe is sized with 100dvh so
+   it tracks the real visible area as mobile browser bars show/hide, keeping the
+   sticky footer ("Bekijk afspraken") pinned to the bottom of the screen. Only
+   the widget scrolls internally; the page never scrolls. */
+.booking-shell {
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+}
+
+#salonify-widget {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  height: 100dvh;
+  border: 0;
+}

@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateAvailableSlots,
+  ceilToBookingIntervalMs,
   clientDurationMinutes,
   recipeFitsAt,
   subtractIntervals,
@@ -148,6 +149,72 @@ describe("calculateAvailableSlots", () => {
       [window(staff, 8, 9)],
     );
     expect(fits).toBe(false);
+  });
+
+  it("snaps same-day starts off the clock (e.g. 10:09) up to the booking interval grid", () => {
+    const recipe: PhaseRecipeStep[] = [{ staffId: staff, phaseType: "busy", durationMinutes: 30 }];
+    // Mimic booking "today" where rangeStart/now land mid-interval (bug: 10:09 / 10:39 / 11:09).
+    const sameDayNow = new Date("2026-08-29T10:09:00.000Z");
+    const slots = calculateAvailableSlots(
+      [window(staff, 8, 14)],
+      [],
+      recipe,
+      30,
+      sameDayNow,
+      rangeEnd,
+      sameDayNow,
+    );
+
+    expect(slots.map((slot) => slot.availableStart)).toEqual([
+      "2026-08-29T10:30:00.000Z",
+      "2026-08-29T11:00:00.000Z",
+      "2026-08-29T11:30:00.000Z",
+      "2026-08-29T12:00:00.000Z",
+      "2026-08-29T12:30:00.000Z",
+      "2026-08-29T13:00:00.000Z",
+      "2026-08-29T13:30:00.000Z",
+    ]);
+  });
+
+  it("snaps residual windows after a busy block up to the interval grid", () => {
+    const recipe: PhaseRecipeStep[] = [{ staffId: staff, phaseType: "busy", durationMinutes: 30 }];
+    // Working window that resumes at an odd minute (appointment ended at 10:09).
+    const residual: TimeWindow = {
+      staffId: staff,
+      start: new Date("2026-08-29T10:09:00.000Z"),
+      end: new Date("2026-08-29T12:00:00.000Z"),
+    };
+    const slots = calculateAvailableSlots(
+      [residual],
+      [],
+      recipe,
+      30,
+      rangeStart,
+      rangeEnd,
+      now,
+    );
+
+    expect(slots.map((slot) => slot.availableStart)).toEqual([
+      "2026-08-29T10:30:00.000Z",
+      "2026-08-29T11:00:00.000Z",
+      "2026-08-29T11:30:00.000Z",
+    ]);
+  });
+});
+
+describe("ceilToBookingIntervalMs", () => {
+  const thirtyMin = 30 * 60_000;
+
+  it("leaves exact grid boundaries unchanged", () => {
+    const onGrid = new Date("2026-08-29T10:00:00.000Z").getTime();
+    expect(ceilToBookingIntervalMs(onGrid, thirtyMin)).toBe(onGrid);
+  });
+
+  it("ceils mid-interval times up to the next boundary", () => {
+    const offGrid = new Date("2026-08-29T10:09:00.000Z").getTime();
+    expect(ceilToBookingIntervalMs(offGrid, thirtyMin)).toBe(
+      new Date("2026-08-29T10:30:00.000Z").getTime(),
+    );
   });
 });
 

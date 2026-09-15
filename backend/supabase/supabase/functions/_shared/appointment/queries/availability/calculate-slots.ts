@@ -70,6 +70,18 @@ export function recipeFitsAt(
 }
 
 /**
+ * Snap a UTC instant up to the next booking-interval boundary.
+ * Uses the Unix epoch as the grid origin so :00/:15/:30/:45 (and other
+ * divisors of 60) stay aligned for whole-hour salon timezones such as
+ * Europe/Brussels. Keeps same-day "now" and post-busy residual windows from
+ * producing off-grid starts like 10:09 / 10:39.
+ */
+export function ceilToBookingIntervalMs(ms: number, intervalMs: number): number {
+  if (intervalMs <= 0) return ms;
+  return Math.ceil(ms / intervalMs) * intervalMs;
+}
+
+/**
  * Busy and buffer lock staff (must sit in a working window and must not overlap
  * existing busy/buffer phases). Free phases do not block staff and are
  * offerable: another booking's busy/buffer may land in this recipe's free time.
@@ -95,7 +107,10 @@ export function calculateAvailableSlots(
   const candidateWindows = workingWindows.filter((window) => window.staffId === firstStaffId);
 
   for (const window of candidateWindows) {
-    let currentMs = Math.max(window.start.getTime(), rangeStart.getTime());
+    let currentMs = ceilToBookingIntervalMs(
+      Math.max(window.start.getTime(), rangeStart.getTime()),
+      intervalMs,
+    );
     while (currentMs < window.end.getTime() && currentMs < rangeEnd.getTime()) {
       const current = new Date(currentMs);
       const key = `${firstStaffId}:${current.toISOString()}`;

@@ -49,18 +49,18 @@ npm run test
 
 ## Automatic Edge Function deploys
 
-Pushes to `main` that change files under `supabase/functions/` run [`.github/workflows/deploy-edge-functions.yml`](.github/workflows/deploy-edge-functions.yml).
+Pushes to `main` in the **gleami** monorepo that change files under `backend/supabase/supabase/functions/` run [`.github/workflows/deploy-edge-functions.yml`](../../.github/workflows/deploy-edge-functions.yml) at the repo root.
 
-- If any file under `supabase/functions/<name>/` changes and `<name>` is not `_shared`, that function is deployed.
-- If `_shared`, `import_map.json`, or other shared paths under `supabase/functions/` change, every top-level function folder except `_shared` is redeployed.
+- If any file under `…/functions/<name>/` changes and `<name>` is not `_shared`, that function is deployed.
+- If `_shared`, `import_map.json`, or other shared paths under `…/functions/` change, every top-level function folder except `_shared` is redeployed.
 - `_shared` is never treated as a deployable function name.
 - You can also run **Actions → Deploy Edge Functions → Run workflow** to deploy every function.
 
-The workflow uses `supabase functions deploy <name> --project-ref $SUPABASE_PROJECT_ID`. It does not disable JWT verification.
+The workflow runs `supabase functions deploy` from `backend/supabase` (where `supabase/config.toml` lives). It does not disable JWT verification.
 
-### One-time GitHub secrets (required after merge)
+### One-time GitHub secrets (required)
 
-In the `Gleami-Salon-Software/backend` repo: **Settings → Secrets and variables → Actions → New repository secret**.
+In the **`glenntroncquo/gleami`** repo: **Settings → Secrets and variables → Actions → New repository secret**.
 
 | Secret | Where to get it |
 | --- | --- |
@@ -70,6 +70,8 @@ In the `Gleami-Salon-Software/backend` repo: **Settings → Secrets and variable
 `SUPABASE_PROJECT_ID` may instead be a repository **variable** with the same name. If both exist, the secret wins.
 
 Do not commit tokens. After this workflow is on `main` and both values are set, later merges that touch Edge Functions deploy automatically.
+
+(The old standalone `Gleami-Salon-Software/backend` repo is retired; deploy from this monorepo only.)
 
 ---
 

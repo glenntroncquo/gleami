@@ -45,14 +45,16 @@ ${companyName}
 ---
 Deze email is automatisch verstuurd. Voor vragen kunt u contact opnemen met ${companyName}.`;
 }
+function staffEmailHeading(isNewClient) {
+  return isNewClient ? "Nieuwe klant" : "Nieuwe afspraak";
+}
 // Staff notification email template - Plain text
 function createStaffEmailText(data) {
-  const { customerName, companyName, appointmentStart, appointmentEnd, staffName, treatmentsList, customerEmail, customerPhone, appointmentNotes } = data;
+  const { appointmentStart, appointmentEnd, staffName, treatmentsList, customerName, customerEmail, customerPhone, appointmentNotes, companyName, isNewClient } = data;
   const startDate = new Date(appointmentStart);
   const endDate = new Date(appointmentEnd);
-  return `NIEUWE AFSPRAAK
-
-Er is een nieuwe afspraak geboekt voor ${companyName}.
+  const heading = staffEmailHeading(isNewClient).toUpperCase();
+  return `${heading}
 
 KLANTGEGEVENS:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -82,7 +84,7 @@ Deze email is automatisch verstuurd vanuit het afsprakenplanningssysteem.`;
 }
 // Simple HTML template with minimal styling (fallback for email clients that support it)
 function createSimpleHtmlEmail(data, isStaff = false) {
-  const { customerName, companyName, appointmentStart, appointmentEnd, staffName, treatmentsList, companyStreet, companyCity, companyPostalCode, companyCountry, cancelLink, customerEmail, customerPhone, appointmentNotes } = data;
+  const { customerName, companyName, appointmentStart, appointmentEnd, staffName, treatmentsList, companyStreet, companyCity, companyPostalCode, companyCountry, cancelLink, customerEmail, customerPhone, appointmentNotes, isNewClient } = data;
   const startDate = new Date(appointmentStart);
   const endDate = new Date(appointmentEnd);
   const addressParts = [];
@@ -91,17 +93,16 @@ function createSimpleHtmlEmail(data, isStaff = false) {
   if (companyCountry) addressParts.push(companyCountry);
   const addressString = addressParts.join(", ");
   if (isStaff) {
+    const heading = staffEmailHeading(isNewClient);
     return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>Nieuwe Afspraak</title>
+<title>${heading}</title>
 </head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
 
-<h2>Nieuwe Afspraak</h2>
-
-<p>Er is een nieuwe afspraak geboekt voor ${companyName}.</p>
+<h2>${heading}</h2>
 
 <h3>Klantgegevens:</h3>
 <p>
@@ -236,6 +237,19 @@ serve(async (req)=>{
     // Segments only. No appointment_treatment fallback.
     const treatments = await fetchAppointmentServicesForEmail(appointment.id);
     console.log("Services fetched:", treatments);
+    // First non-canceled booking at this company → treat as new client
+    const { count: priorAppointmentCount, error: priorAppointmentError } = await supabaseAdmin
+      .from("appointment")
+      .select("id", { count: "exact", head: true })
+      .eq("client_id", appointment.client_id)
+      .eq("company_id", appointment.company_id)
+      .eq("is_canceled", false)
+      .neq("id", appointment.id);
+    if (priorAppointmentError) {
+      throw new Error(`Error checking prior appointments: ${priorAppointmentError.message}`);
+    }
+    const isNewClient = (priorAppointmentCount ?? 0) === 0;
+    console.log("Is new client:", isNewClient, "prior appointments:", priorAppointmentCount);
     // Construct names
     const staffName = `${staff.first_name || ""} ${staff.last_name || ""}`.trim();
     const customerName = `${client.first_name || ""} ${client.last_name || ""}`.trim();
@@ -253,7 +267,8 @@ serve(async (req)=>{
       staffName,
       treatmentsList,
       appointmentNotes: appointment.notes,
-      cancelLink: `https://salonify.co/nl/cancel-appointment/${company.id}/${client.id}`
+      cancelLink: `https://salonify.co/nl/cancel-appointment/${company.id}/${client.id}`,
+      isNewClient
     };
     console.log("Email data prepared");
     // Generate plain text content for emails
@@ -265,7 +280,7 @@ serve(async (req)=>{
     console.log("Email content generated");
     // Email subjects - keep them simple and clear
     const clientSubject = `Afspraak bevestigd - ${company.name}`;
-    const staffSubject = `Nieuwe afspraak: ${customerName}`;
+    const staffSubject = `${staffEmailHeading(isNewClient)}: ${customerName}`;
     // Send confirmation email to client
     try {
       const clientEmailResult = await sendEmail({

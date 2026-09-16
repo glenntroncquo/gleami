@@ -2,6 +2,17 @@ import { useEffect, useState, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { SalonBooking } from "./salonify-booking";
 import { FloatingLauncher } from "./components/FloatingLauncher";
+import { resolveCompanyIdBySlug } from "./salonify-booking/api";
+import {
+  parseBooleanFlag,
+  parsePositiveNumber,
+  readHttpUrl,
+} from "./salonify-booking/deposit";
+import {
+  classifyCompanyRef,
+  classifyWidgetBoot,
+  readCompanyQuery,
+} from "./salonify-booking/widgetBoot";
 
 // Define SalonTheme locally (not exported from package)
 interface SalonTheme {
@@ -34,6 +45,12 @@ interface WidgetConfig {
   showStaff?: boolean;
   staffIds?: string[];
   staffSlugs?: string[];
+  locationId?: string;
+  locationSlug?: string;
+  successUrl?: string;
+  cancelUrl?: string;
+  depositAmount?: number | null;
+  depositEnabled?: boolean;
 }
 
 interface ErrorState {
@@ -44,6 +61,7 @@ interface ErrorState {
 function App() {
   const [config, setConfig] = useState<WidgetConfig | null>(null);
   const [error, setError] = useState<ErrorState | null>(null);
+  const [missingCompany, setMissingCompany] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const displayMode = useMemo(() => {
@@ -61,15 +79,11 @@ function App() {
   const parseUrlParams = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
 
-    const companyId = params.get("companyId");
-    const companySlug = params.get("companySlug");
+    const { companyId, companySlug } = readCompanyQuery(params);
+    const locationId = params.get("locationId");
+    const locationSlug = params.get("locationSlug");
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
     const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
-
-    // Required: companyId OR companySlug from URL; supabaseUrl and supabaseKey from env
-    if ((!companyId && !companySlug) || !supabaseUrl || !supabaseKey) {
-      return null;
-    }
 
     // Optional theme parameters: only collect keys explicitly present in the URL
     // so company_integrations styles can layer underneath them.
@@ -113,10 +127,26 @@ function App() {
         : [];
     const staffIds = parseList(params.get("staffIds"));
     const staffSlugs = parseList(params.get("staffSlugs"));
+    const successUrl =
+      readHttpUrl(params.get("successUrl")) ??
+      readHttpUrl(params.get("success_url")) ??
+      undefined;
+    const cancelUrl =
+      readHttpUrl(params.get("cancelUrl")) ??
+      readHttpUrl(params.get("cancel_url")) ??
+      undefined;
+    const depositAmount = parsePositiveNumber(
+      params.get("depositAmount") ?? params.get("deposit_amount")
+    );
+    const depositEnabled =
+      parseBooleanFlag(params.get("depositEnabled")) ??
+      parseBooleanFlag(params.get("deposit_enabled"));
 
     return {
       companyId,
       companySlug,
+      locationId,
+      locationSlug,
       supabaseUrl,
       supabaseKey,
       themeOverrides,
@@ -124,6 +154,10 @@ function App() {
       showStaff,
       staffIds,
       staffSlugs,
+      successUrl,
+      cancelUrl,
+      depositAmount,
+      depositEnabled,
     };
   }, []);
 
@@ -132,20 +166,39 @@ function App() {
     console.log("[Salonify Widget] Initializing...");
     console.log("[Salonify Widget] URL params:", window.location.search);
     
-    if (!parseUrlParams) {
-      console.error("[Salonify Widget] Missing required parameters");
+    const companyRef = classifyCompanyRef({
+      companyId: parseUrlParams.companyId,
+      companySlug: parseUrlParams.companySlug,
+    });
+    const boot = classifyWidgetBoot({
+      companyId: parseUrlParams.companyId,
+      companySlug: parseUrlParams.companySlug,
+      supabaseUrl: parseUrlParams.supabaseUrl,
+      supabaseKey: parseUrlParams.supabaseKey,
+    });
+
+    if (boot === "missing-company") {
+      setMissingCompany(true);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    if (boot === "missing-env") {
+      console.error("[Salonify Widget] Missing Supabase environment");
+      setMissingCompany(false);
       setError({
-        title: "Missing Required Parameters",
+        title: "Missing Configuration",
         message:
-          "Please provide companyId or companySlug as a URL parameter, and configure Supabase via environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY).",
+          "Configure Supabase via environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY).",
       });
       setLoading(false);
       return;
     }
 
     const {
-      companyId: companyIdParam,
-      companySlug,
+      locationId,
+      locationSlug,
       supabaseUrl,
       supabaseKey,
       themeOverrides,
@@ -153,27 +206,20 @@ function App() {
       showStaff,
       staffIds: staffIdsParam,
       staffSlugs,
+      successUrl,
+      cancelUrl,
+      depositAmount,
+      depositEnabled,
     } = parseUrlParams;
 
     let cancelled = false;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Resolve a company slug to its id. A companyId in the URL takes precedence.
+    // UUID companyId wins. A non-UUID companyId is a slug (host /glennie parity).
     const resolveCompanyId = async (): Promise<string | null> => {
-      if (companyIdParam) return companyIdParam;
-      const { data, error: fetchError } = await supabase
-        .from("company")
-        .select("id")
-        .eq("slug", companySlug)
-        .maybeSingle();
-      if (fetchError) {
-        console.warn(
-          "[Salonify Widget] Failed to resolve company slug:",
-          fetchError.message
-        );
-        return null;
-      }
-      return (data?.id as string | undefined) ?? null;
+      if (!companyRef) return null;
+      if (companyRef.kind === "id") return companyRef.value;
+      return resolveCompanyIdBySlug(supabase, companyRef.value);
     };
 
     // Fetch per-company styles from company_integrations (config.styles) and
@@ -209,35 +255,55 @@ function App() {
     };
 
     const initialize = async () => {
-      const companyId = await resolveCompanyId();
-      if (cancelled) return;
+      try {
+        const companyId = await resolveCompanyId();
+        if (cancelled) return;
 
-      if (!companyId) {
+        if (!companyId) {
+          setMissingCompany(false);
+          setError({
+            title: "Company Not Found",
+            message:
+              "Could not resolve the company from the provided companyId or companySlug.",
+          });
+          setLoading(false);
+          return;
+        }
+
+        const theme = await loadStyles(companyId);
+        if (cancelled) return;
+
+        setConfig({
+          companyId,
+          supabaseUrl,
+          supabaseKey,
+          theme,
+          maxDate,
+          showStaff,
+          staffIds: staffIdsParam,
+          staffSlugs,
+          locationId: locationId || undefined,
+          locationSlug: locationSlug || undefined,
+          successUrl,
+          cancelUrl,
+          depositAmount,
+          depositEnabled,
+        });
+        setMissingCompany(false);
+        setError(null);
+        setLoading(false);
+        console.log("[Salonify Widget] Configuration set successfully");
+      } catch (err) {
+        if (cancelled) return;
+        console.error("[Salonify Widget] Failed to resolve company:", err);
+        setMissingCompany(false);
         setError({
           title: "Company Not Found",
           message:
             "Could not resolve the company from the provided companyId or companySlug.",
         });
         setLoading(false);
-        return;
       }
-
-      const theme = await loadStyles(companyId);
-      if (cancelled) return;
-
-      setConfig({
-        companyId,
-        supabaseUrl,
-        supabaseKey,
-        theme,
-        maxDate,
-        showStaff,
-        staffIds: staffIdsParam,
-        staffSlugs,
-      });
-      setError(null);
-      setLoading(false);
-      console.log("[Salonify Widget] Configuration set successfully");
     };
 
     initialize();
@@ -290,8 +356,26 @@ function App() {
         // Handle full config updates
         if (event.data.type === "widget-config" && event.data.config) {
           if (config) {
-            const newConfig = event.data.config as Partial<WidgetConfig>;
-            // Merge theme if provided
+            const incoming = event.data.config as Record<string, unknown>;
+            const newConfig = {
+              ...incoming,
+              successUrl:
+                readHttpUrl(incoming.successUrl) ??
+                readHttpUrl(incoming.success_url) ??
+                config.successUrl,
+              cancelUrl:
+                readHttpUrl(incoming.cancelUrl) ??
+                readHttpUrl(incoming.cancel_url) ??
+                config.cancelUrl,
+              depositAmount:
+                parsePositiveNumber(incoming.depositAmount) ??
+                parsePositiveNumber(incoming.deposit_amount) ??
+                config.depositAmount,
+              depositEnabled:
+                parseBooleanFlag(incoming.depositEnabled) ??
+                parseBooleanFlag(incoming.deposit_enabled) ??
+                config.depositEnabled,
+            } as Partial<WidgetConfig>;
             if (newConfig.theme) {
               newConfig.theme = {
                 ...defaultTheme,
@@ -337,6 +421,26 @@ function App() {
     );
   }
 
+  // Soft landing: bare widget root without companyId / companySlug
+  if (missingCompany) {
+    return (
+      <div className="widget-container">
+        <div className="help-container">
+          <div className="help-header">
+            <h2>Boek een afspraak</h2>
+          </div>
+          <div className="help-body">
+            <p className="help-title">Geen zaak geselecteerd</p>
+            <p className="help-message">
+              Open de boekingslink van je salon om verder te gaan. Embeds hebben
+              companySlug of companyId nodig.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Render error state
   if (error) {
     return (
@@ -374,6 +478,12 @@ function App() {
             shouldShowStaff={config.showStaff}
             initialStaffIds={config.staffIds}
             initialStaffSlugs={config.staffSlugs}
+            locationId={config.locationId}
+            locationSlug={config.locationSlug}
+            successUrl={config.successUrl}
+            cancelUrl={config.cancelUrl}
+            depositAmount={config.depositAmount}
+            depositEnabled={config.depositEnabled}
           />
         </FloatingLauncher>
       ) : (
@@ -388,6 +498,12 @@ function App() {
           shouldShowStaff={config.showStaff}
           initialStaffIds={config.staffIds}
           initialStaffSlugs={config.staffSlugs}
+          locationId={config.locationId}
+          locationSlug={config.locationSlug}
+          successUrl={config.successUrl}
+          cancelUrl={config.cancelUrl}
+          depositAmount={config.depositAmount}
+          depositEnabled={config.depositEnabled}
         />
       )}
     </div>

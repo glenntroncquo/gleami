@@ -1,8 +1,15 @@
 import { useState, useEffect } from "react";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { StaffOption } from "../types";
+import { invokeStaffList, locationBody } from "../api";
 
-export function useStaff(supabase: SupabaseClient, companyId: string) {
+export function useStaff(
+  supabase: SupabaseClient,
+  companyId: string,
+  locationId: string | null = null,
+  locationReady = true,
+  requireLocation = false
+) {
   const [staff, setStaff] = useState<StaffOption[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -10,10 +17,17 @@ export function useStaff(supabase: SupabaseClient, companyId: string) {
     let cancelled = false;
 
     async function fetchStaff() {
+      if (!locationReady || (requireLocation && !locationId)) {
+        setStaff([]);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       try {
-        const { data, error } = await supabase.functions.invoke("staff-list", {
-          body: { company_id: companyId },
+        const { data, error } = await invokeStaffList(supabase, {
+          company_id: companyId,
+          ...locationBody(locationId, false),
         });
 
         if (cancelled) return;
@@ -46,7 +60,7 @@ export function useStaff(supabase: SupabaseClient, companyId: string) {
     return () => {
       cancelled = true;
     };
-  }, [supabase, companyId]);
+  }, [supabase, companyId, locationId, locationReady, requireLocation]);
 
   return { staff, loading };
 }

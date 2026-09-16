@@ -9,6 +9,10 @@ export type PublicCompany = {
   postal_code?: string | null;
   street?: string | null;
   image_url?: string | null;
+  /** Present when company-get already returns deposit settings (no extra RPC). */
+  deposit_enabled?: boolean | string | null;
+  deposit_amount?: number | string | null;
+  deposit_amount_cents?: number | string | null;
 };
 
 async function getCompany(

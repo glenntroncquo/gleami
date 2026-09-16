@@ -6,9 +6,33 @@ import {
   PhaseType,
 } from "./types/types";
 
-export interface ServiceListRequest {
+/** Fields sent on every location-aware edge invoke. */
+export type LocationBodyFields = {
+  location_id?: string;
+  locationId?: string;
+};
+
+export interface ServiceListRequest extends LocationBodyFields {
   company_id: string;
   staff_ids?: string[];
+}
+
+export interface StaffListRequest extends LocationBodyFields {
+  company_id: string;
+}
+
+/**
+ * Attach a resolved location to an edge body.
+ * Always sends `location_id` (DB / snake_case). CamelCase helpers also send
+ * `locationId` so they match `companyId` if the backend PR used that name.
+ */
+export function locationBody(
+  locationId?: string | null,
+  alsoCamel = true
+): LocationBodyFields {
+  if (!locationId) return {};
+  if (alsoCamel) return { location_id: locationId, locationId };
+  return { location_id: locationId };
 }
 
 export interface AvailabilityServiceItem {
@@ -100,6 +124,9 @@ function normalizeVariant(raw: unknown): ServiceVariant | null {
     display_order: asNumber(row.display_order ?? row.order),
     phases,
     staff_ids: asStringArray(row.staff_ids),
+    deposit_amount: asNullableNumber(
+      row.deposit_amount ?? row.depositAmount
+    ),
   };
 }
 
@@ -124,6 +151,9 @@ export function normalizeServiceList(data: unknown): Service[] {
           .map(normalizeVariant)
           .filter((variant): variant is ServiceVariant => variant !== null),
         staff_ids: asStringArray(row.staff_ids),
+        deposit_amount: asNullableNumber(
+          row.deposit_amount ?? row.depositAmount
+        ),
       };
     })
     .filter((service): service is Service => service !== null);
@@ -136,6 +166,50 @@ export async function invokeServiceList(
   return supabase.functions.invoke("service-list", { body });
 }
 
+export async function invokeStaffList(
+  supabase: SupabaseClient,
+  body: StaffListRequest
+) {
+  return supabase.functions.invoke("staff-list", { body });
+}
+
+function companyIdFromUnknown(value: unknown): string | null {
+  const root = asRecord(value);
+  if (!root) return null;
+  const nested = asRecord(root.data) ?? asRecord(root.company) ?? root;
+  return typeof nested.id === "string" ? nested.id : null;
+}
+
+/** Resolve a public company slug. Table SELECT first; existing company-get if RLS hides it. */
+export async function resolveCompanyIdBySlug(
+  supabase: SupabaseClient,
+  slug: string
+): Promise<string | null> {
+  const normalized = slug.trim().toLowerCase();
+  if (!normalized) return null;
+
+  const { data, error } = await supabase
+    .from("company")
+    .select("id")
+    .eq("slug", normalized)
+    .maybeSingle();
+  if (!error && data && typeof data.id === "string") {
+    return data.id;
+  }
+
+  const invoked = await supabase.functions.invoke("company-get", {
+    body: { slug: normalized },
+  });
+  if (invoked.error) {
+    console.warn(
+      "[Salonify Widget] company-get failed to resolve slug:",
+      invoked.error.message
+    );
+    return companyIdFromUnknown(invoked.data);
+  }
+  return companyIdFromUnknown(invoked.data);
+}
+
 export async function invokeAvailabilityList(
   supabase: SupabaseClient,
   body: {
@@ -144,11 +218,19 @@ export async function invokeAvailabilityList(
     endDate: string;
     services: AvailabilityServiceItem[];
     staffIds?: string[];
+    location_id?: string;
+    locationId?: string;
   }
 ) {
-  return supabase.functions.invoke("availability-list-v2", { body });
+  return supabase.functions.invoke("availability-list", { body });
 }
 
+/**
+ * Public widget booking. Uses appointment-create only.
+ * Do not invoke payment-create-checkout from here — that path is staff XOR.
+ * Deposit holds return checkout_url + hold_id / hold_active (no booking_id until paid).
+ * Requires success_url + cancel_url. Deposit-off stays the scheduled book.
+ */
 export async function invokeAppointmentCreate(
   supabase: SupabaseClient,
   body: {
@@ -166,9 +248,15 @@ export async function invokeAppointmentCreate(
     notes: string;
     imageData: string | null;
     referralCode?: string;
+    location_id?: string;
+    locationId?: string;
+    successUrl?: string;
+    cancelUrl?: string;
+    success_url?: string;
+    cancel_url?: string;
   }
 ) {
-  return supabase.functions.invoke("appointment-create-v2", { body });
+  return supabase.functions.invoke("appointment-create", { body });
 }
 
 export function eligibleStaffIdsForVariant(

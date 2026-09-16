@@ -1,3 +1,5 @@
+import { normalizePublicOrigin } from "@/lib/public-origin";
+
 function clean(value: string | undefined): string {
   return (value ?? "").trim().replace(/^["']|["']$/g, "");
 }
@@ -8,5 +10,6 @@ export const SUPABASE_URL =
 
 export const SUPABASE_ANON_KEY = clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
-export const APP_URL =
-  clean(process.env.NEXT_PUBLIC_APP_URL) || "https://booking.salonify.co";
+export const APP_URL = normalizePublicOrigin(
+  clean(process.env.NEXT_PUBLIC_APP_URL) || "https://booking.salonify.co",
+);

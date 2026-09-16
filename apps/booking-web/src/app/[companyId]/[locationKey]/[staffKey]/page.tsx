@@ -1,21 +1,27 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BookingShell } from "@/components/booking/BookingShell";
+import { LocationUnavailable } from "@/components/booking/LocationUnavailable";
 import {
   buildCompanyMetadata,
+  classifyRouteKey,
   dedupe,
   parseList,
   resolveCompany,
+  resolveLocationPin,
+  staffEmbedFromKey,
+  unverifiedLocationMetadata,
 } from "@/lib/booking";
 import { parseDepositReturn } from "@/lib/deposit";
 
 type PageProps = {
-  params: Promise<{ companyId: string }>;
+  params: Promise<{
+    companyId: string;
+    locationKey: string;
+    staffKey: string;
+  }>;
   /** service is a short alias for serviceIds. No treatmentId / priceOptionId. */
   searchParams: Promise<{
-    staff?: string | string[];
-    staffIds?: string | string[];
-    staffSlugs?: string | string[];
     service?: string | string[];
     serviceIds?: string | string[];
     serviceVariantIds?: string | string[];
@@ -28,43 +34,45 @@ type PageProps = {
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
-  const { companyId } = await params;
+  const { companyId, locationKey, staffKey } = await params;
   const company = await resolveCompany(companyId);
   if (!company) {
     return { title: "Pagina niet gevonden", robots: { index: false } };
   }
 
-  return buildCompanyMetadata(company);
+  const pin = await resolveLocationPin(company.id, locationKey);
+  if (pin.status === "found") {
+    return buildCompanyMetadata(company, {
+      location: pin.location,
+      staffKey,
+    });
+  }
+
+  return unverifiedLocationMetadata(company);
 }
 
-/** Company-only embed: no location is forwarded. The widget shows a location picker when needed. */
-export default async function CompanyBookingPage({
+export default async function LocationStaffBookingPage({
   params,
   searchParams,
 }: PageProps) {
-  const { companyId } = await params;
-  const {
-    staff,
-    staffIds,
-    staffSlugs,
-    service,
-    serviceIds,
-    serviceVariantIds,
-    deposit,
-    checkout,
-    session_id,
-  } = await searchParams;
+  const { companyId, locationKey, staffKey } = await params;
+  const { service, serviceIds, serviceVariantIds, deposit, checkout, session_id } =
+    await searchParams;
 
   const company = await resolveCompany(companyId);
   if (!company) {
     notFound();
   }
 
-  const preselectedStaffIds = dedupe([
-    ...parseList(staff),
-    ...parseList(staffIds),
-  ]);
-  const preselectedStaffSlugs = dedupe(parseList(staffSlugs));
+  const pin = await resolveLocationPin(company.id, locationKey);
+  const staff = classifyRouteKey(staffKey);
+  if (pin.status === "invalid" || pin.status === "missing" || !staff) {
+    notFound();
+  }
+  if (pin.status === "unavailable") {
+    return <LocationUnavailable companyName={company.name} />;
+  }
+
   const preselectedServiceIds = dedupe([
     ...parseList(service),
     ...parseList(serviceIds),
@@ -74,9 +82,12 @@ export default async function CompanyBookingPage({
   return (
     <BookingShell
       company={company}
+      location={pin.location}
+      staffKey={staffKey}
       depositReturn={parseDepositReturn({ deposit, checkout, session_id })}
-      preselectedStaffIds={preselectedStaffIds}
-      preselectedStaffSlugs={preselectedStaffSlugs}
+      preselectedLocationId={pin.location.id}
+      preselectedLocationSlug={pin.location.slug ?? undefined}
+      {...staffEmbedFromKey(staff)}
       preselectedServiceIds={preselectedServiceIds}
       preselectedServiceVariantIds={preselectedServiceVariantIds}
     />

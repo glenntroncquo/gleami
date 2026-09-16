@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
+import { APP_URL } from "@/lib/supabase/config";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(APP_URL),
   title: {
     default: "Salonify Booking",
     template: "%s | Salonify",

@@ -21,6 +21,26 @@ export interface SalonBookingProps {
   shouldShowStaff?: boolean;
   initialStaffIds?: string[];
   initialStaffSlugs?: string[];
+  /** Pinned location UUID. Wins over locationSlug. */
+  locationId?: string;
+  /** Pinned location slug, resolved against public.location for this company. */
+  locationSlug?: string;
+  /** Host booking-path return URLs (booking#6). Prefer these on appointment-create. */
+  successUrl?: string;
+  cancelUrl?: string;
+  /** Optional deposit hint from host company-get / widget-config. */
+  depositAmount?: number | null;
+  depositEnabled?: boolean;
+}
+
+export interface LocationOption {
+  id: string;
+  name: string;
+  slug: string | null;
+  city: string | null;
+  street: string | null;
+  postal_code: string | null;
+  is_primary?: boolean;
 }
 
 export interface TimeSlot {
@@ -110,6 +130,8 @@ export interface ServiceVariant {
   phases?: ServiceVariantPhase[];
   /** Variant-level staff eligibility override (from staff_service_variant). */
   staff_ids?: string[];
+  /** Deposit due at booking, when the catalog includes it. */
+  deposit_amount?: number | null;
 }
 
 export interface Service {
@@ -120,6 +142,8 @@ export interface Service {
   service_variant: ServiceVariant[];
   /** Service-level staff eligibility (from staff_service). */
   staff_ids?: string[];
+  /** Company/service deposit, when the catalog includes it. */
+  deposit_amount?: number | null;
 }
 
 export interface SelectedService {
@@ -137,12 +161,17 @@ export interface StaffOption {
 }
 
 export interface BookingData {
-  date: Date;
+  date: Date | null;
   timeSlot: string;
   staffName: string;
   services: SelectedService[];
   totalPrice: number;
   referralApplied?: boolean;
+  locationName?: string;
+  locationAddress?: string;
+  depositAmount?: number | null;
+  depositPaid?: boolean;
+  depositCanceled?: boolean;
 }
 
 export const defaultTheme: SalonTheme = {

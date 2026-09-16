@@ -19,6 +19,7 @@ import {
   daySlotCount,
   calculateTotalPrice,
   calculateTotalDuration,
+  formatLocationAddress,
   isValidPhone,
   toIsoInstant,
 } from "./utils";
@@ -39,17 +40,38 @@ import { BookingConfirmation } from "./BookingConfirmation";
 import { BookingStepper } from "./BookingStepper";
 import { BookingFooter } from "./BookingFooter";
 import { StaffSelector } from "./StaffSelector";
+import { LocationPicker } from "./LocationPicker";
 import {
   useBookingState,
   useAvailability,
   useImageUpload,
   useStaff,
+  useLocations,
 } from "./hooks";
 import {
   invokeAppointmentCreate,
   invokeServiceList,
+  locationBody,
   normalizeServiceList,
 } from "./api";
+import {
+  bookingDataForCheckoutReturn,
+  clearDepositBookingSnapshot,
+  emitWidgetEvent,
+  loadDepositBookingSnapshot,
+  extractBookingErrorKey,
+  followCheckoutUrl,
+  parseAppointmentCreateResult,
+  parseCheckoutReturn,
+  isFreshDepositSnapshot,
+  resolveAppointmentCreateOutcome,
+  resolveCheckoutHref,
+  resolveDepositReturnUrls,
+  saveDepositBookingSnapshot,
+  stripCheckoutReturnParams,
+  sumSelectedDepositAmount,
+  coalesceDepositAmount,
+} from "./deposit";
 
 export function SalonBooking({
   companyId,
@@ -59,6 +81,12 @@ export function SalonBooking({
   shouldShowStaff = true,
   initialStaffIds = [],
   initialStaffSlugs = [],
+  locationId: pinnedLocationId,
+  locationSlug: pinnedLocationSlug,
+  successUrl: hostSuccessUrl,
+  cancelUrl: hostCancelUrl,
+  depositAmount: hostDepositAmount,
+  depositEnabled: hostDepositEnabled,
 }: SalonBookingProps) {
   const supabase = useMemo(() => {
     return createClient(supabaseConfig.url, supabaseConfig.anonKey);
@@ -76,14 +104,30 @@ export function SalonBooking({
   const isMobile = useMediaQuery("(max-width: 448px)");
 
   const bookingState = useBookingState(maxDate, initialStaffIds);
+  const locationState = useLocations(
+    supabase,
+    companyId,
+    pinnedLocationId,
+    pinnedLocationSlug
+  );
   const availability = useAvailability(
     supabase,
     companyId,
     bookingState.selectedServices,
-    bookingState.selectedStaffIds
+    bookingState.selectedStaffIds,
+    locationState.selectedId,
+    locationState.locationReady,
+    locationState.isMultiLocation
   );
-  const staffList = useStaff(supabase, companyId);
+  const staffList = useStaff(
+    supabase,
+    companyId,
+    locationState.selectedId,
+    locationState.locationReady,
+    locationState.isMultiLocation
+  );
   const imageUpload = useImageUpload();
+  const previousLocationId = useRef<string | null>(null);
 
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +140,7 @@ export function SalonBooking({
   const [emailSubmitting, setEmailSubmitting] = useState(false);
   const [emailSuccess, setEmailSuccess] = useState(false);
   const [emailError, setEmailError] = useState("");
+  const checkoutReturnHandled = useRef(false);
 
   const handleCloseEmailInput = () => {
     setEmailInputClosing(true);
@@ -107,6 +152,47 @@ export function SalonBooking({
       setEmail("");
     }, 300);
   };
+
+  useEffect(() => {
+    if (checkoutReturnHandled.current) return;
+    const status = parseCheckoutReturn(window.location.search);
+    const snapshot = loadDepositBookingSnapshot(companyId);
+    const embedReturn = !status && isFreshDepositSnapshot(snapshot);
+
+    if (!status && !embedReturn) return;
+    checkoutReturnHandled.current = true;
+
+    if (window.history.replaceState) {
+      window.history.replaceState(
+        {},
+        document.title,
+        stripCheckoutReturnParams(window.location.href)
+      );
+    }
+
+    if (status === "cancel") {
+      setConfirmedBookingData(
+        bookingDataForCheckoutReturn(snapshot, { depositCanceled: true })
+      );
+      setShowConfirmation(true);
+      emitWidgetEvent("deposit-cancel", { companyId });
+      clearDepositBookingSnapshot();
+      return;
+    }
+
+    // Glenn override: Stripe only redirects on successful payment. Do not
+    // wait, poll, or gate on hold/appointment/webhook status. Fake success
+    // UI here is fine; appointment insert stays webhook-owned.
+    setConfirmedBookingData(
+      bookingDataForCheckoutReturn(snapshot, { depositPaid: true })
+    );
+    setShowConfirmation(true);
+    emitWidgetEvent("deposit-success", {
+      companyId,
+      depositAmount: snapshot?.depositAmount ?? null,
+    });
+    clearDepositBookingSnapshot();
+  }, [companyId]);
 
   const isValidEmail = (emailValue: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -182,15 +268,26 @@ export function SalonBooking({
 
   const staffFilterKey = JSON.stringify(bookingState.selectedStaffIds);
   const staffSlugKey = JSON.stringify(initialStaffSlugs);
+  const slugSelectionAppliedRef = useRef(false);
   useEffect(() => {
     let cancelled = false;
 
     async function fetchServices() {
+      if (
+        !locationState.locationReady ||
+        (locationState.isMultiLocation && !locationState.selectedId)
+      ) {
+        setServices([]);
+        setLoading(true);
+        return;
+      }
+
       setLoading(true);
       try {
         const staffIds: string[] = JSON.parse(staffFilterKey);
         const { data, error } = await invokeServiceList(supabase, {
           company_id: companyId,
+          ...locationBody(locationState.selectedId, false),
           ...(staffIds.length > 0 ? { staff_ids: staffIds } : {}),
         });
 
@@ -218,9 +315,28 @@ export function SalonBooking({
     return () => {
       cancelled = true;
     };
-  }, [supabase, companyId, staffFilterKey]);
+  }, [
+    supabase,
+    companyId,
+    staffFilterKey,
+    locationState.selectedId,
+    locationState.locationReady,
+    locationState.isMultiLocation,
+  ]);
 
-  const slugSelectionAppliedRef = useRef(false);
+  useEffect(() => {
+    if (previousLocationId.current === locationState.selectedId) return;
+    if (previousLocationId.current !== null) {
+      slugSelectionAppliedRef.current = false;
+      bookingState.hasUserChangedStaff.current = false;
+      bookingState.resetToStep1();
+      availability.resetAvailability();
+      setServices([]);
+    }
+    previousLocationId.current = locationState.selectedId;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locationState.selectedId]);
+
   useEffect(() => {
     if (slugSelectionAppliedRef.current) return;
     if (bookingState.hasUserChangedStaff.current) {
@@ -528,6 +644,11 @@ export function SalonBooking({
       return;
     }
 
+    if (locationState.isMultiLocation && !locationState.selectedId) {
+      toast.error("Kies eerst een vestiging om te boeken.");
+      return;
+    }
+
     const isRecord = (value: unknown): value is Record<string, unknown> =>
       typeof value === "object" && value !== null;
 
@@ -570,12 +691,23 @@ export function SalonBooking({
           return "Het ging net mis door drukte. Probeer het nog eens.";
         case "BOOKING_FAILED":
           return "Boeken is niet gelukt. Probeer het opnieuw.";
+        case "DEPOSIT_URLS_REQUIRED":
+          return "Betaling kan niet worden gestart. Probeer het opnieuw vanuit de boekingspagina.";
+        case "CHARGES_NOT_ENABLED":
+          return "Online betalen is nog niet actief voor deze zaak. Neem contact op om te boeken.";
+        case "BOOT_ERROR":
+          return "Boeken is tijdelijk niet mogelijk. Probeer het later opnieuw.";
         default:
           break;
       }
 
       const lower = errorKeyOrMessage.toLowerCase();
-      if (lower.includes("method not allowed") || lower.includes("405")) {
+      if (
+        lower.includes("method not allowed") ||
+        lower.includes("405") ||
+        lower.includes("boot_error") ||
+        lower.includes("failed to start")
+      ) {
         return "Boeken is tijdelijk niet mogelijk. Probeer het later opnieuw.";
       }
       if (
@@ -596,14 +728,11 @@ export function SalonBooking({
       }
       if (
         lower.includes("missing required fields") ||
-        lower.includes("invalid treatments array") ||
         lower.includes("invalid services array")
       ) {
         return "Controleer je gegevens en probeer opnieuw.";
       }
       if (
-        lower.includes("each treatment must have treatmentid") ||
-        lower.includes("priceoptionid") ||
         lower.includes("each service must have") ||
         lower.includes("servicevariantid") ||
         lower.includes("staffid")
@@ -688,6 +817,11 @@ export function SalonBooking({
       );
 
       const referralCodeTrimmed = bookingState.referralCode.trim();
+      const { success_url, cancel_url } = resolveDepositReturnUrls({
+        successUrl: hostSuccessUrl,
+        cancelUrl: hostCancelUrl,
+        fallbackHref: resolveCheckoutHref(),
+      });
 
       const response = await invokeAppointmentCreate(supabase, {
         start,
@@ -703,9 +837,12 @@ export function SalonBooking({
         phone: bookingState.phone,
         notes: bookingState.notes || "",
         imageData: imageUpload.imageData,
+        ...locationBody(locationState.selectedId),
         ...(referralCodeTrimmed.length > 0
           ? { referralCode: referralCodeTrimmed }
           : {}),
+        success_url,
+        cancel_url,
       });
 
       const hasReferralCode = referralCodeTrimmed.length > 0;
@@ -714,13 +851,11 @@ export function SalonBooking({
 
       if (response.error || functionReturnedFailure) {
         const errorBody = await readErrorBody(response.error);
-
-        const errorKey =
-          typeof errorBody?.errorKey === "string"
-            ? errorBody.errorKey
-            : typeof errorBody?.error === "string"
-              ? errorBody.error
-              : undefined;
+        const errorKey = extractBookingErrorKey(
+          errorBody,
+          isRecord(response.data) ? response.data : undefined,
+          response.error
+        );
 
         console.error("Error booking appointment:", {
           errorKey,
@@ -736,6 +871,16 @@ export function SalonBooking({
         );
         return;
       }
+
+      const createResult = parseAppointmentCreateResult(response.data);
+      const catalogDeposit = sumSelectedDepositAmount(
+        bookingState.selectedServices
+      );
+      const depositAmount = coalesceDepositAmount(
+        createResult.depositAmount,
+        catalogDeposit,
+        hostDepositAmount
+      );
 
       const staffName = (() => {
         const ids = uniqueStaffIds(bookingState.selectedServices);
@@ -760,6 +905,42 @@ export function SalonBooking({
         return names.join(" · ");
       })();
 
+      const bookingSnapshot = {
+        companyId,
+        date: bookingState.selectedDay.toISOString(),
+        timeSlot: bookingState.selectedTimeSlot,
+        staffName,
+        services: bookingState.selectedServices.map((item) => ({
+          serviceName: item.service.name,
+          variantName: item.variant.name,
+        })),
+        totalPrice: calculateTotalPrice(bookingState.selectedServices),
+        depositAmount,
+        referralApplied: referralCodeTrimmed.length > 0,
+        locationName: locationState.selectedLocation?.name,
+        locationAddress: locationState.selectedLocation
+          ? formatLocationAddress(locationState.selectedLocation) || undefined
+          : undefined,
+        holdId: createResult.holdId,
+        sessionId: createResult.sessionId,
+        savedAt: Date.now(),
+      };
+
+      const createOutcome = resolveAppointmentCreateOutcome(createResult);
+      if (createOutcome.action === "checkout") {
+        saveDepositBookingSnapshot(bookingSnapshot);
+        followCheckoutUrl(createOutcome.checkoutUrl);
+        toast.success("Je wordt doorgestuurd naar de betaling…");
+        return;
+      }
+
+      if (createOutcome.action === "hold_missing_checkout") {
+        toast.error(
+          "Betaling kan niet worden gestart. Probeer het opnieuw vanuit de boekingspagina."
+        );
+        return;
+      }
+
       setConfirmedBookingData({
         date: bookingState.selectedDay,
         timeSlot: bookingState.selectedTimeSlot,
@@ -767,8 +948,14 @@ export function SalonBooking({
         services: [...bookingState.selectedServices],
         totalPrice: calculateTotalPrice(bookingState.selectedServices),
         referralApplied: referralCodeTrimmed.length > 0,
+        locationName: locationState.selectedLocation?.name,
+        locationAddress: locationState.selectedLocation
+          ? formatLocationAddress(locationState.selectedLocation) || undefined
+          : undefined,
+        depositAmount,
       });
 
+      emitWidgetEvent("booking-created", { companyId, depositAmount });
       toast.success(
         "Afspraak succesvol ingepland! Wij hebben een bevestiging naar uw e-mailadres gestuurd."
       );
@@ -791,7 +978,11 @@ export function SalonBooking({
   };
 
   useEffect(() => {
-    if (showConfirmation && confirmedBookingData) {
+    if (
+      showConfirmation &&
+      confirmedBookingData &&
+      !confirmedBookingData.depositCanceled
+    ) {
       const timer1 = setTimeout(() => {
         confetti({
           particleCount: 100,
@@ -856,6 +1047,7 @@ export function SalonBooking({
             bookingState.resetToStep1();
             setShowConfirmation(false);
             setConfirmedBookingData(null);
+            clearDepositBookingSnapshot();
           }}
         />
       </>
@@ -936,6 +1128,7 @@ export function SalonBooking({
           }
           onStepClick={bookingState.handleStepClick}
           headerRight={
+            !locationState.needsPicker &&
             shouldShowStaff &&
             (bookingState.currentStep === 1 ||
               bookingState.currentStep === 2) &&
@@ -957,19 +1150,91 @@ export function SalonBooking({
             isMobile ? "flex-1 min-h-0" : "h-[500px]"
           )}
         >
-            {bookingState.currentStep === 1 && (
-              <ServiceSelection
-                services={services}
-                selectedServices={bookingState.selectedServices}
-                loading={loading}
+            {locationState.loading ? (
+              <div className="text-center py-8">
+                <div className="flex flex-col items-center gap-4">
+                  <div
+                    className="animate-spin rounded-full h-8 w-8 border-b-2 border-transparent"
+                    style={{ borderBottomColor: theme.primary }}
+                  />
+                  <p className="text-gray-500 text-sm">Vestigingen laden...</p>
+                </div>
+              </div>
+            ) : locationState.needsPicker ? (
+              <LocationPicker
+                locations={locationState.locations}
                 theme={theme}
-                supabase={supabase}
-                onServiceSelect={bookingState.handleServiceVariantSelect}
-                onRemoveService={bookingState.removeService}
+                onSelect={(id) => {
+                  locationState.selectLocation(id);
+                  bookingState.resetToStep1();
+                  availability.resetAvailability();
+                }}
               />
+            ) : locationState.locationBlocked ? (
+              <div className="text-center py-8">
+                <div className="flex flex-col items-center gap-3">
+                  <p className="text-gray-900 font-medium">
+                    Kies een vestiging
+                  </p>
+                  <p className="text-gray-500 text-sm max-w-xs">
+                    Deze zaak heeft meerdere vestigingen. We konden de lijst
+                    niet laden, dus we starten geen boeking zonder vestiging.
+                  </p>
+                  <button
+                    type="button"
+                    className="text-sm font-medium text-salon-primary"
+                    onClick={() => locationState.reload()}
+                  >
+                    Opnieuw proberen
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+            {bookingState.currentStep === 1 && (
+              <>
+                {locationState.selectedLocation &&
+                  locationState.locations.length > 1 && (
+                    <div className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {locationState.selectedLocation.name}
+                        </p>
+                        {formatLocationAddress(locationState.selectedLocation) ? (
+                          <p className="text-xs text-gray-500 truncate">
+                            {formatLocationAddress(
+                              locationState.selectedLocation
+                            )}
+                          </p>
+                        ) : null}
+                      </div>
+                      <button
+                        type="button"
+                        className="shrink-0 text-sm font-medium text-salon-primary"
+                        onClick={() => {
+                          locationState.clearLocation();
+                          bookingState.resetToStep1();
+                          availability.resetAvailability();
+                          setServices([]);
+                        }}
+                      >
+                        Wijzig
+                      </button>
+                    </div>
+                  )}
+                <ServiceSelection
+                  services={services}
+                  selectedServices={bookingState.selectedServices}
+                  loading={loading}
+                  theme={theme}
+                  supabase={supabase}
+                  onServiceSelect={bookingState.handleServiceVariantSelect}
+                  onRemoveService={bookingState.removeService}
+                />
+              </>
             )}
 
-            {bookingState.currentStep === 2 && (
+            {bookingState.currentStep === 2 && !locationState.needsPicker && (
               <DateTimeSelection
                 selectedServices={bookingState.selectedServices}
                 availabilities={availability.availabilities}
@@ -1010,7 +1275,7 @@ export function SalonBooking({
               />
             )}
 
-            {bookingState.currentStep === 3 && (
+            {bookingState.currentStep === 3 && !locationState.needsPicker && (
               <CustomerDetails
                 selectedServices={bookingState.selectedServices}
                 selectedDay={bookingState.selectedDay}
@@ -1028,6 +1293,8 @@ export function SalonBooking({
                 imageUploading={imageUpload.imageUploading}
                 theme={theme}
                 supabase={supabase}
+                hostDepositAmount={hostDepositAmount}
+                hostDepositEnabled={hostDepositEnabled}
                 onFirstNameChange={bookingState.setFirstName}
                 onLastNameChange={bookingState.setLastName}
                 onEmailChange={bookingState.setEmail}
@@ -1038,18 +1305,26 @@ export function SalonBooking({
                 onRemoveImage={imageUpload.removeImage}
               />
             )}
+              </>
+            )}
         </div>
 
+        {!locationState.needsPicker &&
+          !locationState.loading &&
+          !locationState.locationBlocked && (
         <BookingFooter
           isMobile={isMobile}
           currentStep={bookingState.currentStep}
           selectedServices={bookingState.selectedServices}
           submitting={bookingState.submitting}
+          hostDepositAmount={hostDepositAmount}
+          hostDepositEnabled={hostDepositEnabled}
           onPreviousStep={bookingState.handlePreviousStep}
           onNextStep={bookingState.handleNextStep}
           onSubmit={handleSubmit}
           onShowEmailInput={() => setShowEmailInput(true)}
         />
+        )}
 
         {showEmailInput && (
           <>

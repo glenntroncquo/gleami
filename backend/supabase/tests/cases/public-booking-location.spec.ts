@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { pickLocationId } from "../../supabase/functions/_shared/location/id.ts";
+import { resolvedLocationFrom } from "../../supabase/functions/_shared/location/resolved.ts";
 import {
   formatInSalonZone,
+  SALON_TIMEZONE,
   zonedWallTimeToUtc,
 } from "../../supabase/functions/_shared/time/salon-timezone.ts";
 
@@ -37,5 +39,46 @@ describe("location timezone (non-Brussels via Intl)", () => {
     const instant = new Date("2026-09-05T13:00:00.000Z");
     expect(formatInSalonZone(instant, "HH:mm", "America/New_York")).toBe("09:00");
     expect(formatInSalonZone(instant, "yyyy-MM-dd", "America/New_York")).toBe("2026-09-05");
+  });
+});
+
+describe("resolvedLocationFrom (omitted location_id after drop_multi_location_enabled)", () => {
+  const primaryId = "8e4ce818-b8ea-4918-b6ba-836ed4074d20";
+
+  it("uses the primary location instead of company.multi_location_enabled", () => {
+    expect(
+      resolvedLocationFrom({
+        id: primaryId,
+        timezone: "America/New_York",
+        isActive: true,
+      }),
+    ).toEqual({ locationId: primaryId, timezone: "America/New_York" });
+  });
+
+  it("falls back to the salon timezone when the primary has none", () => {
+    expect(
+      resolvedLocationFrom({
+        id: primaryId,
+        timezone: null,
+        isActive: true,
+      }),
+    ).toEqual({ locationId: primaryId, timezone: SALON_TIMEZONE });
+  });
+
+  it("does not filter by location when no primary exists", () => {
+    expect(resolvedLocationFrom(null)).toEqual({
+      locationId: null,
+      timezone: SALON_TIMEZONE,
+    });
+  });
+
+  it("does not use an inactive primary for catalog filtering", () => {
+    expect(
+      resolvedLocationFrom({
+        id: primaryId,
+        timezone: "Europe/Brussels",
+        isActive: false,
+      }),
+    ).toEqual({ locationId: null, timezone: "Europe/Brussels" });
   });
 });

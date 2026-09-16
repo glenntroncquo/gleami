@@ -27,7 +27,7 @@ describe("POS order-create location_id (walk-in primary)", () => {
     expect(resolveCreateOrderLocationId(undefined, locationId)).toBe(locationId);
   });
 
-  it("leaves location unresolved when walk-in omits location_id (resolveBookingLocation then requires it if multi)", () => {
+  it("leaves location unresolved when walk-in omits location_id (resolveBookingLocation then uses primary)", () => {
     expect(resolveCreateOrderLocationId(undefined, undefined)).toBeUndefined();
   });
 });

@@ -1,11 +1,9 @@
 import { BookingLocationError } from "../infrastructure/errors.ts";
-import { SALON_TIMEZONE } from "../time/salon-timezone.ts";
 import { locationRepository } from "./repository.ts";
+import { resolvedLocationFrom, type ResolvedBookingLocation } from "./resolved.ts";
 
-export interface ResolvedBookingLocation {
-  locationId: string | null;
-  timezone: string;
-}
+export type { ResolvedBookingLocation } from "./resolved.ts";
+export { resolvedLocationFrom } from "./resolved.ts";
 
 export async function resolveBookingLocation(
   companyId: string,
@@ -19,17 +17,8 @@ export async function resolveBookingLocation(
         "location_id does not belong to this company",
       );
     }
-    return { locationId: location.id, timezone: location.timezone || SALON_TIMEZONE };
+    return resolvedLocationFrom(location);
   }
 
-  if (await locationRepository.isCompanyMultiLocation(companyId)) {
-    throw new BookingLocationError(
-      "LOCATION_REQUIRED",
-      "location_id is required when company.multi_location_enabled is true",
-    );
-  }
-
-  const timezone =
-    (await locationRepository.findPrimaryTimezone(companyId)) ?? SALON_TIMEZONE;
-  return { locationId: null, timezone };
+  return resolvedLocationFrom(await locationRepository.findPrimary(companyId));
 }

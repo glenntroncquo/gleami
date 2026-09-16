@@ -136,8 +136,8 @@ export async function createOrderWithPaymentHandler(
   }
 
   // Walk-in / product-only POS sends location_id and often omits appointment_id.
-  // Always resolve: multi_location_enabled companies without a location fail
-  // LOCATION_REQUIRED. Appointment.location_id is fallback only.
+  // Omitted location_id resolves to the company's primary location.
+  // Appointment.location_id is fallback only.
   const location = await resolveBookingLocation(
     company_id,
     resolveCreateOrderLocationId(requestLocationId, appointmentLocationId),

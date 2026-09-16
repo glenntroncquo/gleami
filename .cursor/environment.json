@@ -1,0 +1,27 @@
+{
+  "name": "Salonify (gleami) web apps",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "terminals": [
+    {
+      "name": "salon-web",
+      "command": "cd apps/salon-web && npm run dev -- --port 3000",
+      "description": "Salonify management web app (Next.js). http://localhost:3000"
+    },
+    {
+      "name": "booking-web",
+      "command": "cd apps/booking-web && npm run dev -- --port 3002",
+      "description": "Public booking site (Next.js). http://localhost:3002/{companyId}"
+    },
+    {
+      "name": "booking-widget",
+      "command": "cd apps/booking-widget && npm run dev -- --port 5173 --host",
+      "description": "Embeddable booking widget (Vite). http://localhost:5173"
+    }
+  ],
+  "ports": [
+    { "name": "salon-web", "port": 3000 },
+    { "name": "booking-web", "port": 3002 },
+    { "name": "booking-widget", "port": 5173 }
+  ]
+}

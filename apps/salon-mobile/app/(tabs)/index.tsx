@@ -7,9 +7,9 @@ import {
   ScrollView,
   Text,
   View,
-  TouchableOpacity,
   useWindowDimensions,
 } from 'react-native';
+import { CalendarGlass, CalendarGlassMenu } from '@/components/calendar/components/CalendarGlass';
 import { AppIcon } from '@/components/app-icon';
 import { SalonSelector } from '@/components/salon-selector';
 import { TabScreen } from '@/components/tab-screen';
@@ -86,15 +86,16 @@ export default function CalendarScreen() {
   const { locationId, loading: locationLoading } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
-  const styles = createStyles(theme);
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [calendarAreaHeight, setCalendarAreaHeight] = React.useState(0);
   const calendarHeight = calendarAreaHeight;
   const weekRowFixedHeight = calendarHeight / 7;
-  const compactHeader = gridWidth < 380 || fontScale > 1.2;
+  // Dismiss menus urgently; filtering/view changes are interruptible transitions
+  // so a calendar render does not hold up the native exit animation.
   const [showModeMenu, setShowModeMenu] = React.useState(false);
   const [showStaffMenu, setShowStaffMenu] = React.useState(false);
   const [modeMenuPos, setModeMenuPos] = React.useState({ top: 0, right: 16 });
-  const [staffMenuPos, setStaffMenuPos] = React.useState({ top: 0, left: 16 });
+  const [staffMenuPos, setStaffMenuPos] = React.useState({ top: 0, left: 16, originX: 24 });
   const containerRef = React.useRef<View>(null);
   const modeButtonRef = React.useRef<View>(null);
   const staffChipRef = React.useRef<View>(null);
@@ -669,41 +670,44 @@ export default function CalendarScreen() {
     [calendarHeight, fontScale, openDaySheet, styles, t, todayKey]
   );
 
-  const menuWidth = 190;
-  const staffMenuWidth = 200;
+  const menuWidth = Math.min(280, width - 24);
+  const staffMenuWidth = Math.min(300, width - 24);
 
   const openModeMenu = React.useCallback(() => {
     if (showModeMenu) {
       setShowModeMenu(false);
       return;
     }
+    setShowStaffMenu(false);
     modeButtonRef.current?.measureInWindow((bx, by, bw, bh) => {
       containerRef.current?.measureInWindow((cx, cy, cw) => {
         setModeMenuPos({
           top: by - cy + bh + 8,
-          right: Math.max(12, cx + cw - (bx + bw)),
+          right: Math.min(Math.max(12, cx + cw - (bx + bw)), Math.max(12, cw - menuWidth - 12)),
         });
         setShowModeMenu(true);
       });
     });
-  }, [showModeMenu]);
+  }, [showModeMenu, menuWidth]);
 
   const openStaffMenu = React.useCallback(() => {
     if (showStaffMenu) {
       setShowStaffMenu(false);
       return;
     }
+    setShowModeMenu(false);
     staffChipRef.current?.measureInWindow((bx, by, bw, bh) => {
       containerRef.current?.measureInWindow((cx, cy, cw) => {
         const maxLeft = Math.max(12, cw - staffMenuWidth - 12);
         setStaffMenuPos({
           top: by - cy + bh + 8,
           left: Math.min(Math.max(12, bx - cx), maxLeft),
+          originX: bx - cx + bw / 2 - Math.min(Math.max(12, bx - cx), maxLeft),
         });
         setShowStaffMenu(true);
       });
     });
-  }, [showStaffMenu]);
+  }, [showStaffMenu, staffMenuWidth]);
 
   const showNoCompanyState = !locationLoading && !companyId;
   const showNoLocationState = !locationLoading && !!companyId && !locationId;
@@ -727,24 +731,17 @@ export default function CalendarScreen() {
                   <AppIcon name="arrowDown" size={18} color={theme.muted} />
                 </Pressable>
 
-                <Pressable ref={staffChipRef} collapsable={false} accessibilityLabel={selectedStaffName} style={[styles.employeeChip, compactHeader && styles.employeeChipCompact]} onPress={openStaffMenu}>
-                  <StaffAvatar imagePath={selectedStaff?.image_path} name={selectedStaffName} size={22} fontSize={9} />
-                  {!compactHeader && <Text style={styles.employeeName} numberOfLines={1}>
-                    {selectedStaffName}
-                  </Text>}
-                  {!compactHeader && <AppIcon name="expandMore" size={16} color={theme.muted} />}
-                </Pressable>
-
-                <View style={styles.headerIcons}>
-                  <TouchableOpacity
-                    style={styles.iconButton}
-                    onPress={() => router.push({ pathname: '/appointment-new', params: { date: todayKey } })}>
-                    <AppIcon name="add" size={20} color={theme.text} />
-                  </TouchableOpacity>
-                  <TouchableOpacity ref={modeButtonRef} style={styles.iconButton} onPress={openModeMenu}>
-                    <AppIcon name="viewAgenda" size={18} color={theme.text} />
-                  </TouchableOpacity>
-                </View>
+                <CalendarGlass style={styles.headerIcons}>
+                  <Pressable ref={staffChipRef} collapsable={false} accessibilityLabel={`${t('calendar.employee')}: ${selectedStaffName}`} accessibilityState={{ expanded: showStaffMenu }} style={styles.iconButton} onPress={openStaffMenu}>
+                    {selectedStaff ? <StaffAvatar imagePath={selectedStaff.image_path} name={selectedStaffName} size={26} fontSize={11} /> : <AppIcon name="peopleOutline" size={23} color={theme.text} />}
+                  </Pressable>
+                  <Pressable ref={modeButtonRef} collapsable={false} accessibilityLabel={`${t('calendar.month')}, ${t('calendar.week')}, ${t('calendar.list')}`} accessibilityState={{ expanded: showModeMenu }} style={styles.iconButton} onPress={openModeMenu}>
+                    <AppIcon name={viewMode === 'month' ? 'calendar' : viewMode === 'week' ? 'viewWeek' : 'viewList'} size={23} color={theme.text} />
+                  </Pressable>
+                  <Pressable accessibilityLabel={t('appointment.title')} style={styles.iconButton} onPress={() => router.push({ pathname: '/appointment-new', params: { date: todayKey } })}>
+                    <AppIcon name="add" size={25} color={theme.text} />
+                  </Pressable>
+                </CalendarGlass>
               </View>
 
               <SalonSelector />
@@ -917,14 +914,14 @@ export default function CalendarScreen() {
 
           {showModeMenu ? (
             <>
-              <Pressable style={styles.menuOverlay} onPress={() => setShowModeMenu(false)} />
-              <View style={[styles.modeMenu, { top: modeMenuPos.top, right: modeMenuPos.right, width: menuWidth }]}>
+              <Pressable accessibilityLabel={t('common.close')} style={styles.menuOverlay} onPress={() => setShowModeMenu(false)} />
+              <CalendarGlassMenu originX={menuWidth - 24} onAccessibilityEscape={() => setShowModeMenu(false)} style={[styles.modeMenu, { top: modeMenuPos.top, right: modeMenuPos.right, width: menuWidth }]}>
                 <Pressable
                   style={styles.modeItemActive}
                   onPress={() => {
                     Haptics.selectionAsync();
-                    setViewMode('month');
                     setShowModeMenu(false);
+                    React.startTransition(() => setViewMode('month'));
                   }}>
                   <AppIcon name="calendar" size={20} color={theme.text} />
                   <Text style={styles.modeText}>{t('calendar.month')}</Text>
@@ -934,8 +931,8 @@ export default function CalendarScreen() {
                   style={styles.modeItem}
                   onPress={() => {
                     Haptics.selectionAsync();
-                    setViewMode('week');
                     setShowModeMenu(false);
+                    React.startTransition(() => setViewMode('week'));
                   }}>
                   <AppIcon name="viewWeek" size={20} color={theme.text} />
                   <Text style={styles.modeText}>{t('calendar.week')}</Text>
@@ -945,28 +942,28 @@ export default function CalendarScreen() {
                   style={styles.modeItem}
                   onPress={() => {
                     Haptics.selectionAsync();
-                    setViewMode('list');
                     setShowModeMenu(false);
+                    React.startTransition(() => setViewMode('list'));
                   }}>
                   <AppIcon name="viewList" size={20} color={theme.text} />
                   <Text style={styles.modeText}>{t('calendar.list')}</Text>
                   {viewMode === 'list' ? <AppIcon name="check" size={20} color={theme.tint} /> : null}
                 </Pressable>
-              </View>
+              </CalendarGlassMenu>
             </>
           ) : null}
 
           {showStaffMenu ? (
             <>
-              <Pressable style={styles.menuOverlay} onPress={() => setShowStaffMenu(false)} />
-              <View style={[styles.staffMenu, { top: staffMenuPos.top, left: staffMenuPos.left, width: staffMenuWidth }]}>
+              <Pressable accessibilityLabel={t('common.close')} style={styles.menuOverlay} onPress={() => setShowStaffMenu(false)} />
+              <CalendarGlassMenu originX={staffMenuPos.originX} onAccessibilityEscape={() => setShowStaffMenu(false)} style={[styles.staffMenu, { top: staffMenuPos.top, left: staffMenuPos.left, width: staffMenuWidth }]}>
                 <ScrollView>
                   <Pressable
                     style={styles.staffMenuItem}
                     onPress={() => {
                       Haptics.selectionAsync();
-                      setStaffFilterId(null);
                       setShowStaffMenu(false);
+                      React.startTransition(() => setStaffFilterId(null));
                     }}>
                     <View style={styles.staffMenuAvatar}>
                       <AppIcon name="groups" size={14} color={theme.muted} />
@@ -982,8 +979,8 @@ export default function CalendarScreen() {
                         style={styles.staffMenuItem}
                         onPress={() => {
                           Haptics.selectionAsync();
-                          setStaffFilterId(staff.id);
                           setShowStaffMenu(false);
+                          React.startTransition(() => setStaffFilterId(staff.id));
                         }}>
                         <StaffAvatar imagePath={staff.image_path} name={name} size={22} fontSize={9} />
                         <Text style={styles.staffMenuName}>{name}</Text>
@@ -992,7 +989,7 @@ export default function CalendarScreen() {
                     );
                   })}
                 </ScrollView>
-              </View>
+              </CalendarGlassMenu>
             </>
           ) : null}
         </View>

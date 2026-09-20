@@ -47,6 +47,7 @@ export const createStyles = (theme: typeof Colors.light) =>
       fontSize: 20,
       fontWeight: '700',
       color: theme.text,
+      textTransform: 'capitalize',
     },
     headerIcons: {
       flexDirection: 'row',
@@ -481,5 +482,64 @@ export const createStyles = (theme: typeof Colors.light) =>
       flex: 1,
       fontSize: 15,
       color: theme.text,
+    },
+    monthMenu: {
+      position: 'absolute',
+      maxHeight: '75%',
+      borderRadius: 28,
+      padding: 4,
+      shadowColor: '#000000',
+      shadowOpacity: 0.12,
+      shadowRadius: 24,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 8,
+    },
+    monthPickerYearRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 20,
+      paddingVertical: 8,
+    },
+    monthPickerYearButton: {
+      width: 32,
+      height: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    monthPickerYearText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.text,
+      minWidth: 56,
+      textAlign: 'center',
+    },
+    monthPickerGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      paddingHorizontal: 4,
+      paddingBottom: 8,
+    },
+    monthPickerCellWrap: {
+      width: '25%',
+      padding: 4,
+    },
+    monthPickerCell: {
+      borderRadius: 14,
+      paddingVertical: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    monthPickerCellActive: {
+      backgroundColor: theme.tint,
+    },
+    monthPickerCellText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
+      textTransform: 'capitalize',
+    },
+    monthPickerCellTextActive: {
+      color: theme.onTint,
     },
   });

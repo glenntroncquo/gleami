@@ -77,30 +77,45 @@ export async function fetchOrder(orderId: string): Promise<OrderDetail | null> {
 
 export type AppointmentPaymentStatus = 'paid' | 'partial' | 'unpaid' | 'unknown';
 
+export type AppointmentPaymentInfo = {
+  status: AppointmentPaymentStatus;
+  amountPaid: number | null;
+  totalAmount: number | null;
+};
+
 /** Read the actual orders linked to a visit, rather than its booking status. */
-export async function fetchAppointmentPaymentStatuses(companyId: string, appointmentIds: string[]): Promise<Record<string, AppointmentPaymentStatus>> {
+export async function fetchAppointmentPaymentStatuses(companyId: string, appointmentIds: string[]): Promise<Record<string, AppointmentPaymentInfo>> {
   if (!appointmentIds.length) return {};
   const { data, error } = await supabase
     .from('order_item')
-    .select('appointment_id, order:order_id ( id, payment_status )')
+    .select('appointment_id, order:order_id ( id, payment_status, amount_paid, total_amount )')
     .eq('company_id', companyId)
     .in('appointment_id', appointmentIds);
   if (error) throw error;
 
-  const byAppointment = new Map<string, Map<string, string | null>>();
+  const byAppointment = new Map<string, Map<string, { payment_status: string | null; amount_paid: number | null; total_amount: number | null }>>();
   for (const item of data ?? []) {
     if (!item.appointment_id) continue;
-    const orders = byAppointment.get(item.appointment_id) ?? new Map<string, string | null>();
-    orders.set(item.order?.id ?? 'unknown', item.order?.payment_status ?? null);
+    const orders = byAppointment.get(item.appointment_id) ?? new Map();
+    orders.set(item.order?.id ?? 'unknown', {
+      payment_status: item.order?.payment_status ?? null,
+      amount_paid: item.order?.amount_paid ?? null,
+      total_amount: item.order?.total_amount ?? null,
+    });
     byAppointment.set(item.appointment_id, orders);
   }
   return Object.fromEntries(appointmentIds.map((id) => {
-    const statuses = [...(byAppointment.get(id)?.values() ?? [])];
+    const orders = [...(byAppointment.get(id)?.values() ?? [])];
+    const statuses = orders.map((order) => order.payment_status);
     let status: AppointmentPaymentStatus = 'unknown';
     if (statuses.length && statuses.every((value) => value === 'paid')) status = 'paid';
     else if (statuses.some((value) => value === 'partially_paid' || value === 'partial') ||
       (statuses.includes('paid') && statuses.includes('unpaid'))) status = 'partial';
     else if (statuses.length && statuses.every((value) => value === 'unpaid')) status = 'unpaid';
-    return [id, status];
+
+    const amountPaid = orders.reduce((sum, order) => sum + (order.amount_paid ?? 0), 0);
+    const totalAmount = orders.reduce((sum, order) => sum + (order.total_amount ?? 0), 0);
+
+    return [id, { status, amountPaid: orders.length ? amountPaid : null, totalAmount: orders.length ? totalAmount : null }];
   }));
 }

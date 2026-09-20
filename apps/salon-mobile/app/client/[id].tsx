@@ -2,8 +2,9 @@ import { SwipeableRow } from '@/components/swipeable-row';
 import { deleteClientNote } from '@/lib/api/clients';
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { Pressable } from '@/components/pressable-scale';
+import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
-import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import {
   ActivityIndicator,
@@ -29,6 +30,7 @@ import {
   fetchClientNotes,
   updateClient,
 } from '@/lib/api/clients';
+import { fetchAppointmentPaymentStatuses, type AppointmentPaymentInfo } from '@/lib/api/orders';
 import { getInitialsFromLabel } from '@/lib/text';
 
 import { appointmentToEvent } from '@/components/calendar/calendar-data';
@@ -37,6 +39,7 @@ import { EventItem } from '@/components/calendar/types';
 
 export default function ClientDetailScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { companyId } = useAuth();
   const { locationId, loading: locationLoading } = useLocation();
@@ -53,6 +56,7 @@ export default function ClientDetailScreen() {
   const [addingNote, setAddingNote] = React.useState(false);
 
   const [history, setHistory] = React.useState<EventItem[]>([]);
+  const [paymentStatuses, setPaymentStatuses] = React.useState<Record<string, AppointmentPaymentInfo>>({});
 
   const [isEditing, setIsEditing] = React.useState(false);
   const [firstName, setFirstName] = React.useState('');
@@ -75,7 +79,10 @@ export default function ClientDetailScreen() {
       ]);
       setClient(clientData);
       setNotes(notesData);
-      setHistory(appointmentsData.map(appointmentToEvent));
+      const historyEvents = appointmentsData.map(appointmentToEvent);
+      setHistory(historyEvents);
+      // A failed payment lookup must not hide the appointment or imply unpaid.
+      setPaymentStatuses(await fetchAppointmentPaymentStatuses(companyId, historyEvents.map((item) => item.appointmentId)).catch(() => ({})));
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('client.failedToLoad'));
@@ -236,6 +243,54 @@ export default function ClientDetailScreen() {
           </View>
 
           <View style={styles.section}>
+            <Text style={styles.sectionLabel}>{t('client.history')}</Text>
+            {history.length === 0 ? (
+              <EmptyState
+                compact
+                icon="eventBusy"
+                title={t('client.noHistory')}
+                subtitle={t('client.noHistoryHint')}
+              />
+            ) : (
+              <ScrollView style={styles.historyList} nestedScrollEnabled showsVerticalScrollIndicator>
+              {history.map((event) => {
+                const payment = paymentStatuses[event.appointmentId];
+                const badgeColors: Record<AppointmentPaymentInfo['status'], { background: string; text: string }> = {
+                  paid: { background: theme.successSurface, text: theme.success },
+                  partial: { background: theme.warningSurface, text: theme.warning },
+                  unpaid: { background: theme.surface, text: theme.muted },
+                  unknown: { background: theme.surface, text: theme.muted },
+                };
+                const badge = badgeColors[payment?.status ?? 'unknown'];
+                const badgeLabel =
+                  payment?.status === 'paid' || payment?.status === 'partial'
+                    ? `€${(payment.amountPaid ?? 0).toFixed(2)}`
+                    : t(`order.status.${payment?.status ?? 'unknown'}`);
+                return (
+                <Pressable
+                  key={event.appointmentId}
+                  accessibilityRole="button"
+                  onPress={() => router.push({ pathname: '/appointment/[id]', params: { id: event.appointmentId } })}
+                  style={styles.historyRow}>
+                  <View style={[styles.historyColorBar, { backgroundColor: event.color }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text numberOfLines={2} style={styles.historyTitle}>{event.label}</Text>
+                    <Text style={styles.historySubtitle}>
+                      {`${getListHeaderLabel(toDateKeyFromSalonClock(event.startISO))} · ${event.startTime}–${event.endTime} · ${event.staffName}`}
+                    </Text>
+                  </View>
+                  <View style={[styles.paymentBadge, { backgroundColor: badge.background }]}>
+                    <Text style={[styles.paymentBadgeText, { color: badge.text }]}>{badgeLabel}</Text>
+                  </View>
+                  <AppIcon name="chevronRight" size={16} color={theme.muted} />
+                </Pressable>
+                );
+              })}
+              </ScrollView>
+            )}
+          </View>
+
+          <View style={styles.section}>
             <Text style={styles.sectionLabel}>{t('client.notes')}</Text>
             <View style={styles.addNoteRow}>
               <TextInput
@@ -266,30 +321,6 @@ export default function ClientDetailScreen() {
                 </SwipeableRow>
                 ))}
               </ScrollView>
-            )}
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>{t('client.history')}</Text>
-            {history.length === 0 ? (
-              <EmptyState
-                compact
-                icon="eventBusy"
-                title={t('client.noHistory')}
-                subtitle={t('client.noHistoryHint')}
-              />
-            ) : (
-              history.map((event) => (
-                <View key={event.appointmentId} style={styles.historyRow}>
-                  <View style={[styles.historyColorBar, { backgroundColor: event.color }]} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.historyTitle}>{event.label}</Text>
-                    <Text style={styles.historySubtitle}>
-                      {`${getListHeaderLabel(toDateKeyFromSalonClock(event.startISO))} · ${event.startTime}–${event.endTime} · ${event.staffName}`}
-                    </Text>
-                  </View>
-                </View>
-              ))
             )}
           </View>
         </ScrollView>
@@ -431,11 +462,13 @@ const createStyles = (theme: typeof Colors.light) =>
       color: theme.muted,
       marginTop: 2,
     },
+    historyList: { maxHeight: 180 },
     historyRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
-      paddingVertical: 10,
+      paddingVertical: 4,
+      minHeight: 56,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
     },
@@ -444,6 +477,8 @@ const createStyles = (theme: typeof Colors.light) =>
       height: 32,
       borderRadius: 2,
     },
+    paymentBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 4, flexShrink: 0 },
+    paymentBadgeText: { fontSize: 11, fontWeight: '600' },
     historyTitle: {
       fontSize: 14,
       fontWeight: '600',

@@ -94,11 +94,15 @@ export default function CalendarScreen() {
   // so a calendar render does not hold up the native exit animation.
   const [showModeMenu, setShowModeMenu] = React.useState(false);
   const [showStaffMenu, setShowStaffMenu] = React.useState(false);
+  const [showMonthMenu, setShowMonthMenu] = React.useState(false);
   const [modeMenuPos, setModeMenuPos] = React.useState({ top: 0, right: 16 });
   const [staffMenuPos, setStaffMenuPos] = React.useState({ top: 0, left: 16, originX: 24 });
+  const [monthMenuPos, setMonthMenuPos] = React.useState({ top: 0, left: 16, originX: 24 });
+  const [pickerYear, setPickerYear] = React.useState(BASE_YEAR);
   const containerRef = React.useRef<View>(null);
   const modeButtonRef = React.useRef<View>(null);
   const staffChipRef = React.useRef<View>(null);
+  const monthButtonRef = React.useRef<View>(null);
   const [viewMode, setViewMode] = React.useState<'month' | 'week' | 'list'>('month');
   const [offsets, setOffsets] = React.useState(() => {
     const todayOffset = getOffsetForDate(new Date());
@@ -377,16 +381,17 @@ export default function CalendarScreen() {
 
   const currentWeekOffset = weekOffsets[currentWeekIndex] ?? 0;
   const currentWeekDays = fetchWeekData(currentWeekOffset);
-  const activeMonthLabel =
+  const { activeYear, activeMonthIndex } =
     viewMode === 'week'
       ? (() => {
           const weekDate = new Date(currentWeekDays[0]?.dateKey ?? todayKey);
-          return `${getMonthShortLabel(weekDate.getMonth())} ${weekDate.getFullYear()}`;
+          return { activeYear: weekDate.getFullYear(), activeMonthIndex: weekDate.getMonth() };
         })()
       : (() => {
           const { year, monthIndex } = monthKeyForOffset(currentOffset);
-          return `${getMonthShortLabel(monthIndex)} ${year}`;
+          return { activeYear: year, activeMonthIndex: monthIndex };
         })();
+  const activeMonthLabel = `${getMonthShortLabel(activeMonthIndex)} ${activeYear}`;
 
   React.useEffect(() => {
     const prevMode = prevViewModeRef.current;
@@ -463,6 +468,36 @@ export default function CalendarScreen() {
     }
   }, []);
 
+  /**
+   * Jump to a month picked from the header's month/year menu. Unlike `goToToday`,
+   * there's no specific day to center a week view on, so picking a month from
+   * week view drops into month view — matching iOS Calendar's year-view behavior.
+   */
+  const goToMonth = React.useCallback((year: number, monthIndex: number) => {
+    const target = new Date(year, monthIndex, 1);
+    const targetOffset = getOffsetForDate(target);
+    const currentOffsets = offsetsRef.current;
+    const fromViewMode = viewModeRef.current;
+    const switchingFromWeek = fromViewMode === 'week';
+    const needsRecenter = !currentOffsets.includes(targetOffset);
+
+    if (needsRecenter) {
+      setOffsets([targetOffset - 2, targetOffset - 1, targetOffset, targetOffset + 1, targetOffset + 2]);
+    }
+    setCurrentOffset(targetOffset);
+    setListMonthOffsets(buildPrefetchWindow(targetOffset));
+
+    if (switchingFromWeek) {
+      React.startTransition(() => setViewMode('month'));
+    } else if (fromViewMode === 'month') {
+      requestAnimationFrame(() => {
+        const index = needsRecenter ? 2 : currentOffsets.indexOf(targetOffset);
+        listRef.current?.scrollToIndex({ index, animated: !needsRecenter });
+      });
+    } else if (fromViewMode === 'list') {
+      pendingListScrollRef.current = toDateKey(target);
+    }
+  }, []);
 
   // Flattened [header, row, row, ...] data for the agenda FlashList, with the
   // header indices FlashList needs to pin them via stickyHeaderIndices. Built
@@ -672,6 +707,7 @@ export default function CalendarScreen() {
 
   const menuWidth = Math.min(280, width - 24);
   const staffMenuWidth = Math.min(300, width - 24);
+  const monthMenuWidth = Math.min(300, width - 24);
 
   const openModeMenu = React.useCallback(() => {
     if (showModeMenu) {
@@ -679,6 +715,7 @@ export default function CalendarScreen() {
       return;
     }
     setShowStaffMenu(false);
+    setShowMonthMenu(false);
     modeButtonRef.current?.measureInWindow((bx, by, bw, bh) => {
       containerRef.current?.measureInWindow((cx, cy, cw) => {
         setModeMenuPos({
@@ -696,6 +733,7 @@ export default function CalendarScreen() {
       return;
     }
     setShowModeMenu(false);
+    setShowMonthMenu(false);
     staffChipRef.current?.measureInWindow((bx, by, bw, bh) => {
       containerRef.current?.measureInWindow((cx, cy, cw) => {
         const maxLeft = Math.max(12, cw - staffMenuWidth - 12);
@@ -708,6 +746,39 @@ export default function CalendarScreen() {
       });
     });
   }, [showStaffMenu, staffMenuWidth]);
+
+  const openMonthMenu = React.useCallback(() => {
+    if (showMonthMenu) {
+      setShowMonthMenu(false);
+      return;
+    }
+    setShowModeMenu(false);
+    setShowStaffMenu(false);
+    setPickerYear(activeYear);
+    monthButtonRef.current?.measureInWindow((bx, by, bw, bh) => {
+      containerRef.current?.measureInWindow((cx, cy, cw) => {
+        const maxLeft = Math.max(12, cw - monthMenuWidth - 12);
+        const left = Math.min(Math.max(12, bx - cx), maxLeft);
+        setMonthMenuPos({ top: by - cy + bh + 8, left, originX: bx - cx + bw / 2 - left });
+        setShowMonthMenu(true);
+      });
+    });
+  }, [showMonthMenu, monthMenuWidth, activeYear]);
+
+  const selectPickerMonth = React.useCallback(
+    (monthIndex: number) => {
+      Haptics.selectionAsync();
+      setShowMonthMenu(false);
+      goToMonth(pickerYear, monthIndex);
+    },
+    [goToMonth, pickerYear]
+  );
+
+  const jumpToToday = React.useCallback(() => {
+    Haptics.selectionAsync();
+    setShowMonthMenu(false);
+    goToToday();
+  }, [goToToday]);
 
   const showNoCompanyState = !locationLoading && !companyId;
   const showNoLocationState = !locationLoading && !!companyId && !locationId;
@@ -724,7 +795,14 @@ export default function CalendarScreen() {
           <View style={styles.scrollContent}>
             <View style={styles.headerBlock}>
               <View style={styles.headerRow}>
-                <Pressable style={styles.monthRow} onPress={goToToday} hitSlop={8}>
+                <Pressable
+                  ref={monthButtonRef}
+                  collapsable={false}
+                  accessibilityLabel={activeMonthLabel}
+                  accessibilityState={{ expanded: showMonthMenu }}
+                  style={styles.monthRow}
+                  onPress={openMonthMenu}
+                  hitSlop={8}>
                   <Text style={styles.monthText} numberOfLines={1}>
                     {activeMonthLabel}
                   </Text>
@@ -989,6 +1067,58 @@ export default function CalendarScreen() {
                     );
                   })}
                 </ScrollView>
+              </CalendarGlassMenu>
+            </>
+          ) : null}
+
+          {showMonthMenu ? (
+            <>
+              <Pressable accessibilityLabel={t('common.close')} style={styles.menuOverlay} onPress={() => setShowMonthMenu(false)} />
+              <CalendarGlassMenu originX={monthMenuPos.originX} onAccessibilityEscape={() => setShowMonthMenu(false)} style={[styles.monthMenu, { top: monthMenuPos.top, left: monthMenuPos.left, width: monthMenuWidth }]}>
+                <Pressable style={styles.modeItem} onPress={jumpToToday}>
+                  <AppIcon name="calendar" size={20} color={theme.tint} />
+                  <Text style={[styles.modeText, { color: theme.tint }]}>{t('calendar.today')}</Text>
+                </Pressable>
+                <View style={styles.monthPickerYearRow}>
+                  <Pressable
+                    accessibilityLabel={String(pickerYear - 1)}
+                    hitSlop={8}
+                    style={styles.monthPickerYearButton}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setPickerYear((year) => year - 1);
+                    }}>
+                    <AppIcon name="chevronLeft" size={18} color={theme.text} />
+                  </Pressable>
+                  <Text style={styles.monthPickerYearText}>{pickerYear}</Text>
+                  <Pressable
+                    accessibilityLabel={String(pickerYear + 1)}
+                    hitSlop={8}
+                    style={styles.monthPickerYearButton}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setPickerYear((year) => year + 1);
+                    }}>
+                    <AppIcon name="chevronRight" size={18} color={theme.text} />
+                  </Pressable>
+                </View>
+                <View style={styles.monthPickerGrid}>
+                  {Array.from({ length: 12 }, (_, monthIndex) => {
+                    const active = pickerYear === activeYear && monthIndex === activeMonthIndex;
+                    return (
+                      <Pressable
+                        key={monthIndex}
+                        style={styles.monthPickerCellWrap}
+                        onPress={() => selectPickerMonth(monthIndex)}>
+                        <View style={[styles.monthPickerCell, active && styles.monthPickerCellActive]}>
+                          <Text style={[styles.monthPickerCellText, active && styles.monthPickerCellTextActive]}>
+                            {getMonthShortLabel(monthIndex)}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </CalendarGlassMenu>
             </>
           ) : null}

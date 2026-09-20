@@ -28,7 +28,7 @@ import { cancelAppointment } from '@/lib/api/appointment-cancel';
 import { isAppointmentCanceled } from '@/lib/api/appointment-status';
 import { fetchAppointmentById, fetchClientAppointments, type AppointmentRow } from '@/lib/api/calendar';
 import { addClientNote, Client, ClientNote, fetchClient, fetchClientNotes } from '@/lib/api/clients';
-import { fetchAppointmentPaymentStatuses, type AppointmentPaymentStatus } from '@/lib/api/orders';
+import { fetchAppointmentPaymentStatuses, type AppointmentPaymentInfo } from '@/lib/api/orders';
 import { getInitialsFromLabel } from '@/lib/text';
 
 import { appointmentToEvent, visitDurationMinutes } from '@/components/calendar/calendar-data';
@@ -52,7 +52,7 @@ export default function AppointmentDetailScreen() {
   const [newNote, setNewNote] = React.useState('');
   const [noteComposerOpen, setNoteComposerOpen] = React.useState(false);
   const [addingNote, setAddingNote] = React.useState(false);
-  const [paymentStatuses, setPaymentStatuses] = React.useState<Record<string, AppointmentPaymentStatus>>({});
+  const [paymentStatuses, setPaymentStatuses] = React.useState<Record<string, AppointmentPaymentInfo>>({});
   const [history, setHistory] = React.useState<EventItem[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [cancelling, setCancelling] = React.useState(false);
@@ -282,6 +282,52 @@ export default function AppointmentDetailScreen() {
           </View>
 
           <View style={[styles.section, { borderBottomColor: theme.border }]}>
+            <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('client.history')}</Text>
+            {history.length === 0 ? (
+              <EmptyState
+                compact
+                icon="eventBusy"
+                title={t('client.noHistory')}
+                subtitle={t('client.noHistoryHint')}
+              />
+            ) : (
+              <ScrollView style={styles.historyList} nestedScrollEnabled showsVerticalScrollIndicator>
+              {history.map((historyEvent) => {
+                const payment = paymentStatuses[historyEvent.appointmentId];
+                const badgeColors: Record<AppointmentPaymentInfo['status'], { background: string; text: string }> = {
+                  paid: { background: theme.successSurface, text: theme.success },
+                  partial: { background: theme.warningSurface, text: theme.warning },
+                  unpaid: { background: theme.surface, text: theme.muted },
+                  unknown: { background: theme.surface, text: theme.muted },
+                };
+                const badge = badgeColors[payment?.status ?? 'unknown'];
+                const badgeLabel =
+                  payment?.status === 'paid' || payment?.status === 'partial'
+                    ? `€${(payment.amountPaid ?? 0).toFixed(2)}`
+                    : t(`order.status.${payment?.status ?? 'unknown'}`);
+                return (
+                <Pressable key={historyEvent.id} accessibilityRole="button" onPress={() => router.push({ pathname: '/appointment/[id]', params: { id: historyEvent.appointmentId } })} style={[styles.historyRow, { borderBottomColor: theme.border }]}>
+                  <View style={[styles.historyColorBar, { backgroundColor: historyEvent.color }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text numberOfLines={2} style={[styles.historyTitle, { color: theme.text }]}>{historyEvent.label}</Text>
+                    <Text style={[styles.historySubtitle, { color: theme.muted }]}>
+                      {`${getListHeaderLabel(toDateKeyFromSalonClock(historyEvent.startISO))} · ${historyEvent.startTime}–${historyEvent.endTime}`}
+                    </Text>
+                  </View>
+                  <View style={[styles.paymentBadge, { backgroundColor: badge.background }]}>
+                    <Text style={[styles.paymentBadgeText, { color: badge.text }]}>
+                      {badgeLabel}
+                    </Text>
+                  </View>
+                  <AppIcon name="chevronRight" size={16} color={theme.muted} />
+                </Pressable>
+                );
+              })}
+              </ScrollView>
+            )}
+          </View>
+
+          <View style={[styles.section, { borderBottomColor: theme.border }]}>
             <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('client.notes')}</Text>
 
             {notes.length === 0 ? (
@@ -328,37 +374,6 @@ export default function AppointmentDetailScreen() {
                 <Text style={[styles.detailText, { color: theme.text }]}>{t('appointment.addNoteAction')}</Text>
               </Pressable>
             )) : null}
-          </View>
-
-          <View style={[styles.section, { borderBottomColor: theme.border }]}>
-            <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('client.history')}</Text>
-            {history.length === 0 ? (
-              <EmptyState
-                compact
-                icon="eventBusy"
-                title={t('client.noHistory')}
-                subtitle={t('client.noHistoryHint')}
-              />
-            ) : (
-              <ScrollView style={styles.historyList} nestedScrollEnabled showsVerticalScrollIndicator>
-              {history.map((historyEvent) => (
-                <Pressable key={historyEvent.id} accessibilityRole="button" onPress={() => router.push({ pathname: '/appointment/[id]', params: { id: historyEvent.appointmentId } })} style={[styles.historyRow, { borderBottomColor: theme.border }]}>
-                  <View style={{ flex: 1 }}>
-                    <Text numberOfLines={2} style={[styles.historyTitle, { color: theme.text }]}>{historyEvent.label}</Text>
-                    <Text style={[styles.historySubtitle, { color: theme.muted }]}>
-                      {`${getListHeaderLabel(toDateKeyFromSalonClock(historyEvent.startISO))} · ${historyEvent.startTime}–${historyEvent.endTime}`}
-                    </Text>
-                  </View>
-                  <View style={[styles.paymentBadge, { backgroundColor: theme.surface }]}>
-                    <Text style={[styles.paymentBadgeText, { color: paymentStatuses[historyEvent.appointmentId] === 'paid' ? theme.text : theme.muted }]}>
-                      {t(`order.status.${paymentStatuses[historyEvent.appointmentId] ?? 'unknown'}`)}
-                    </Text>
-                  </View>
-                  <AppIcon name="chevronRight" size={16} color={theme.muted} />
-                </Pressable>
-              ))}
-              </ScrollView>
-            )}
           </View>
 
           {!canceled ? (

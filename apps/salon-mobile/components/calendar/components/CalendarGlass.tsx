@@ -1,33 +1,10 @@
 import React from 'react';
-import { AccessibilityInfo, Platform, StyleSheet, View, type ViewProps } from 'react-native';
-import { BlurView } from 'expo-blur';
-import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
+import type { ViewProps } from 'react-native';
 import Animated, { FadeIn, FadeOut, useReducedMotion, withSpring, withTiming } from 'react-native-reanimated';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { LiquidGlass } from '@/components/liquid-glass';
 
-/** Native glass on supported iOS builds, with a readable fallback elsewhere. */
-export function CalendarGlass({ children, style, ...props }: ViewProps) {
-  const dark = useColorScheme() === 'dark';
-  const [reduceTransparency, setReduceTransparency] = React.useState(true);
-  React.useEffect(() => {
-    let mounted = true;
-    AccessibilityInfo.isReduceTransparencyEnabled().then(value => {
-      if (mounted) setReduceTransparency(value);
-    });
-    const subscription = AccessibilityInfo.addEventListener('reduceTransparencyChanged', setReduceTransparency);
-    return () => { mounted = false; subscription.remove(); };
-  }, []);
-  const nativeGlass = Platform.OS === 'ios' && isGlassEffectAPIAvailable() && isLiquidGlassAvailable();
-  if (nativeGlass && !reduceTransparency) {
-    return <GlassView {...props} glassEffectStyle="regular" colorScheme={dark ? 'dark' : 'light'} style={style}>{children}</GlassView>;
-  }
-  return (
-    <View {...props} style={[style, { overflow: 'hidden', backgroundColor: dark ? '#242426' : '#f8f8fa' }]}>
-      {!reduceTransparency && Platform.OS === 'ios' && <BlurView pointerEvents="none" tint={dark ? 'systemMaterialDark' : 'systemMaterialLight'} intensity={80} style={StyleSheet.absoluteFill} />}
-      {children}
-    </View>
-  );
-}
+/** @deprecated Import `LiquidGlass` from `@/components/liquid-glass` instead — this name predates its use outside the calendar. */
+export const CalendarGlass = LiquidGlass;
 
 /** Keep the glass and its contents together during the anchored spring transition. */
 export function CalendarGlassMenu({ children, style, originX, ...props }: ViewProps & { originX: number }) {

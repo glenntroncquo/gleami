@@ -140,7 +140,7 @@ export default function PriceOptionScreen() {
             </HeaderButton>
           ),
           headerRight: () => (
-            <HeaderButton onPress={handleSave} disabled={!canSave} hitSlop={8}>
+            <HeaderButton onPress={handleSave} disabled={!canSave} hitSlop={8} style={styles.headerTextButton}>
               {saving ? (
                 <ActivityIndicator size="small" color={theme.tint} />
               ) : (
@@ -196,6 +196,11 @@ const styles = StyleSheet.create({
   },
   flex: {
     flex: 1,
+  },
+  headerTextButton: {
+    width: 'auto',
+    minWidth: 0,
+    paddingHorizontal: 4,
   },
   saveText: {
     fontSize: 16,

@@ -81,7 +81,7 @@ export default function NewStaffScreen() {
             </HeaderButton>
           ),
           headerRight: () => (
-            <HeaderButton onPress={handleSave} disabled={!canSave} hitSlop={8}>
+            <HeaderButton onPress={handleSave} disabled={!canSave} hitSlop={8} style={styles.headerTextButton}>
               {saving ? (
                 <ActivityIndicator size="small" color={theme.text} />
               ) : (
@@ -146,6 +146,11 @@ const createStyles = (theme: typeof Colors.light) =>
       fontSize: 16,
       fontWeight: '700',
       color: theme.text,
+    },
+    headerTextButton: {
+      width: 'auto',
+      minWidth: 0,
+      paddingHorizontal: 4,
     },
     saveText: {
       fontSize: 16,

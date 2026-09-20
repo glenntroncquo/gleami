@@ -4,18 +4,19 @@ import { TabScreen } from '@/components/tab-screen';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   RefreshControl,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import Animated, { FadeIn, FadeOut, useReducedMotion } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/empty-state';
+import { LiquidGlass } from '@/components/liquid-glass';
+import { SkeletonBlock } from '@/components/skeleton-block';
 import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
@@ -23,8 +24,36 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Client, fetchClients } from '@/lib/api/clients';
 import { getInitialsFromLabel } from '@/lib/text';
 
+/** How long a load can take before we bother showing a skeleton at all — avoids a flash on fast responses. */
+const SKELETON_DELAY_MS = 300;
+const SKELETON_ROW_COUNT = 8;
+
 function clientName(client: Client, fallback: string) {
   return `${client.first_name ?? ''} ${client.last_name ?? ''}`.trim() || fallback;
+}
+
+function ClientRowSkeleton({ styles, index }: { styles: ReturnType<typeof createStyles>; index: number }) {
+  const nameWidth = 46 - (index % 3) * 8;
+  const subtitleWidth = 34 - (index % 4) * 6;
+  return (
+    <View style={styles.row}>
+      <SkeletonBlock style={styles.avatar} />
+      <View style={{ flex: 1 }}>
+        <SkeletonBlock style={[styles.skeletonBar, styles.skeletonName, { width: `${nameWidth}%` }]} />
+        <SkeletonBlock style={[styles.skeletonBar, styles.skeletonSubtitle, { width: `${subtitleWidth}%` }]} />
+      </View>
+    </View>
+  );
+}
+
+function ClientListSkeleton({ styles }: { styles: ReturnType<typeof createStyles> }) {
+  return (
+    <View style={styles.listContent}>
+      {Array.from({ length: SKELETON_ROW_COUNT }, (_, index) => (
+        <ClientRowSkeleton key={index} styles={styles} index={index} />
+      ))}
+    </View>
+  );
 }
 
 export default function ClientsScreen() {
@@ -41,8 +70,14 @@ export default function ClientsScreen() {
   const [refreshing, setRefreshing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
+  const reduceMotion = useReducedMotion();
 
-  const loadClients = React.useCallback(async () => {
+  // Tracks which location we last successfully loaded, so refocusing the tab (e.g.
+  // coming back from a client's detail screen) can refresh in place instead of
+  // showing a skeleton over data we already have.
+  const loadedLocationRef = React.useRef<string | null>(null);
+
+  const loadClients = React.useCallback(async (showLoading: boolean) => {
     if (!companyId) {
       setLoading(false);
       return;
@@ -51,29 +86,31 @@ export default function ClientsScreen() {
     if (!locationId) {
       setClients([]);
       setLoading(false);
+      loadedLocationRef.current = null;
       return;
     }
-    setLoading(true);
+    if (showLoading) setLoading(true);
     try {
       const data = await fetchClients(companyId, locationId);
       setClients(data);
       setError(null);
+      loadedLocationRef.current = locationId;
     } catch (err) {
       setError(err instanceof Error ? err.message : t('client.failedToLoadClients'));
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, [companyId, locationId, locationLoading, t]);
 
   useFocusEffect(
     React.useCallback(() => {
-      loadClients();
-    }, [loadClients])
+      loadClients(loadedLocationRef.current !== locationId);
+    }, [loadClients, locationId])
   );
 
   const handleRefresh = React.useCallback(async () => {
     setRefreshing(true);
-    await loadClients();
+    await loadClients(false);
     setRefreshing(false);
   }, [loadClients]);
 
@@ -90,6 +127,18 @@ export default function ClientsScreen() {
   const showInitialLoading = (loading || locationLoading) && !error;
   const showNoCompanyState = !loading && !locationLoading && !companyId;
   const showNoLocationState = !loading && !locationLoading && !!companyId && !locationId;
+
+  // Only show the skeleton once loading has actually taken a moment, so a fast
+  // response never flashes it on and off.
+  const [showSkeleton, setShowSkeleton] = React.useState(false);
+  React.useEffect(() => {
+    if (!showInitialLoading) {
+      setShowSkeleton(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowSkeleton(true), SKELETON_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [showInitialLoading]);
 
   return (
     <TabScreen>
@@ -114,21 +163,24 @@ export default function ClientsScreen() {
       {error ? (
         <View style={styles.errorBanner}>
           <Text style={styles.errorBannerText}>{error}</Text>
-          <Pressable onPress={loadClients}>
+          <Pressable onPress={() => loadClients(true)}>
             <Text style={styles.errorBannerRetry}>{t('calendar.retry')}</Text>
           </Pressable>
         </View>
       ) : null}
 
       {showInitialLoading ? (
-        <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color={theme.text} />
-        </View>
+        showSkeleton ? (
+          <Animated.View key="skeleton" exiting={FadeOut.duration(reduceMotion ? 100 : 150)}>
+            <ClientListSkeleton styles={styles} />
+          </Animated.View>
+        ) : null
       ) : showNoCompanyState ? (
         <EmptyState icon="peopleOutline" title={t('calendar.noCompany')} />
       ) : showNoLocationState ? (
         <EmptyState icon="peopleOutline" title={t('calendar.noLocation')} />
       ) : (
+        <Animated.View key="content" entering={FadeIn.duration(reduceMotion ? 100 : 200)} style={{ flex: 1 }}>
         <FlatList
           data={filteredClients}
           keyExtractor={(item) => item.id}
@@ -169,12 +221,19 @@ export default function ClientsScreen() {
             );
           }}
         />
+        </Animated.View>
       )}
 
       {!showNoCompanyState ? (
-        <TouchableOpacity style={styles.fab} onPress={() => router.push('/client/new')}>
-          <AppIcon name="add" size={26} color={theme.text} />
-        </TouchableOpacity>
+        <LiquidGlass style={styles.fab}>
+          <Pressable
+            style={styles.fabButton}
+            accessibilityLabel={t('client.addNew')}
+            onPress={() => router.push('/client/new')}
+          >
+            <AppIcon name="add" size={26} color={theme.text} />
+          </Pressable>
+        </LiquidGlass>
       ) : null}
     </>
     </TabScreen>
@@ -236,16 +295,6 @@ const createStyles = (theme: typeof Colors.light) =>
       fontWeight: '700',
       textDecorationLine: 'underline',
     },
-    stateContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingTop: 60,
-    },
-    stateText: {
-      fontSize: 15,
-      color: theme.muted,
-    },
     listContent: {
       paddingHorizontal: 16,
       paddingBottom: 100,
@@ -284,22 +333,34 @@ const createStyles = (theme: typeof Colors.light) =>
       color: theme.muted,
       marginTop: 2,
     },
+    skeletonBar: {
+      borderRadius: 4,
+      backgroundColor: theme.border,
+    },
+    skeletonName: {
+      height: 14,
+    },
+    skeletonSubtitle: {
+      height: 11,
+      marginTop: 6,
+    },
     fab: {
       position: 'absolute',
       right: 20,
       bottom: 24,
+      padding: 4,
+      borderRadius: 31,
+      shadowColor: '#000',
+      shadowOpacity: 0.08,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 4,
+    },
+    fabButton: {
       width: 54,
       height: 54,
       borderRadius: 27,
-      backgroundColor: theme.background,
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: theme.text,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 6,
-      elevation: 4,
     },
   });

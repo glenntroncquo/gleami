@@ -120,7 +120,7 @@ export default function StaffTimeOffNewScreen() {
             </HeaderButton>
           ),
           headerRight: () => (
-            <HeaderButton onPress={handleSave} disabled={saving} hitSlop={8}>
+            <HeaderButton onPress={handleSave} disabled={saving} hitSlop={8} style={styles.headerTextButton}>
               {saving ? (
                 <ActivityIndicator size="small" color={theme.tint} />
               ) : (
@@ -170,6 +170,11 @@ export default function StaffTimeOffNewScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+  },
+  headerTextButton: {
+    width: 'auto',
+    minWidth: 0,
+    paddingHorizontal: 4,
   },
   saveText: {
     fontSize: 16,

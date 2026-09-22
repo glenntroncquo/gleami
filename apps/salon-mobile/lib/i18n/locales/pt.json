@@ -17,6 +17,11 @@
     "more": "Mais"
   },
   "calendar": {
+    "dayGrid": "Linha do tempo diária",
+    "weekGrid": "Linha do tempo semanal",
+    "previousPeriod": "Período anterior",
+    "nextPeriod": "Próximo período",
+    "timelineHint": "Espaços vazios estão sem marcações. Horários de trabalho não são mostrados. Toque para marcar.",
     "employee": "Funcionário",
     "allStaff": "Toda a equipe",
     "month": "Mês",

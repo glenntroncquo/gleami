@@ -19,6 +19,11 @@
     "more": "Meer"
   },
   "calendar": {
+    "dayGrid": "Dagtijdlijn",
+    "weekGrid": "Weektijdlijn",
+    "previousPeriod": "Vorige periode",
+    "nextPeriod": "Volgende periode",
+    "timelineHint": "Lege vakken zijn ongeboekt. Werkuren worden niet getoond. Tik op een tijdvak om te boeken.",
     "employee": "Medewerker",
     "allStaff": "Alle medewerkers",
     "month": "Maand",

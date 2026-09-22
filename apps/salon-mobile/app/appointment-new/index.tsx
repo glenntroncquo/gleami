@@ -37,8 +37,13 @@ function formatTimeForInput(date: Date) {
   return `${h}:${m}`;
 }
 
-function defaultStartDate(dateParam?: string) {
-  const base = dateParam ? new Date(dateParam) : new Date();
+function defaultStartDate(dateParam?: string, timeParam?: string) {
+  const base = dateParam ? new Date(dateParam + 'T00:00:00') : new Date();
+  if (timeParam && /^([01]\d|2[0-3]):[0-5]\d$/.test(timeParam)) {
+    const [hours, minutes] = timeParam.split(':').map(Number);
+    base.setHours(hours, minutes, 0, 0);
+    return base;
+  }
   const now = new Date();
   let hours = now.getHours();
   let minutes = Math.ceil(now.getMinutes() / 30) * 30;
@@ -57,7 +62,7 @@ function clientDisplayName(first: string | null | undefined, last: string | null
 export default function NewAppointmentScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const params = useLocalSearchParams<{ date?: string }>();
+  const params = useLocalSearchParams<{ date?: string; time?: string; staffId?: string }>();
   const { companyId } = useAuth();
   const { locationId } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
@@ -66,7 +71,7 @@ export default function NewAppointmentScreen() {
 
   const [staffList, setStaffList] = React.useState<StaffMember[]>([]);
   const [staffLoading, setStaffLoading] = React.useState(true);
-  const [staffId, setStaffId] = React.useState<string | null>(null);
+  const [staffId, setStaffId] = React.useState<string | null>(params.staffId ?? null);
 
   const [servicesList, setServicesList] = React.useState<ServiceWithVariants[]>([]);
   const [cart, setCart] = React.useState<CartItem[]>([]);
@@ -74,7 +79,7 @@ export default function NewAppointmentScreen() {
   const [selectedClient, setSelectedClient] = React.useState<ClientSearchResult | null>(null);
   const [newClientDraft, setNewClientDraft] = React.useState<NewClientDraft | null>(null);
 
-  const [startDate, setStartDate] = React.useState<Date>(() => defaultStartDate(params.date));
+  const [startDate, setStartDate] = React.useState<Date>(() => defaultStartDate(params.date, params.time));
 
   const [notes, setNotes] = React.useState('');
   const [submitting, setSubmitting] = React.useState(false);

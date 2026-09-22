@@ -1,3 +1,4 @@
+import { TimeGrid } from '@/components/calendar/components/TimeGrid';
 import { calendarPreviewLayout } from '@/lib/calendar-layout';
 import { Pressable } from '@/components/pressable-scale';
 import React from 'react';
@@ -103,7 +104,8 @@ export default function CalendarScreen() {
   const modeButtonRef = React.useRef<View>(null);
   const staffChipRef = React.useRef<View>(null);
   const monthButtonRef = React.useRef<View>(null);
-  const [viewMode, setViewMode] = React.useState<'month' | 'week' | 'list'>('month');
+  const [viewMode, setViewMode] = React.useState<'month' | 'week' | 'list' | 'dayGrid' | 'weekGrid'>('month');
+  const [gridDate, setGridDate] = React.useState(() => toDateKey(new Date()));
   const [offsets, setOffsets] = React.useState(() => {
     const todayOffset = getOffsetForDate(new Date());
     return [todayOffset - 2, todayOffset - 1, todayOffset, todayOffset + 1, todayOffset + 2];
@@ -235,6 +237,10 @@ export default function CalendarScreen() {
   // in either direction — or switching between month/week/list — land on
   // already-loaded data instead of triggering a fresh fetch at the boundary.
   const neededMonthOffsets = React.useMemo(() => {
+    if (viewMode === 'dayGrid' || viewMode === 'weekGrid') {
+      const start = viewMode === 'weekGrid' ? getWeekStartMonday(parseSalonWallClock(gridDate + 'T00:00:00')) : parseSalonWallClock(gridDate + 'T00:00:00');
+      return Array.from(new Set([...buildPrefetchWindow(getOffsetForDate(start)), getOffsetForDate(addDays(start, 6))]));
+    }
     if (viewMode === 'week') {
       const weekOffset = weekOffsets[currentWeekIndex] ?? 0;
       const weekStart = addDays(baseWeekStart, weekOffset * 7);
@@ -249,7 +255,7 @@ export default function CalendarScreen() {
       return Array.from(new Set([...listMonthOffsets, ...buildPrefetchWindow(currentOffset)]));
     }
     return Array.from(new Set([...offsets, ...buildPrefetchWindow(currentOffset)]));
-  }, [viewMode, weekOffsets, currentWeekIndex, baseWeekStart, listMonthOffsets, offsets, currentOffset]);
+  }, [viewMode, gridDate, weekOffsets, currentWeekIndex, baseWeekStart, listMonthOffsets, offsets, currentOffset]);
 
   React.useEffect(() => {
     neededMonthOffsets.forEach((offset) => {
@@ -382,7 +388,9 @@ export default function CalendarScreen() {
   const currentWeekOffset = weekOffsets[currentWeekIndex] ?? 0;
   const currentWeekDays = fetchWeekData(currentWeekOffset);
   const { activeYear, activeMonthIndex } =
-    viewMode === 'week'
+    viewMode === 'dayGrid' || viewMode === 'weekGrid'
+      ? { activeYear: Number(gridDate.slice(0, 4)), activeMonthIndex: Number(gridDate.slice(5, 7)) - 1 }
+      : viewMode === 'week'
       ? (() => {
           const weekDate = new Date(currentWeekDays[0]?.dateKey ?? todayKey);
           return { activeYear: weekDate.getFullYear(), activeMonthIndex: weekDate.getMonth() };
@@ -419,6 +427,7 @@ export default function CalendarScreen() {
 
   const goToToday = React.useCallback(() => {
     const today = new Date();
+    setGridDate(toDateKey(today));
     const targetOffset = getOffsetForDate(today);
     const dateKey = toDateKey(today);
     const currentOffsets = offsetsRef.current;
@@ -477,6 +486,7 @@ export default function CalendarScreen() {
     const target = new Date(year, monthIndex, 1);
     const targetOffset = getOffsetForDate(target);
     const currentOffsets = offsetsRef.current;
+    setGridDate(toDateKey(target));
     const fromViewMode = viewModeRef.current;
     const switchingFromWeek = fromViewMode === 'week';
     const needsRecenter = !currentOffsets.includes(targetOffset);
@@ -813,8 +823,8 @@ export default function CalendarScreen() {
                   <Pressable ref={staffChipRef} collapsable={false} accessibilityLabel={`${t('calendar.employee')}: ${selectedStaffName}`} accessibilityState={{ expanded: showStaffMenu }} style={styles.iconButton} onPress={openStaffMenu}>
                     {selectedStaff ? <StaffAvatar imagePath={selectedStaff.image_path} name={selectedStaffName} size={26} fontSize={11} /> : <AppIcon name="peopleOutline" size={23} color={theme.text} />}
                   </Pressable>
-                  <Pressable ref={modeButtonRef} collapsable={false} accessibilityLabel={`${t('calendar.month')}, ${t('calendar.week')}, ${t('calendar.list')}`} accessibilityState={{ expanded: showModeMenu }} style={styles.iconButton} onPress={openModeMenu}>
-                    <AppIcon name={viewMode === 'month' ? 'calendar' : viewMode === 'week' ? 'viewWeek' : 'viewList'} size={23} color={theme.text} />
+                  <Pressable ref={modeButtonRef} collapsable={false} accessibilityLabel={`${t('calendar.month')}, ${t('calendar.week')}, ${t('calendar.list')}, ${t('calendar.dayGrid')}, ${t('calendar.weekGrid')}`} accessibilityState={{ expanded: showModeMenu }} style={styles.iconButton} onPress={openModeMenu}>
+                    <AppIcon name={viewMode === 'month' ? 'calendar' : viewMode === 'dayGrid' ? 'schedule' : viewMode === 'weekGrid' || viewMode === 'week' ? 'viewWeek' : 'viewList'} size={23} color={theme.text} />
                   </Pressable>
                   <Pressable accessibilityLabel={t('appointment.title')} style={styles.iconButton} onPress={() => router.push({ pathname: '/appointment-new', params: { date: todayKey } })}>
                     <AppIcon name="add" size={25} color={theme.text} />
@@ -840,6 +850,23 @@ export default function CalendarScreen() {
               setCalendarAreaHeight(layout.height);
               setGridWidth(layout.width);
             }}>
+              {viewMode === 'dayGrid' || viewMode === 'weekGrid' ? (() => {
+                const start = viewMode === 'weekGrid' ? getWeekStartMonday(parseSalonWallClock(gridDate + 'T00:00:00')) : parseSalonWallClock(gridDate + 'T00:00:00');
+                const days = Array.from({ length: viewMode === 'weekGrid' ? 7 : 1 }, (_, i) => {
+                  const date = addDays(start, i);
+                  const dateKey = toDateKey(date);
+                  return { dateKey, date: date.getDate(), weekday: getWeekdayLong(date), isSunday: date.getDay() === 0, appointments: [
+                    ...(fetchMonthData(getOffsetForDate(date)).events[dateKey] ?? []),
+                    ...(fetchMonthData(getOffsetForDate(addDays(date, -1))).events[toDateKey(addDays(date, -1))] ?? []).filter(event => event.endISO > dateKey + 'T00:00:00'),
+                  ] };
+                });
+                const loading = days.some(day => !monthDataRef.current.has(monthKeyForOffset(getOffsetForDate(parseSalonWallClock(day.dateKey + 'T00:00:00'))).key));
+                return <TimeGrid mode={viewMode} days={days} staff={staffList} staffFilterId={staffFilterId} width={gridWidth} loading={loading}
+                  onNavigate={direction => setGridDate(toDateKey(addDays(parseSalonWallClock(gridDate + 'T00:00:00'), direction * (viewMode === 'weekGrid' ? 7 : 1))))}
+                  onToday={jumpToToday}
+                  onEvent={event => router.push({ pathname: '/appointment/[id]', params: { id: event.appointmentId } })}
+                  onSlot={(date, time, staffId) => router.push({ pathname: '/appointment-new', params: { date, time, ...(staffId ? { staffId } : {}) } })} />;
+              })() : null}
               {viewMode === 'month' ? (
                 <FlatList
                   ref={listRef}
@@ -1027,6 +1054,23 @@ export default function CalendarScreen() {
                   <Text style={styles.modeText}>{t('calendar.list')}</Text>
                   {viewMode === 'list' ? <AppIcon name="check" size={20} color={theme.tint} /> : null}
                 </Pressable>
+                {(['dayGrid', 'weekGrid'] as const).map(mode => (
+                  <Pressable key={mode} style={styles.modeItem} onPress={() => {
+                    Haptics.selectionAsync();
+                    setShowModeMenu(false);
+                    if (viewMode === 'week') setGridDate(currentWeekDays[0].dateKey);
+                    else if (viewMode === 'month' || viewMode === 'list') {
+                      const { year, monthIndex } = monthKeyForOffset(currentOffset);
+                      const now = new Date();
+                      setGridDate(toDateKey(now.getFullYear() === year && now.getMonth() === monthIndex ? now : new Date(year, monthIndex, 1)));
+                    }
+                    React.startTransition(() => setViewMode(mode));
+                  }}>
+                    <AppIcon name={mode === 'dayGrid' ? 'schedule' : 'viewWeek'} size={20} color={theme.text} />
+                    <Text style={styles.modeText}>{t(`calendar.${mode}`)}</Text>
+                    {viewMode === mode ? <AppIcon name="check" size={20} color={theme.tint} /> : null}
+                  </Pressable>
+                ))}
               </CalendarGlassMenu>
             </>
           ) : null}

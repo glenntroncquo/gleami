@@ -19,6 +19,11 @@
     "more": "More"
   },
   "calendar": {
+    "dayGrid": "Day timeline",
+    "weekGrid": "Week timeline",
+    "previousPeriod": "Previous period",
+    "nextPeriod": "Next period",
+    "timelineHint": "Gaps show unbooked time. Staff working hours are not shown. Tap a slot to book.",
     "employee": "Employee",
     "allStaff": "All staff",
     "month": "Month",

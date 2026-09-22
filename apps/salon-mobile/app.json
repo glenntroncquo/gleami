@@ -50,6 +50,12 @@
           "photosPermission": "Allow $(PRODUCT_NAME) to access your photos to set a profile picture."
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to scan product barcodes."
+        }
+      ],
       "expo-localization",
       "expo-status-bar",
       "expo-web-browser",

@@ -2,7 +2,8 @@
   "common": {
     "close": "Close",
     "back": "Back",
-    "delete": "Delete"
+    "delete": "Delete",
+    "cancel": "Cancel"
   },
   "auth": {
     "signIn": "Sign In",
@@ -225,7 +226,11 @@
     "complete": "Complete checkout",
     "failedToComplete": "Failed to complete checkout. Please try again.",
     "success": "Payment recorded",
-    "done": "Done"
+    "done": "Done",
+    "products": "Products",
+    "noProductFound": "No product found for this barcode.",
+    "stockLeft_one": "{{count}} left in stock",
+    "stockLeft_other": "{{count}} left in stock"
   },
   "order": {
     "title": "Orders",
@@ -241,6 +246,51 @@
     "payments": "Payments",
     "noPayments": "No payments recorded",
     "noPaymentsHint": "No payments have been recorded for this order."
+  },
+  "products": {
+    "title": "Products",
+    "searchPlaceholder": "Search products...",
+    "noResults": "No products found",
+    "noProducts": "No products yet",
+    "noProductsHint": "Add products to track stock and sell them at checkout.",
+    "addNew": "Add Product",
+    "unnamed": "Unnamed product",
+    "edit": "Edit Product",
+    "failedToLoad": "Failed to load products.",
+    "failedToSave": "Failed to save product. Please try again.",
+    "failedToDelete": "Failed to delete product. Please try again.",
+    "deleteConfirmTitle": "Delete Product",
+    "deleteConfirmMessage": "Are you sure you want to delete this product? This action cannot be undone.",
+    "addLine": {
+      "trigger": "New line",
+      "namePlaceholder": "e.g. Hair care"
+    },
+    "form": {
+      "name": "Product Name",
+      "namePlaceholder": "Enter product name",
+      "sku": "SKU",
+      "skuPlaceholder": "Enter SKU code",
+      "barcode": "Barcode",
+      "barcodePlaceholder": "Enter barcode",
+      "description": "Description",
+      "descriptionPlaceholder": "Enter product description",
+      "priceInclVat": "Selling price",
+      "costPrice": "Cost price",
+      "vatRate": "VAT Rate (%)",
+      "stockQty": "Stock Quantity",
+      "active": "Active",
+      "productCategory": "Product category",
+      "productLine": "Product line",
+      "noneOption": "None"
+    }
+  },
+  "barcodeScanner": {
+    "permissionTitle": "Camera access needed",
+    "permissionSubtitle": "Allow camera access to scan barcodes.",
+    "permissionDeniedSubtitle": "Camera access was denied. Enable it in Settings to scan barcodes.",
+    "grantAccess": "Grant access",
+    "openSettings": "Open Settings",
+    "hint": "Align the barcode within the frame"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -276,6 +326,7 @@
     "staff": "Staff",
     "services": "Services",
     "orders": "Orders",
+    "products": "Products",
     "dashboard": "Dashboard",
     "settings": "Settings"
   },

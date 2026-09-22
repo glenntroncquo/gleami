@@ -155,6 +155,10 @@ function RootNavigator() {
         <Stack.Screen name="orders/[id]" />
         <Stack.Screen name="dashboard/index" />
         <Stack.Screen name="settings/index" />
+        <Stack.Screen name="products/index" />
+        <Stack.Screen name="products/[id]" />
+        <Stack.Screen name="products/new" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="barcode-scanner" options={{ presentation: 'fullScreenModal', headerShown: false }} />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="login" options={{ headerShown: false }} />

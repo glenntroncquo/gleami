@@ -59,7 +59,7 @@ export default function ClientPickerScreen() {
     setSearchTerm(text);
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
 
-    if (text.trim().length < 2) {
+    if (text.trim().length < 2 || !companyId) {
       setResults([]);
       setSearching(false);
       return;
@@ -68,14 +68,14 @@ export default function ClientPickerScreen() {
     searchDebounceRef.current = setTimeout(async () => {
       setSearching(true);
       try {
-        setResults(await searchClients(text));
+        setResults(await searchClients(text, companyId));
       } catch {
         setResults([]);
       } finally {
         setSearching(false);
       }
     }, 350);
-  }, []);
+  }, [companyId]);
 
   const selectClient = React.useCallback(
     (client: ClientSearchResult) => {

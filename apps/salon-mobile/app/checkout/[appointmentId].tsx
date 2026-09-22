@@ -5,7 +5,7 @@ import { HeaderButton } from '@/components/header-button';
 import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, DeviceEventEmitter, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -18,12 +18,15 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   CheckoutLineItem,
   CheckoutPaymentType,
+  CheckoutProductLine,
   checkoutLineItems,
   createOrderWithPayment,
   fetchAppointmentForCheckout,
 } from '@/lib/api/checkout';
+import { ManagedProduct, fetchProducts, findProductByBarcode } from '@/lib/api/products';
 
 const PAYMENT_TYPES: CheckoutPaymentType[] = ['cash', 'card', 'invoice', 'bank_transfer'];
+const CHECKOUT_BARCODE_EVENT = 'checkout-barcode-scanned';
 
 export default function CheckoutScreen() {
   const { t } = useTranslation();
@@ -44,6 +47,11 @@ export default function CheckoutScreen() {
     : '');
   const [clientId, setClientId] = React.useState<string | null>(initialAppointment?.client_id ?? null);
   const [lineItems, setLineItems] = React.useState<CheckoutLineItem[]>(() => initialAppointment ? checkoutLineItems(initialAppointment) : []);
+
+  const [productLines, setProductLines] = React.useState<CheckoutProductLine[]>([]);
+  const [allProducts, setAllProducts] = React.useState<ManagedProduct[]>([]);
+  const [showProductPicker, setShowProductPicker] = React.useState(false);
+  const [productSearchTerm, setProductSearchTerm] = React.useState('');
 
   const [paymentType, setPaymentType] = React.useState<CheckoutPaymentType>('bank_transfer');
   const [amount, setAmount] = React.useState(() => initialAppointment
@@ -91,9 +99,91 @@ export default function CheckoutScreen() {
     return () => { active = false; };
   }, [appointmentId, initialAppointment, t]);
 
-  const total = lineItems.reduce((sum, item) => sum + item.price, 0);
+  React.useEffect(() => {
+    if (!companyId) return;
+    let active = true;
+    fetchProducts(companyId)
+      .then((products) => {
+        if (active) setAllProducts(products);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [companyId]);
+
+  const addProductToCart = React.useCallback(
+    (product: ManagedProduct) => {
+      const price = Math.round((product.price_gross ?? 0) * 100) / 100;
+      setProductLines((current) => {
+        const existingIndex = current.findIndex((line) => line.productId === product.id);
+        if (existingIndex >= 0) {
+          return current.map((line, index) =>
+            index === existingIndex ? { ...line, quantity: line.quantity + 1 } : line
+          );
+        }
+        return [
+          ...current,
+          {
+            productId: product.id,
+            name: product.name || t('products.unnamed'),
+            price,
+            quantity: 1,
+            vatRate: product.vat_rate ?? 21,
+            stockQty: product.stock_qty,
+          },
+        ];
+      });
+      setAmount((current) => (Math.max(0, Number(current) || 0) + price).toFixed(2));
+      setShowProductPicker(false);
+      setProductSearchTerm('');
+    },
+    [t]
+  );
+
+  const updateProductQuantity = (index: number, nextQuantity: number) => {
+    const line = productLines[index];
+    if (!line) return;
+    const clamped = Math.max(0, nextQuantity);
+    const delta = (clamped - line.quantity) * line.price;
+    if (clamped === 0) {
+      setProductLines(productLines.filter((_, i) => i !== index));
+    } else {
+      setProductLines(productLines.map((item, i) => (i === index ? { ...item, quantity: clamped } : item)));
+    }
+    setAmount((current) => Math.max(0, (Number(current) || 0) + delta).toFixed(2));
+  };
+
+  React.useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(CHECKOUT_BARCODE_EVENT, async ({ code }: { code: string }) => {
+      if (!companyId) return;
+      try {
+        const product = await findProductByBarcode(companyId, code);
+        if (product) {
+          addProductToCart(product);
+        } else {
+          setError(t('checkout.noProductFound'));
+        }
+      } catch {
+        setError(t('checkout.noProductFound'));
+      }
+    });
+    return () => sub.remove();
+  }, [companyId, addProductToCart, t]);
+
+  const filteredProductOptions = React.useMemo(() => {
+    const term = productSearchTerm.trim().toLowerCase();
+    if (!term) return allProducts;
+    return allProducts.filter((product) => {
+      const haystack = `${product.name ?? ''} ${product.sku ?? ''} ${product.barcode ?? ''}`.toLowerCase();
+      return haystack.includes(term);
+    });
+  }, [allProducts, productSearchTerm]);
+
+  const total =
+    lineItems.reduce((sum, item) => sum + item.price, 0) +
+    productLines.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const amountValue = Number(amount);
-  const canSubmit = lineItems.length > 0 && Number.isFinite(amountValue) && amountValue >= 0 && !submitting;
+  const canSubmit =
+    (lineItems.length > 0 || productLines.length > 0) && Number.isFinite(amountValue) && amountValue >= 0 && !submitting;
 
   const handleComplete = async () => {
     if (!companyId || !appointmentId || !canSubmit) return;
@@ -106,6 +196,7 @@ export default function CheckoutScreen() {
         appointmentId,
         clientId: clientId ?? undefined,
         lineItems,
+        productLines,
         paymentType,
         amount: amountValue,
       });
@@ -207,6 +298,71 @@ export default function CheckoutScreen() {
             <Text style={styles.totalLabel}>{t('checkout.total')}</Text>
             <Text style={styles.totalValue}>{`€${total.toFixed(2)}`}</Text>
           </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.productsSectionHeader}>
+            <Text style={styles.sectionLabel}>{t('checkout.products')}</Text>
+            <View style={styles.productActionsRow}>
+              <Pressable
+                style={styles.productActionButton}
+                onPress={() =>
+                  router.push({ pathname: '/barcode-scanner', params: { event: CHECKOUT_BARCODE_EVENT } })
+                }>
+                <AppIcon name="barcode" size={18} color={theme.text} />
+              </Pressable>
+              <Pressable
+                style={styles.productActionButton}
+                onPress={() => setShowProductPicker((current) => !current)}>
+                <AppIcon name="add" size={18} color={theme.text} />
+              </Pressable>
+            </View>
+          </View>
+
+          {productLines.map((line, index) => (
+            <View key={`${line.productId}-${index}`} style={styles.lineItemRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.lineItemName}>{line.name}</Text>
+                {line.stockQty != null ? (
+                  <Text style={styles.productStockHint}>{t('checkout.stockLeft', { count: line.stockQty })}</Text>
+                ) : null}
+              </View>
+              <View style={styles.qtyStepper}>
+                <Pressable style={styles.qtyButton} onPress={() => updateProductQuantity(index, line.quantity - 1)}>
+                  <Text style={styles.qtyButtonText}>–</Text>
+                </Pressable>
+                <Text style={styles.qtyValue}>{line.quantity}</Text>
+                <Pressable style={styles.qtyButton} onPress={() => updateProductQuantity(index, line.quantity + 1)}>
+                  <Text style={styles.qtyButtonText}>+</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.lineItemPrice}>{`€${(line.price * line.quantity).toFixed(2)}`}</Text>
+            </View>
+          ))}
+
+          {showProductPicker ? (
+            <View style={styles.productPicker}>
+              <TextInput
+                style={styles.input}
+                placeholder={t('products.searchPlaceholder')}
+                placeholderTextColor={theme.muted}
+                value={productSearchTerm}
+                onChangeText={setProductSearchTerm}
+              />
+              {filteredProductOptions.slice(0, 20).map((product) => (
+                <Pressable
+                  key={product.id}
+                  style={styles.productOptionRow}
+                  onPress={() => addProductToCart(product)}>
+                  <Text style={styles.productOptionName}>{product.name || t('products.unnamed')}</Text>
+                  <Text style={styles.productOptionPrice}>{`€${(product.price_gross ?? 0).toFixed(2)}`}</Text>
+                </Pressable>
+              ))}
+              {filteredProductOptions.length === 0 ? (
+                <Text style={styles.productStockHint}>{t('products.noResults')}</Text>
+              ) : null}
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.section}>
@@ -321,6 +477,77 @@ const createStyles = (theme: typeof Colors.light) =>
     },
     lineItemPrice: {
       fontSize: 15,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    productsSectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    productActionsRow: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    productActionButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    productStockHint: {
+      fontSize: 12,
+      color: theme.muted,
+      marginTop: 2,
+    },
+    qtyStepper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    qtyButton: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    qtyButtonText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    qtyValue: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
+      minWidth: 18,
+      textAlign: 'center',
+    },
+    productPicker: {
+      marginTop: 10,
+      gap: 8,
+    },
+    productOptionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    productOptionName: {
+      fontSize: 14,
+      color: theme.text,
+      flex: 1,
+    },
+    productOptionPrice: {
+      fontSize: 14,
       fontWeight: '600',
       color: theme.text,
     },

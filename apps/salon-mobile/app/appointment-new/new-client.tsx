@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { Colors, Design } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ClientSearchResult, searchClients } from '@/lib/api/clients';
 
@@ -25,6 +26,7 @@ function clientDisplayName(first: string | null | undefined, last: string | null
 export default function NewClientScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { companyId } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = React.useMemo(() => createStyles(theme), [theme]);
@@ -41,7 +43,7 @@ export default function NewClientScreen() {
     if (duplicateDebounceRef.current) clearTimeout(duplicateDebounceRef.current);
 
     const trimmed = email.trim();
-    if (!EMAIL_PATTERN.test(trimmed)) {
+    if (!EMAIL_PATTERN.test(trimmed) || !companyId) {
       setDuplicateStatus('idle');
       setDuplicateMatch(null);
       return;
@@ -50,7 +52,7 @@ export default function NewClientScreen() {
     setDuplicateStatus('checking');
     duplicateDebounceRef.current = setTimeout(async () => {
       try {
-        const results = await searchClients(trimmed);
+        const results = await searchClients(trimmed, companyId);
         const match = results.find((r) => r.email.toLowerCase() === trimmed.toLowerCase()) ?? null;
         setDuplicateMatch(match);
         setDuplicateStatus(match ? 'duplicate' : 'clear');
@@ -63,7 +65,7 @@ export default function NewClientScreen() {
     return () => {
       if (duplicateDebounceRef.current) clearTimeout(duplicateDebounceRef.current);
     };
-  }, [email]);
+  }, [email, companyId]);
 
   const canSave = firstName.trim().length > 0 && EMAIL_PATTERN.test(email.trim());
 

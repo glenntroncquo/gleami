@@ -1,6 +1,7 @@
 {
   "common": {
-    "delete": "Excluir"
+    "delete": "Excluir",
+    "cancel": "Cancelar"
   },
   "auth": {
     "signIn": "Entrar",
@@ -220,7 +221,11 @@
     "complete": "Concluir pagamento",
     "failedToComplete": "Falha ao concluir pagamento. Tente novamente.",
     "success": "Pagamento registrado",
-    "done": "Concluído"
+    "done": "Concluído",
+    "products": "Produtos",
+    "noProductFound": "Nenhum produto encontrado para este código de barras.",
+    "stockLeft_one": "{{count}} restante em estoque",
+    "stockLeft_other": "{{count}} restantes em estoque"
   },
   "order": {
     "title": "Pedidos",
@@ -235,6 +240,51 @@
     "payments": "Pagamentos",
     "noPayments": "Nenhum pagamento registrado",
     "noPaymentsHint": "Nenhum pagamento foi registrado neste pedido."
+  },
+  "products": {
+    "title": "Produtos",
+    "searchPlaceholder": "Buscar produtos...",
+    "noResults": "Nenhum produto encontrado",
+    "noProducts": "Ainda não há produtos",
+    "noProductsHint": "Adicione produtos para controlar o estoque e vendê-los no checkout.",
+    "addNew": "Adicionar Produto",
+    "unnamed": "Produto sem nome",
+    "edit": "Editar Produto",
+    "failedToLoad": "Falha ao carregar produtos.",
+    "failedToSave": "Falha ao salvar produto. Tente novamente.",
+    "failedToDelete": "Falha ao excluir produto. Tente novamente.",
+    "deleteConfirmTitle": "Excluir Produto",
+    "deleteConfirmMessage": "Tem certeza de que deseja excluir este produto? Esta ação não pode ser desfeita.",
+    "addLine": {
+      "trigger": "Nova linha",
+      "namePlaceholder": "ex. Cuidados capilares"
+    },
+    "form": {
+      "name": "Nome do Produto",
+      "namePlaceholder": "Digite o nome do produto",
+      "sku": "SKU",
+      "skuPlaceholder": "Digite o código SKU",
+      "barcode": "Código de Barras",
+      "barcodePlaceholder": "Digite o código de barras",
+      "description": "Descrição",
+      "descriptionPlaceholder": "Digite a descrição do produto",
+      "priceInclVat": "Preço de venda",
+      "costPrice": "Preço de compra",
+      "vatRate": "Taxa de IVA (%)",
+      "stockQty": "Quantidade em Estoque",
+      "active": "Ativo",
+      "productCategory": "Categoria do produto",
+      "productLine": "Linha de produto",
+      "noneOption": "Nenhuma"
+    }
+  },
+  "barcodeScanner": {
+    "permissionTitle": "Acesso à câmera necessário",
+    "permissionSubtitle": "Permita o acesso à câmera para escanear códigos de barras.",
+    "permissionDeniedSubtitle": "O acesso à câmera foi negado. Ative-o nas Configurações para escanear códigos de barras.",
+    "grantAccess": "Conceder acesso",
+    "openSettings": "Abrir Configurações",
+    "hint": "Alinhe o código de barras dentro do quadro"
   },
   "dashboard": {
     "title": "Painel",
@@ -270,6 +320,7 @@
     "staff": "Equipe",
     "services": "Serviços",
     "orders": "Pedidos",
+    "products": "Produtos",
     "dashboard": "Painel",
     "settings": "Configurações"
   },

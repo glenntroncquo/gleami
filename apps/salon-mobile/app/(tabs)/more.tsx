@@ -181,6 +181,11 @@ export default function MoreScreen() {
           <ThemedText style={styles.manageRowText}>{t('more.orders')}</ThemedText>
           <AppIcon name="chevronRight" size={15} color={theme.muted} />
         </Pressable>
+        <Pressable accessibilityRole="button" style={styles.manageRow} onPress={() => router.push('/products')}>
+          <AppIcon name="inventory" size={21} color={theme.text} />
+          <ThemedText style={styles.manageRowText}>{t('more.products')}</ThemedText>
+          <AppIcon name="chevronRight" size={15} color={theme.muted} />
+        </Pressable>
         <Pressable accessibilityRole="button" style={styles.manageRow} onPress={() => router.push('/dashboard')}>
           <AppIcon name="dashboard" size={21} color={theme.text} />
           <ThemedText style={styles.manageRowText}>{t('more.dashboard')}</ThemedText>

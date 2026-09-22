@@ -259,13 +259,12 @@ export default function ClientDetailScreen() {
                   paid: { background: theme.successSurface, text: theme.success },
                   partial: { background: theme.warningSurface, text: theme.warning },
                   unpaid: { background: theme.surface, text: theme.muted },
-                  unknown: { background: theme.surface, text: theme.muted },
                 };
-                const badge = badgeColors[payment?.status ?? 'unknown'];
+                const badge = badgeColors[payment?.status ?? 'unpaid'];
                 const badgeLabel =
                   payment?.status === 'paid' || payment?.status === 'partial'
                     ? `€${(payment.amountPaid ?? 0).toFixed(2)}`
-                    : t(`order.status.${payment?.status ?? 'unknown'}`);
+                    : t(`order.status.${payment?.status ?? 'unpaid'}`);
                 return (
                 <Pressable
                   key={event.appointmentId}

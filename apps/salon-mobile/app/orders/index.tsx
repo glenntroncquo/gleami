@@ -10,7 +10,7 @@ import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { fetchOrders, OrderListItem } from '@/lib/api/orders';
+import { fetchOrders, normalizePaymentStatus, OrderListItem } from '@/lib/api/orders';
 
 function statusStyle(status: string | null, theme: typeof Colors.light) {
   return { backgroundColor: theme.surface, color: status === 'paid' ? theme.text : theme.muted };
@@ -106,7 +106,8 @@ export default function OrdersListScreen() {
           renderItem={({ item }) => {
             const clientName =
               `${item.client?.first_name ?? ''} ${item.client?.last_name ?? ''}`.trim() || t('calendar.unknownClient');
-            const badge = statusStyle(item.payment_status, theme);
+            const normalizedStatus = normalizePaymentStatus(item.payment_status);
+            const badge = statusStyle(normalizedStatus, theme);
             return (
               <Pressable style={styles.row} onPress={() => router.push({ pathname: '/orders/[id]', params: { id: item.id } })}>
                 <View style={{ flex: 1 }}>
@@ -115,9 +116,7 @@ export default function OrdersListScreen() {
                 </View>
                 <Text style={styles.rowTotal}>{`€${(item.total_amount ?? 0).toFixed(2)}`}</Text>
                 <View style={[styles.badge, { backgroundColor: badge.backgroundColor }]}>
-                  <Text style={[styles.badgeText, { color: badge.color }]}>
-                    {t(`order.status.${item.payment_status === 'partially_paid' ? 'partial' : item.payment_status ?? 'unknown'}`)}
-                  </Text>
+                  <Text style={[styles.badgeText, { color: badge.color }]}>{t(`order.status.${normalizedStatus}`)}</Text>
                 </View>
               </Pressable>
             );

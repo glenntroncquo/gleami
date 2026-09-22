@@ -2,7 +2,8 @@
   "common": {
     "close": "Sluiten",
     "back": "Terug",
-    "delete": "Verwijderen"
+    "delete": "Verwijderen",
+    "cancel": "Annuleren"
   },
   "auth": {
     "signIn": "Inloggen",
@@ -225,7 +226,11 @@
     "complete": "Afrekenen voltooien",
     "failedToComplete": "Kan afrekening niet voltooien. Probeer het opnieuw.",
     "success": "Betaling geregistreerd",
-    "done": "Klaar"
+    "done": "Klaar",
+    "products": "Producten",
+    "noProductFound": "Geen product gevonden voor deze barcode.",
+    "stockLeft_one": "{{count}} nog op voorraad",
+    "stockLeft_other": "{{count}} nog op voorraad"
   },
   "order": {
     "title": "Bestellingen",
@@ -241,6 +246,51 @@
     "payments": "Betalingen",
     "noPayments": "Geen betalingen geregistreerd",
     "noPaymentsHint": "Er zijn geen betalingen geregistreerd voor deze bestelling."
+  },
+  "products": {
+    "title": "Producten",
+    "searchPlaceholder": "Zoek producten...",
+    "noResults": "Geen producten gevonden",
+    "noProducts": "Nog geen producten",
+    "noProductsHint": "Voeg producten toe om voorraad bij te houden en te verkopen bij het afrekenen.",
+    "addNew": "Product Toevoegen",
+    "unnamed": "Naamloos product",
+    "edit": "Product Bewerken",
+    "failedToLoad": "Kan producten niet laden.",
+    "failedToSave": "Kan product niet opslaan. Probeer het opnieuw.",
+    "failedToDelete": "Kan product niet verwijderen. Probeer het opnieuw.",
+    "deleteConfirmTitle": "Product Verwijderen",
+    "deleteConfirmMessage": "Weet u zeker dat u dit product wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
+    "addLine": {
+      "trigger": "Nieuwe lijn",
+      "namePlaceholder": "bv. Haarverzorging"
+    },
+    "form": {
+      "name": "Productnaam",
+      "namePlaceholder": "Voer productnaam in",
+      "sku": "SKU",
+      "skuPlaceholder": "Voer SKU-code in",
+      "barcode": "Barcode",
+      "barcodePlaceholder": "Voer barcode in",
+      "description": "Beschrijving",
+      "descriptionPlaceholder": "Voer productbeschrijving in",
+      "priceInclVat": "Verkoopprijs",
+      "costPrice": "Aankoopprijs",
+      "vatRate": "BTW-tarief (%)",
+      "stockQty": "Voorraad Aantal",
+      "active": "Actief",
+      "productCategory": "Productcategorie",
+      "productLine": "Productlijn",
+      "noneOption": "Geen"
+    }
+  },
+  "barcodeScanner": {
+    "permissionTitle": "Cameratoegang nodig",
+    "permissionSubtitle": "Sta cameratoegang toe om barcodes te scannen.",
+    "permissionDeniedSubtitle": "Cameratoegang is geweigerd. Schakel dit in via Instellingen om barcodes te scannen.",
+    "grantAccess": "Toegang geven",
+    "openSettings": "Instellingen openen",
+    "hint": "Plaats de barcode binnen het kader"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -276,6 +326,7 @@
     "staff": "Medewerkers",
     "services": "Diensten",
     "orders": "Bestellingen",
+    "products": "Producten",
     "dashboard": "Dashboard",
     "settings": "Instellingen"
   },

@@ -64,12 +64,22 @@ export function checkoutLineItems(appointment: CheckoutAppointment): CheckoutLin
 
 export type CheckoutPaymentType = 'cash' | 'card' | 'invoice' | 'bank_transfer';
 
+export type CheckoutProductLine = {
+  productId: string;
+  name: string;
+  price: number;
+  quantity: number;
+  vatRate: number;
+  stockQty?: number | null;
+};
+
 export type CreateOrderPayload = {
   companyId: string;
   locationId?: string;
   appointmentId: string;
   clientId?: string;
   lineItems: CheckoutLineItem[];
+  productLines?: CheckoutProductLine[];
   paymentType: CheckoutPaymentType;
   amount: number;
 };
@@ -86,6 +96,13 @@ export async function createOrderWithPayment(payload: CreateOrderPayload): Promi
         service_id: item.serviceId,
         service_variant_id: item.serviceVariantId,
         quantity: 1,
+        unit_price: item.price,
+        vat_rate: item.vatRate,
+        discount_amount: 0,
+      })),
+      products: (payload.productLines ?? []).map((item) => ({
+        product_id: item.productId,
+        quantity: item.quantity,
         unit_price: item.price,
         vat_rate: item.vatRate,
         discount_amount: 0,

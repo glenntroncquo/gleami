@@ -16,12 +16,12 @@ export type ClientSearchResult = {
   rank?: number;
 };
 
-export async function searchClients(term: string): Promise<ClientSearchResult[]> {
+export async function searchClients(term: string, companyId: string): Promise<ClientSearchResult[]> {
   const trimmed = term.trim();
   if (trimmed.length < 2) return [];
 
-  const { data, error } = await supabase.functions.invoke('search-clients', {
-    body: { search_term: trimmed },
+  const { data, error } = await supabase.functions.invoke('client-search', {
+    body: { search_term: trimmed, company_id: companyId },
   });
 
   if (error) throw error;

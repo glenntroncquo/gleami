@@ -75,13 +75,25 @@ export async function fetchOrder(orderId: string): Promise<OrderDetail | null> {
   return data as unknown as OrderDetail | null;
 }
 
-export type AppointmentPaymentStatus = 'paid' | 'partial' | 'unpaid' | 'unknown';
+export type AppointmentPaymentStatus = 'paid' | 'partial' | 'unpaid';
 
 export type AppointmentPaymentInfo = {
   status: AppointmentPaymentStatus;
   amountPaid: number | null;
   totalAmount: number | null;
 };
+
+/**
+ * Collapse every `order.payment_status` value the backend produces down to the
+ * three states staff act on. `pending`/`failed`/null all mean "money hasn't
+ * been collected yet" — same as `unpaid` — and `completed` is a `paid`
+ * synonym, so there is no case where a real order should read as "unknown".
+ */
+export function normalizePaymentStatus(status: string | null | undefined): AppointmentPaymentStatus {
+  if (status === 'paid' || status === 'completed') return 'paid';
+  if (status === 'partial' || status === 'partially_paid') return 'partial';
+  return 'unpaid';
+}
 
 /** Read the actual orders linked to a visit, rather than its booking status. */
 export async function fetchAppointmentPaymentStatuses(companyId: string, appointmentIds: string[]): Promise<Record<string, AppointmentPaymentInfo>> {
@@ -106,12 +118,12 @@ export async function fetchAppointmentPaymentStatuses(companyId: string, appoint
   }
   return Object.fromEntries(appointmentIds.map((id) => {
     const orders = [...(byAppointment.get(id)?.values() ?? [])];
-    const statuses = orders.map((order) => order.payment_status);
-    let status: AppointmentPaymentStatus = 'unknown';
+    const statuses = orders.map((order) => normalizePaymentStatus(order.payment_status));
+    // No order yet on this visit is still "nothing collected" — same bucket as unpaid.
+    let status: AppointmentPaymentStatus = 'unpaid';
     if (statuses.length && statuses.every((value) => value === 'paid')) status = 'paid';
-    else if (statuses.some((value) => value === 'partially_paid' || value === 'partial') ||
-      (statuses.includes('paid') && statuses.includes('unpaid'))) status = 'partial';
     else if (statuses.length && statuses.every((value) => value === 'unpaid')) status = 'unpaid';
+    else if (statuses.length) status = 'partial';
 
     const amountPaid = orders.reduce((sum, order) => sum + (order.amount_paid ?? 0), 0);
     const totalAmount = orders.reduce((sum, order) => sum + (order.total_amount ?? 0), 0);

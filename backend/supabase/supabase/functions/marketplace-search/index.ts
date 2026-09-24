@@ -14,7 +14,10 @@ Deno.serve(async (req) => {
     const validated = validateInput(marketplaceSearchSchema, await req.json());
     if (validated instanceof BadResponse) return validated;
 
-    const result = await searchMarketplace(getMarketplaceDb(), validated);
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    if (!supabaseUrl) return new BadResponse("SUPABASE_URL is not set", 500);
+
+    const result = await searchMarketplace(getMarketplaceDb(), validated, supabaseUrl);
     console.log(JSON.stringify({
       msg: "marketplace-search",
       elapsedMs: Date.now() - started,

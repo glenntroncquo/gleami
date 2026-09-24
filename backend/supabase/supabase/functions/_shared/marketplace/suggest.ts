@@ -7,12 +7,46 @@ export interface SuggestInput {
   limit?: number;
 }
 
-export interface SuggestItem {
+export type SuggestItem =
+  | {
+    id: string;
+    name: string;
+    type: "category" | "service";
+    slug?: string;
+    locationId?: string;
+  }
+  | {
+    id: string;
+    name: string;
+    type: "location";
+    slug: string;
+    locationId?: string;
+  };
+
+export function suggestItemFromRow(row: {
   id: string;
   name: string;
-  type: "category" | "service" | "location";
-  slug?: string;
-  locationId?: string;
+  type: SuggestItem["type"];
+  slug: string | null;
+  location_id: string | null;
+}): SuggestItem | null {
+  if (row.type === "location") {
+    if (!row.slug) return null;
+    return {
+      id: row.id,
+      name: row.name,
+      type: "location",
+      slug: row.slug,
+      ...(row.location_id ? { locationId: row.location_id } : {}),
+    };
+  }
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    ...(row.slug ? { slug: row.slug } : {}),
+    ...(row.location_id ? { locationId: row.location_id } : {}),
+  };
 }
 
 /**
@@ -111,12 +145,9 @@ export async function suggestMarketplace(sql: MarketplaceSql, input: SuggestInpu
   `;
 
   return {
-    items: rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      type: row.type,
-      ...(row.slug ? { slug: row.slug } : {}),
-      ...(row.location_id ? { locationId: row.location_id } : {}),
-    })),
+    items: rows.flatMap((row) => {
+      const item = suggestItemFromRow(row);
+      return item ? [item] : [];
+    }),
   };
 }

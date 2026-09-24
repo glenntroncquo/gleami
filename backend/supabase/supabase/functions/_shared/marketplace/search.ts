@@ -1,4 +1,5 @@
 import { decodeSearchCursor, encodeSearchCursor } from "./cursor.ts";
+import { searchCardImages } from "./media-url.ts";
 import {
   DEFAULT_RADIUS_KM,
   DEFAULT_SEARCH_LIMIT,
@@ -31,6 +32,7 @@ export interface SearchItem {
   name: string;
   slug: string;
   imageUrl: string | null;
+  images: string[];
   city: string | null;
   address: string;
   lat: number;
@@ -55,6 +57,7 @@ interface SearchRow {
   name: string;
   slug: string;
   image_url: string | null;
+  image_paths: string[] | null;
   city: string | null;
   address: string | null;
   lat: number;
@@ -66,6 +69,17 @@ interface SearchRow {
   review_count: number;
   like_count: number;
   score: number | string;
+}
+
+function asPathList(value: string[] | string | null): string[] {
+  if (Array.isArray(value)) return value.filter((path) => typeof path === "string");
+  if (typeof value !== "string" || value.length === 0) return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((path) => typeof path === "string") : [];
+  } catch {
+    return [];
+  }
 }
 
 function num(value: number | string | null): number | null {
@@ -84,7 +98,11 @@ function num(value: number | string | null): number | null {
  * against a long search_text; ILIKE is the gin_trgm_ops fallback. Ranking
  * still uses word_similarity, which scores the best matching slice.
  */
-export async function searchMarketplace(sql: MarketplaceSql, input: SearchInput): Promise<SearchResult> {
+export async function searchMarketplace(
+  sql: MarketplaceSql,
+  input: SearchInput,
+  supabaseUrl: string,
+): Promise<SearchResult> {
   const limit = Math.min(input.limit ?? DEFAULT_SEARCH_LIMIT, MAX_SEARCH_LIMIT);
   const q = input.q ? normalizeQuery(input.q) : "";
   const hasQ = q.length > 0;
@@ -137,55 +155,87 @@ export async function searchMarketplace(sql: MarketplaceSql, input: SearchInput)
 
   const rows = await sql<SearchRow[]>`
     select
-      location_id,
-      company_id,
-      name,
-      slug,
-      image_url,
-      city,
-      address,
-      lat,
-      lng,
-      distance_km,
-      category_ids,
-      treatments,
-      rating,
-      review_count,
-      like_count,
-      score
+      page.location_id,
+      page.company_id,
+      page.name,
+      page.slug,
+      page.image_url,
+      coalesce(media.paths, '[]'::json) as image_paths,
+      page.city,
+      page.address,
+      page.lat,
+      page.lng,
+      page.distance_km,
+      page.category_ids,
+      page.treatments,
+      page.rating,
+      page.review_count,
+      page.like_count,
+      page.score
     from (
       select
-        m.location_id,
-        m.company_id,
-        m.name,
-        m.slug,
-        m.image_url,
-        m.city,
-        m.address,
-        st_y(m.coordinates::geometry)::float8 as lat,
-        st_x(m.coordinates::geometry)::float8 as lng,
-        ${distanceExpr} as distance_km,
-        m.category_ids,
-        m.treatments,
-        m.rating,
-        m.review_count,
-        m.like_count,
-        round((
-          ${textScoreExpr}
-          + ${geoScoreExpr}
-          + ${RANKING.rating}::float8 * (coalesce(m.rating, 0) / 5.0)
-          + ${RANKING.reviews}::float8 * ln(1 + m.review_count)
-          + ${RANKING.likes}::float8 * ln(1 + m.like_count)
-        )::numeric, 6)::float8 as score
-      from public.marketplace_search_location m
-      where ${bboxExpr}
-        and ${radiusExpr}
-        and ${categoryExpr}
-        and ${textExpr}
-    ) ranked
-    where ${cursorExpr}
-    order by score desc, location_id asc
-    limit ${limit + 1}
+        location_id,
+        company_id,
+        name,
+        slug,
+        image_url,
+        city,
+        address,
+        lat,
+        lng,
+        distance_km,
+        category_ids,
+        treatments,
+        rating,
+        review_count,
+        like_count,
+        score
+      from (
+        select
+          m.location_id,
+          m.company_id,
+          m.name,
+          m.slug,
+          m.image_url,
+          m.city,
+          m.address,
+          st_y(m.coordinates::geometry)::float8 as lat,
+          st_x(m.coordinates::geometry)::float8 as lng,
+          ${distanceExpr} as distance_km,
+          m.category_ids,
+          m.treatments,
+          m.rating,
+          m.review_count,
+          m.like_count,
+          round((
+            ${textScoreExpr}
+            + ${geoScoreExpr}
+            + ${RANKING.rating}::float8 * (coalesce(m.rating, 0) / 5.0)
+            + ${RANKING.reviews}::float8 * ln(1 + m.review_count)
+            + ${RANKING.likes}::float8 * ln(1 + m.like_count)
+          )::numeric, 6)::float8 as score
+        from public.marketplace_search_location m
+        where ${bboxExpr}
+          and ${radiusExpr}
+          and ${categoryExpr}
+          and ${textExpr}
+      ) ranked
+      where ${cursorExpr}
+      order by score desc, location_id asc
+      limit ${limit + 1}
+    ) page
+    left join lateral (
+      select json_agg(picked.storage_path order by picked.sort_order, picked.id) as paths
+      from (
+        select mm.storage_path, mm.sort_order, mm.id
+        from public.marketplace_media mm
+        where mm.location_id = page.location_id
+          and mm.type = 'IMAGE'
+        order by mm.sort_order, mm.id
+        limit 5
+      ) picked
+    ) media on true
+    order by page.score desc, page.location_id asc
   `;
 
   const page = rows.slice(0, limit);
@@ -201,6 +251,7 @@ export async function searchMarketplace(sql: MarketplaceSql, input: SearchInput)
       name: row.name,
       slug: row.slug,
       imageUrl: row.image_url,
+      images: searchCardImages(asPathList(row.image_paths), row.image_url, supabaseUrl),
       city: row.city,
       address: row.address ?? "",
       lat: Number(row.lat),

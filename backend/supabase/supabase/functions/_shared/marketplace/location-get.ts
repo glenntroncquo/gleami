@@ -1,4 +1,8 @@
+import { publicMarketplaceImageUrl } from "./media-url.ts";
 import type { MarketplaceSql } from "./sql.ts";
+
+/** service_variant has no currency column. Marketplace prices are euros. */
+export const MARKETPLACE_CURRENCY = "EUR" as const;
 
 export interface LocationProfile {
   location: {
@@ -28,6 +32,7 @@ export interface LocationProfile {
       name: string;
       price: number;
       durationMinutes: number;
+      currency: typeof MARKETPLACE_CURRENCY;
     }>;
   }>;
 }
@@ -50,12 +55,6 @@ interface ProfileRow {
   like_count: number;
   categories: LocationProfile["categories"] | null;
   services: LocationProfile["services"] | null;
-}
-
-function publicImageUrl(path: string, supabaseUrl: string): string {
-  const base = supabaseUrl.replace(/\/$/, "");
-  const encoded = path.split("/").map((part) => encodeURIComponent(part)).join("/");
-  return `${base}/storage/v1/object/public/marketplace/${encoded}`;
 }
 
 function asNumber(value: number | string | null): number | null {
@@ -164,6 +163,7 @@ export async function getMarketplaceLocation(
       name: variant.name,
       price: asNumber(variant.price) ?? 0,
       durationMinutes: asNumber(variant.durationMinutes) ?? 0,
+      currency: MARKETPLACE_CURRENCY,
     })),
   }));
 
@@ -175,7 +175,7 @@ export async function getMarketplaceLocation(
       slug: row.slug,
       description: row.description,
       imageUrl: row.image_url,
-      images: (row.images ?? []).map((path) => publicImageUrl(path, supabaseUrl)),
+      images: (row.images ?? []).map((path) => publicMarketplaceImageUrl(path, supabaseUrl)),
       street: row.street,
       postalCode: row.postal_code,
       city: row.city,

@@ -92,19 +92,23 @@ JWT verification:
 
 `marketplace-search` body: `{ bbox?, center?, radiusKm?, categoryIds?, q?, cursor?, limit? }`
 
-Response: `{ items: [{ locationId, companyId, name, slug, imageUrl, city, address, lat, lng, distanceKm, categoryIds, treatments, rating, reviewCount, likeCount, score }], nextCursor }`
+Response: `{ items: [{ locationId, companyId, name, slug, imageUrl, images, city, address, lat, lng, distanceKm, categoryIds, treatments, rating, reviewCount, likeCount, score }], nextCursor }`
 
-`address` is the projection column: street and postal code joined by sync. `city` is separate. `imageUrl` is `location.image_url`, not the gallery. The profile reads street, postal code, and gallery rows live.
+`address` is the projection column: street and postal code joined by sync. `city` is separate. `imageUrl` stays `location.image_url`. `images` is up to 5 public URLs from `marketplace_media` where `type = 'IMAGE'`, ordered by `sort_order`, then `id`. When that list is empty, `images` is `[imageUrl]` if `imageUrl` is set, otherwise `[]`. There is no `viewerHasLiked`; the client merges its own likes.
 
 `marketplace-suggest` body: `{ q, limit? }` (default 8, max 20)
 
 Response: `{ items: [{ id, name, type: "category" \| "service" \| "location", slug?, locationId? }] }`
 
+`slug` is required when `type` is `"location"` (the projection slug is not null). Category and service items omit it. A location hit without a slug is dropped.
+
 Each of the three branches keeps its own `LIMIT`. The outer query keeps the best of those. Service names come only from services offered at a listed, active location. Location names are the nearest by trigram distance (`lower(name) OPERATOR(extensions.<->) q`) on `marketplace_search_location_name_trgm_gist`. That index replaces the GIN index from the schema migration: a `%` / `ILIKE` filter sequentially scanned the projection once a few percent of names matched. `<->` is schema-qualified because PostGIS defines the same operator.
 
 `marketplace-location-get` body: `{ slug }`. 404 when the slug is missing or the location is not listed and active. Case-insensitive.
 
-Response: `{ location: { locationId, companyId, name, slug, description, imageUrl, images, street, postalCode, city, country, lat, lng, timezone, likeCount }, categories: [{ id, name, slug }], services: [{ serviceId, name, description, variants: [{ serviceVariantId, name, price, durationMinutes }] }] }`
+Response: `{ location: { locationId, companyId, name, slug, description, imageUrl, images, street, postalCode, city, country, lat, lng, timezone, likeCount }, categories: [{ id, name, slug }], services: [{ serviceId, name, description, variants: [{ serviceVariantId, name, price, currency, durationMinutes }] }] }`
+
+`currency` is `"EUR"`. `service_variant` has no currency column.
 
 `images` are public URLs for `marketplace_media` rows with `type = 'IMAGE'`, ordered by `sort_order`. The object name is `storage_path`. `likeCount` is a live `count(*)`, not the projection (search cards can be a day behind). `description` is `location.marketplace_description`. Variant `durationMinutes` is `client_duration_minutes`, same field `service-list` uses. The query is not `service-list` itself: it has to restrict to `location_service` and `is_marketplace_visible`.
 
@@ -118,8 +122,19 @@ Calls `getAvailabilityHandler` (the availability-list slot engine) with today 00
 
 - `marketplace_category`: anon/authenticated read active rows. No client writes.
 - `service_marketplace_category`: read is `true` (ids only; see the schema migration comment). Insert/delete requires `catalog:manage` on the service’s company.
+- `marketplace_search_location`: `GRANT ALL` to anon and authenticated, and the only SELECT policy is `USING (true)` for both roles. Favorites are not a separate endpoint. An authenticated client reads its likes, then the projection:
+
+```
+supabase.from('marketplace_location_like').select('location_id')
+supabase.from('marketplace_search_location')
+  .select('location_id, company_id, name, slug, image_url, city, like_count')
+  .in('location_id', ids)
+```
+
+Those columns are on the table grant. The client merges its own likes; responses do not include `viewerHasLiked`.
+
 - `marketplace_location_like`: a user selects, inserts, and deletes only their own rows. Insert also requires the location to be listed and active.
-- `marketplace_media`: anon and other users read rows for listed active locations. `locations:manage` or `settings:manage` can read and write their company’s rows, including before publish. `path` must start with `{company_id}/`.
+- `marketplace_media`: anon and other users read rows for listed active locations. `locations:manage` or `settings:manage` can read and write their company’s rows, including before publish. `storage_path` must start with `{company_id}/`.
 - Storage bucket `marketplace` is public. Writes use the same company permissions and the same path prefix.
 
 `marketplace_internal.listed_location` is not an API table. Do not add that schema to the exposed API schemas.

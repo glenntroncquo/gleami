@@ -5,10 +5,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: {
-    default: "Salonify Booking",
-    template: "%s | Salonify",
+    default: "Gleami Booking",
+    template: "%s | Gleami",
   },
-  description: "Book your salon appointment online with Salonify.",
+  description: "Book your salon appointment online with Gleami.",
   robots: { index: false, follow: false },
 };
 

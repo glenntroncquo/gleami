@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 type LegalDocumentProps = {
@@ -8,9 +9,7 @@ type LegalDocumentProps = {
 export function LegalDocument({ title, children }: LegalDocumentProps) {
   return (
     <article className="mx-auto max-w-2xl px-6 py-12">
-      <p className="text-sm font-medium tracking-wide text-neutral-400 uppercase">
-        Salonify
-      </p>
+      <Image src="/gleami-logo.svg" alt="Gleami" width={180} height={65} priority />
       <h1 className="mt-3 text-2xl font-semibold text-neutral-900">{title}</h1>
       <p className="mt-2 text-sm text-neutral-500">
         Last updated: 6 September 2026 · Draft — not legal advice

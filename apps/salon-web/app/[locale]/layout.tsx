@@ -21,7 +21,7 @@ const fontMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Salonify - Salon Management System",
+  title: "Gleami - Salon Management System",
   description: "Modern salon management system built with Next.js",
 };
 

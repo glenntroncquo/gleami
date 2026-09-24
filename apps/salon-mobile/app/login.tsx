@@ -2,6 +2,7 @@ import { ScreenScrollView } from '@/components/screen-scroll-view';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Pressable } from '@/components/pressable-scale';
 import React, { useState } from 'react';
+import { Image } from 'expo-image';
 import {
   StyleSheet,
   TextInput,
@@ -43,9 +44,15 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={[styles.flex, { backgroundColor: theme.background }]}>
       <ScreenScrollView contentContainerStyle={styles.container}>
-        <ThemedText type="title" style={styles.title}>
-          Gleami
-        </ThemedText>
+        <Image
+          source={colorScheme === 'dark'
+            ? require('@/assets/images/gleami-logo-white.svg')
+            : require('@/assets/images/gleami-logo.svg')}
+          style={styles.logo}
+          contentFit="contain"
+          accessibilityLabel="Gleami"
+          accessible
+        />
         <ThemedText style={styles.subtitle} lightColor={theme.muted} darkColor={theme.muted}>
           {t('auth.signInSubtitle')}
         </ThemedText>
@@ -119,8 +126,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     gap: 12,
   },
-  title: {
-    textAlign: 'center',
+  logo: {
+    width: '100%',
+    maxWidth: 280,
+    height: 101,
+    alignSelf: 'center',
+    marginBottom: 12,
   },
   subtitle: {
     textAlign: 'center',

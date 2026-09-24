@@ -94,11 +94,9 @@ from (
   union all
   (
     select m.location_id::text, m.name, 'location'::text,
-      greatest(extensions.similarity(lower(m.name), 'keratin'), extensions.word_similarity('keratin', lower(m.name)))
+      (1 - (lower(m.name) operator(extensions.<->) 'keratin'))
     from public.marketplace_search_location m
-    where lower(m.name) operator(extensions.%) 'keratin'
-       or lower(m.name) ilike '%keratin%' escape '\'
-    order by 4 desc
+    order by lower(m.name) operator(extensions.<->) 'keratin'
     limit 8
   )
 ) hits

@@ -5,9 +5,10 @@ Consumer search for listed salon locations. Clients read categories and their ow
 Apply, in order, on SalonFlow (there is no staging). Do not apply from CI.
 
 1. `supabase/migrations/20260924183000_marketplace_schema.sql`
-2. `supabase/migrations/20260924190000_marketplace_sync_schedule.sql`
+2. `supabase/migrations/20260924184500_marketplace_suggest_name_gist.sql`
+3. `supabase/migrations/20260924190000_marketplace_sync_schedule.sql`
 
-In file 2, replace every `__MARKETPLACE_WEBHOOK_SECRET__` before apply. Set the same value as the edge secret `MARKETPLACE_WEBHOOK_SECRET`. Also set `SUPABASE_DB_URL` to the session connection string (direct port 5432 or the session pooler). The transaction pooler is a poor fit for these statements.
+In file 3, replace every `__MARKETPLACE_WEBHOOK_SECRET__` before apply. Set the same value as the edge secret `MARKETPLACE_WEBHOOK_SECRET`. Also set `SUPABASE_DB_URL` to the session connection string (direct port 5432 or the session pooler). The transaction pooler is a poor fit for these statements.
 
 `marketplace-reindex` is not on the cron. Call it with the service-role JWT when you want a full rebuild (backfill).
 
@@ -96,7 +97,7 @@ Response: `{ items: [{ locationId, companyId, name, slug, imageUrl, city, addres
 
 Response: `{ items: [{ id, name, type: "category" \| "service" \| "location", slug?, locationId? }] }`
 
-Each of the three branches (category, service, location) orders by similarity and applies its own `LIMIT`. The outer query keeps the best of those. A single `UNION ALL` without per-branch limits made the planner sequentially scan `marketplace_search_location`. Service names come only from services offered at a listed, active location.
+Each of the three branches keeps its own `LIMIT`. The outer query keeps the best of those. Service names come only from services offered at a listed, active location. Location names are the nearest by trigram distance (`lower(name) OPERATOR(extensions.<->) q`) on `marketplace_search_location_name_trgm_gist`. That index replaces the GIN index from the schema migration: a `%` / `ILIKE` filter sequentially scanned the projection once a few percent of names matched. `<->` is schema-qualified because PostGIS defines the same operator.
 
 `marketplace-location-get` body: `{ slug }`. 404 when the slug is missing or the location is not listed and active. Case-insensitive.
 
@@ -119,3 +120,23 @@ Calls `getAvailabilityHandler` (the availability-list slot engine) with today 00
 - Storage bucket `marketplace` is public. Writes use the same company permissions and the same path prefix.
 
 `marketplace_internal.listed_location` is not an API table. Do not add that schema to the exposed API schemas.
+
+## Local validation
+
+Throwaway Postgres 16. Production is 15; the SQL stays within generated columns and `security_invoker` views. Not applied to SalonFlow.
+
+`tests/marketplace/run-rls.sh` ended with `rls-check-ok`. Anon sees the listed projection row and not the unlisted one, can read listed media and the public storage objects, and cannot insert into any of the five tables. Authenticated updates and deletes of the projection and categories change 0 rows. A user likes only a listed location, and only their own row. The other company cannot write mappings or media. Storage writes require the `{company_id}/` prefix.
+
+`tests/marketplace/run-explain.sh` seeds 10k then 100k projection rows. No sequential scan on `marketplace_search_location`.
+
+| Query | 10k | 100k |
+| --- | --- | --- |
+| bbox | GiST index scan, 0 rows (the seeded grid for n ≤ 10000 misses this envelope), 0.13 ms | bitmap index scan on the geography GiST, 525 rows, 7.8 ms |
+| bbox + category | GiST index scan, 0.02 ms | bitmap AND of geography GiST and `category_ids`, 5.5 ms |
+| bbox + text | GiST index scan, 0.02 ms | bitmap AND of geography GiST with FTS GIN and `search_text` trigram GIN, 5.9 ms |
+| center + radius + text | GiST index scan, 0.03 ms | same bitmap AND shape, 4.8 ms |
+| suggest, location branch | GiST index scan on `marketplace_search_location_name_trgm_gist`, 8 rows | same index scan, 8 rows; whole statement 34 ms |
+
+Suggest still sequentially scans `marketplace_category` (11 rows) and `location_service` (400 rows). At 100k the service branch sequentially scans the synthetic 10k-service catalog (about 17 ms) inside the listed-location semi join. `service_name_trgm_idx` is in place; the planner preferred the sequential scan for that shape. A real catalog is much smaller.
+
+The schedule migration stops locally because `supabase_functions.http_request()` is not on this Postgres, `pg_net` is not packaged, and `pg_cron` is not in `shared_preload_libraries`. With those three stubbed, the migration body creates the six triggers and the two named cron jobs. The committed migration is unchanged.

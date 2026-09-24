@@ -11,6 +11,7 @@ sudo -u postgres psql -v ON_ERROR_STOP=1 -c "drop database if exists ${DB};" >/d
 sudo -u postgres psql -v ON_ERROR_STOP=1 -c "create database ${DB};" >/dev/null
 sudo -u postgres psql -v ON_ERROR_STOP=1 -d "$DB" -f "$ROOT/tests/marketplace/stub.sql" >/dev/null
 sudo -u postgres psql -v ON_ERROR_STOP=1 -d "$DB" -f "$ROOT/supabase/migrations/20260924183000_marketplace_schema.sql" >/dev/null
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d "$DB" -f "$ROOT/supabase/migrations/20260924184500_marketplace_suggest_name_gist.sql" >/dev/null
 
 seed() {
   local from="$1"

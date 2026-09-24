@@ -19,6 +19,12 @@ export interface SuggestItem {
  * One statement. Service rows are restricted to services offered at a listed
  * active location, then deduped by lower(name). Unlisted salons cannot leak
  * a service name through this query.
+ *
+ * Location hits are the nearest names by trigram distance
+ * (`OPERATOR(extensions.<->)`), which the GiST index can satisfy with
+ * `ORDER BY ... LIMIT`. The `%` / ILIKE form sequentially scanned the
+ * projection once a few percent of names matched. PostGIS also defines
+ * `<->`, so the operator is schema-qualified.
  */
 export async function suggestMarketplace(sql: MarketplaceSql, input: SuggestInput): Promise<{ items: SuggestItem[] }> {
   const q = normalizeQuery(input.q);
@@ -94,14 +100,9 @@ export async function suggestMarketplace(sql: MarketplaceSql, input: SuggestInpu
           'location'::text as type,
           m.slug,
           m.location_id,
-          greatest(
-            extensions.similarity(lower(m.name), ${q}),
-            extensions.word_similarity(${q}, lower(m.name))
-          ) as sim
+          (1 - (lower(m.name) operator(extensions.<->) ${q})) as sim
         from public.marketplace_search_location m
-        where lower(m.name) operator(extensions.%) ${q}
-           or lower(m.name) ilike ${pattern} escape '\\'
-        order by sim desc
+        order by lower(m.name) operator(extensions.<->) ${q}
         limit ${limit}
       )
     ) hits

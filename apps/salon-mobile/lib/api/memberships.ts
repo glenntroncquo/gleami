@@ -126,10 +126,3 @@ export async function hydrateLocationsForCompany(companyId: string): Promise<Sho
   if (error) throw error;
   return asLocations(data).sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.name.localeCompare(b.name));
 }
-
-export async function fetchCompanyMultiLocationEnabled(companyId: string): Promise<boolean> {
-  const { data, error } = await live.from('company').select('multi_location_enabled').eq('id', companyId).maybeSingle();
-  if (error) throw error;
-  const row = data as { multi_location_enabled?: boolean } | null;
-  return row?.multi_location_enabled === true;
-}

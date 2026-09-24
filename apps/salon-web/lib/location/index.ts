@@ -2,7 +2,6 @@ export { isMissingSchemaError } from "./errors";
 export { asLocationClient, locationClient } from "./client";
 export type { LocationQueryError, LocationSupabase } from "./client";
 export {
-  canCreateAnotherLocation,
   companyIdForLocation,
   mergeAccessibleLocationIds,
   pickSelectedLocationId,
@@ -15,7 +14,6 @@ export {
   buildLocationMembershipInsert,
   pickLocationStaffRoleId,
   resolveWriteLocationId,
-  staffIdsForLocationScope,
   withOptionalLocationFields,
 } from "./staff-scope";
 export {
@@ -33,7 +31,6 @@ export {
   fetchClientIdsForCompany,
   fetchClientIdsForLocation,
   fetchCompanyLocations,
-  fetchCompanyMultiLocationFlag,
   fetchLocationsById,
   fetchServiceIdsForLocation,
   offeredServiceIdsForLocation,
@@ -42,13 +39,8 @@ export {
   linkServiceToLocation,
   linkStaffToLocation,
   resolveLocationStaffRoleId,
-  setCompanyMultiLocationEnabled,
   setLocationActive,
   updateLocation,
 } from "./queries";
 export { DEFAULT_LOCATION_TIMEZONE, LOCATION_SELECT } from "./types";
-export type {
-  LocationRecord,
-  LocationWrite,
-  MultiLocationFlag,
-} from "./types";
+export type { LocationRecord, LocationWrite } from "./types";

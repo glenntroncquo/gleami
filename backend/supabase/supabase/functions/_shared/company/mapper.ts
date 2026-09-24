@@ -27,7 +27,6 @@ export function toCompany(row: CompanyRow): Company {
     country: row.country,
     slug: row.slug,
     imageUrl: row.image_url,
-    multiLocationEnabled: row.multi_location_enabled,
     geoLocation: row.geo_location,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

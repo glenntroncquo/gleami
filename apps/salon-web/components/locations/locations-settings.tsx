@@ -7,8 +7,6 @@ import { RiAddLine, RiLoader4Line, RiMapPinLine } from "@remixicon/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
@@ -19,11 +17,9 @@ import {
 import { useAuth } from "@/providers/auth-provider";
 import {
   asLocationClient,
-  canCreateAnotherLocation,
   createLocation,
   DEFAULT_LOCATION_TIMEZONE,
   fetchCompanyLocations,
-  setCompanyMultiLocationEnabled,
   setLocationActive,
   updateLocation,
   type LocationRecord,
@@ -82,18 +78,11 @@ function fromRecord(row: LocationRecord): LocationForm {
 
 export function LocationsSettings() {
   const t = useTranslations("settings.locations");
-  const {
-    companyId,
-    multiLocationEnabled,
-    multiLocationFlagPresent,
-    hasCompanyPermission,
-    refreshMemberships,
-  } = useAuth();
+  const { companyId, hasCompanyPermission, refreshMemberships } = useAuth();
   const supabase = useMemo(() => asLocationClient(createClient()), []);
 
   const [rows, setRows] = useState<LocationRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [savingFlag, setSavingFlag] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<LocationRecord | null>(null);
   const [form, setForm] = useState<LocationForm>(emptyForm);
@@ -103,10 +92,6 @@ export function LocationsSettings() {
     hasCompanyPermission("locations:manage") ||
     hasCompanyPermission("settings:manage");
   const activeCount = rows.filter((row) => row.is_active).length;
-  const allowCreate = canCreateAnotherLocation({
-    multiLocationEnabled,
-    activeCount,
-  });
 
   const load = async () => {
     if (!companyId) return;
@@ -136,10 +121,6 @@ export function LocationsSettings() {
   const handleSave = async () => {
     if (!companyId || !form.name.trim()) {
       toast.error(t("nameRequired"));
-      return;
-    }
-    if (!editing && !allowCreate) {
-      toast.error(t("flagRequiredToCreate"));
       return;
     }
 
@@ -175,58 +156,17 @@ export function LocationsSettings() {
     await refreshMemberships();
   };
 
-  const handleFlagChange = async (enabled: boolean) => {
-    if (!companyId) return;
-    setSavingFlag(true);
-    const result = await setCompanyMultiLocationEnabled(supabase, companyId, enabled);
-    setSavingFlag(false);
-    if (result.error) {
-      toast.error(
-        result.columnPresent ? t("saveFailed") : t("flagColumnMissing"),
-      );
-      return;
-    }
-    toast.success(enabled ? t("flagEnabled") : t("flagDisabled"));
-    await refreshMemberships();
-  };
-
   if (!canManage) return null;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <p className="text-sm font-medium">{t("flagTitle")}</p>
-          <p className="text-muted-foreground text-sm">{t("flagHint")}</p>
-          {!multiLocationFlagPresent && (
-            <p className="text-muted-foreground text-xs">{t("flagColumnMissing")}</p>
-          )}
-        </div>
-        <Switch
-          checked={multiLocationEnabled}
-          disabled={savingFlag || !multiLocationFlagPresent}
-          onCheckedChange={handleFlagChange}
-          aria-label={t("flagTitle")}
-        />
-      </div>
-
-      <Separator />
-
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">{t("listHint")}</p>
-        <Button
-          type="button"
-          size="sm"
-          onClick={openCreate}
-          disabled={!allowCreate}
-        >
+        <Button type="button" size="sm" onClick={openCreate}>
           <RiAddLine size={16} className="mr-1.5" />
           {t("create")}
         </Button>
       </div>
-      {!allowCreate && (
-        <p className="text-muted-foreground text-xs">{t("flagRequiredToCreate")}</p>
-      )}
 
       {loading ? (
         <p className="text-muted-foreground text-sm">{t("loading")}</p>

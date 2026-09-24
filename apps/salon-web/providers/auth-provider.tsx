@@ -19,7 +19,6 @@ import {
   asLocationClient,
   companyIdForLocation,
   fetchCompanyLocations,
-  fetchCompanyMultiLocationFlag,
   fetchLocationsById,
   mergeAccessibleLocationIds,
   primaryOrSoleLocationId,
@@ -28,7 +27,6 @@ import {
   shouldShowLocationSwitcher,
   writePersistedLocationId,
   type LocationRecord,
-  type MultiLocationFlag,
 } from "@/lib/location";
 import { PAGE_FETCH_TIMEOUT_MS, withTimeout } from "@/lib/async/fail-closed";
 
@@ -42,8 +40,6 @@ interface AuthContextType {
   locationIds: string[];
   locations: LocationRecord[];
   currentLocation: LocationRecord | null;
-  multiLocationEnabled: boolean;
-  multiLocationFlagPresent: boolean;
   showLocationSwitcher: boolean;
   permissionKeys: PermissionKey[];
   membershipReady: boolean;
@@ -70,10 +66,6 @@ function asMembershipClient() {
   return createClient() as unknown as MembershipSupabase;
 }
 
-function emptyFlag(): MultiLocationFlag {
-  return { enabled: false, columnPresent: false };
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [membership, setMembership] = useState<MembershipSnapshot>(
@@ -81,7 +73,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [locations, setLocations] = useState<LocationRecord[]>([]);
-  const [multiLocationFlag, setMultiLocationFlag] = useState<MultiLocationFlag>(emptyFlag);
   const [loading, setLoading] = useState(true);
   const [membershipReady, setMembershipReady] = useState(false);
   const [locationsReady, setLocationsReady] = useState(false);
@@ -95,7 +86,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setMembership(EMPTY_MEMBERSHIP_SNAPSHOT);
       setSelectedLocationId(null);
       setLocations([]);
-      setMultiLocationFlag(emptyFlag());
       setMembershipReady(false);
       setLocationsReady(false);
       setLoading(false);
@@ -136,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ) => {
       try {
         const locClient = asLocationClient(createClient());
-        const [membershipRows, flag, companyRows] = await Promise.all([
+        const [membershipRows, companyRows] = await Promise.all([
           snapshot.locationIds.length > 0
             ? withTimeout(
                 fetchLocationsById(locClient, snapshot.locationIds),
@@ -147,14 +137,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 return [] as LocationRecord[];
               })
             : Promise.resolve([] as LocationRecord[]),
-          withTimeout(
-            fetchCompanyMultiLocationFlag(locClient, snapshot.companyId),
-            PAGE_FETCH_TIMEOUT_MS,
-            "multi-location flag",
-          ).catch((error) => {
-            console.warn("multi-location flag failed", error);
-            return emptyFlag();
-          }),
           snapshot.companyId
             ? withTimeout(
                 fetchCompanyLocations(locClient, snapshot.companyId),
@@ -178,7 +160,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           locationRows,
         );
         setLocations(locationRows);
-        setMultiLocationFlag(flag);
         applySnapshot(snapshot, userId, {
           primaryId: primaryOrSoleLocationId(locationRows),
           accessibleIds,
@@ -314,11 +295,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     const snapshot = await loadMembershipSnapshot(asMembershipClient(), user.id);
     const locClient = asLocationClient(createClient());
-    const [membershipRows, flag, companyRows] = await Promise.all([
+    const [membershipRows, companyRows] = await Promise.all([
       snapshot.locationIds.length > 0
         ? fetchLocationsById(locClient, snapshot.locationIds)
         : Promise.resolve([] as LocationRecord[]),
-      fetchCompanyMultiLocationFlag(locClient, snapshot.companyId),
       snapshot.companyId
         ? fetchCompanyLocations(locClient, snapshot.companyId)
         : Promise.resolve([] as LocationRecord[]),
@@ -348,7 +328,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       locationId: nextLocationId ?? snapshot.locationId,
     });
     setLocations(locationRows);
-    setMultiLocationFlag(flag);
     setSelectedLocationId(nextLocationId);
     setMembershipReady(true);
     setLocationsReady(true);
@@ -387,8 +366,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       : membership.locationIds.length;
   const showLocationSwitcher = shouldShowLocationSwitcher({
     accessibleCount: accessibleActiveCount,
-    multiLocationEnabled: multiLocationFlag.enabled,
-    locationMembershipCount: membership.locationMemberships.length,
   });
 
   const hasPermission = useCallback(
@@ -419,8 +396,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       locationIds: membership.locationIds,
       locations,
       currentLocation,
-      multiLocationEnabled: multiLocationFlag.enabled,
-      multiLocationFlagPresent: multiLocationFlag.columnPresent,
       showLocationSwitcher,
       permissionKeys: membership.permissionKeys,
       membershipReady,
@@ -441,7 +416,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       locationId,
       locations,
       currentLocation,
-      multiLocationFlag,
       showLocationSwitcher,
       signOut,
       hasPermission,

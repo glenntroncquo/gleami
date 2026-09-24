@@ -25,10 +25,8 @@ import {
   fetchServiceIdsForLocation,
   fetchStaffIdsForLocation,
   offeredServiceIdsForLocation,
-  staffIdsForLocationScope,
   withLocationId,
 } from "@/lib/location";
-import { useAuth } from "@/providers/auth-provider";
 import { resolveLocationScopeIds } from "@/lib/async/fail-closed";
 import { useTranslations } from "next-intl";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -239,7 +237,6 @@ export function AppointmentSheet({
   const isMobile = useIsMobile();
   const companyId = useCompanyId();
   const locationId = useLocationId();
-  const { multiLocationEnabled } = useAuth();
   const appointmentRecordId = event?.appointmentId || "";
 
   const [startDate, setStartDate] = useState<Date>(new Date());
@@ -2246,12 +2243,9 @@ export function AppointmentSheet({
         .select("id, first_name, last_name");
       let skipStaffQuery = false;
       if (locationId) {
-        const scopedIds = staffIdsForLocationScope(
-          await resolveLocationScopeIds(
-            () => fetchStaffIdsForLocation(asLocationClient(supabase), locationId),
-            "appointment staff location scope",
-          ),
-          multiLocationEnabled,
+        const scopedIds = await resolveLocationScopeIds(
+          () => fetchStaffIdsForLocation(asLocationClient(supabase), locationId),
+          "appointment staff location scope",
         );
         if (scopedIds) {
           if (scopedIds.length === 0) {
@@ -2342,7 +2336,7 @@ export function AppointmentSheet({
     if (isOpen) {
       void fetchData();
     }
-  }, [isOpen, locationId, multiLocationEnabled]);
+  }, [isOpen, locationId]);
 
   // Recalculate end time when start time or services change in the editor.
   // View mode keeps the stored visit window (do not add catalog minutes onto

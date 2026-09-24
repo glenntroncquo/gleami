@@ -540,7 +540,6 @@ export type Database = {
           geo_location: unknown
           id: string
           image_url: string | null
-          multi_location_enabled: boolean
           name: string
           postal_code: string | null
           slug: string | null
@@ -557,7 +556,6 @@ export type Database = {
           geo_location?: unknown
           id?: string
           image_url?: string | null
-          multi_location_enabled?: boolean
           name: string
           postal_code?: string | null
           slug?: string | null
@@ -574,7 +572,6 @@ export type Database = {
           geo_location?: unknown
           id?: string
           image_url?: string | null
-          multi_location_enabled?: boolean
           name?: string
           postal_code?: string | null
           slug?: string | null

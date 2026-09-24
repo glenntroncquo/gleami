@@ -176,12 +176,6 @@
     "locations": {
       "title": "Locais",
       "description": "O trabalho do dia a dia é por local. Crie, edite ou desative salões.",
-      "flagTitle": "Ativar multi-local",
-      "flagHint": "Necessário antes de criar um segundo local. Deixe desligado se só tem um salão.",
-      "flagColumnMissing": "A flag do backend ainda não está disponível. O modo de um local permanece ativo.",
-      "flagEnabled": "Multi-local ativado",
-      "flagDisabled": "Multi-local desativado",
-      "flagRequiredToCreate": "Ative o multi-local antes de criar um segundo local.",
       "listHint": "Estes locais pertencem à empresa. A equipa escolhe um na barra lateral quando tem vários.",
       "create": "Adicionar local",
       "createTitle": "Novo local",

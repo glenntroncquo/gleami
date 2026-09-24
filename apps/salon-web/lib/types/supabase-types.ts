@@ -1397,7 +1397,6 @@ export type Database = {
           image_path: string | null
           last_name: string | null
           phone: string | null
-          role: string | null
           slug: string | null
           specialization: string | null
           specialties: string[] | null
@@ -1415,7 +1414,6 @@ export type Database = {
           image_path?: string | null
           last_name?: string | null
           phone?: string | null
-          role?: string | null
           slug?: string | null
           specialization?: string | null
           specialties?: string[] | null
@@ -1433,7 +1431,6 @@ export type Database = {
           image_path?: string | null
           last_name?: string | null
           phone?: string | null
-          role?: string | null
           slug?: string | null
           specialization?: string | null
           specialties?: string[] | null

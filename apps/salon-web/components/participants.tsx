@@ -7,7 +7,6 @@ import { useAuth } from "@/providers/auth-provider";
 import {
   asLocationClient,
   fetchStaffIdsForLocation,
-  staffIdsForLocationScope,
 } from "@/lib/location";
 import {
   PAGE_FETCH_TIMEOUT_MS,
@@ -30,7 +29,6 @@ export interface Staff {
 async function loadCalendarStaff(
   companyId: string,
   locationId: string | null,
-  multiLocationEnabled: boolean,
 ): Promise<Staff[]> {
   const supabase = createClient();
 
@@ -40,13 +38,10 @@ async function loadCalendarStaff(
     .eq("company_id", companyId)
     .order("first_name", { ascending: true });
 
-  if (locationId && multiLocationEnabled) {
-    const scopedIds = staffIdsForLocationScope(
-      await resolveLocationScopeIds(
-        () => fetchStaffIdsForLocation(asLocationClient(supabase), locationId),
-        "calendar staff location scope",
-      ),
-      multiLocationEnabled,
+  if (locationId) {
+    const scopedIds = await resolveLocationScopeIds(
+      () => fetchStaffIdsForLocation(asLocationClient(supabase), locationId),
+      "calendar staff location scope",
     );
     if (scopedIds) {
       if (scopedIds.length === 0) return [];
@@ -78,7 +73,7 @@ export default function Participants() {
   } = useCalendarContext();
   const companyId = useCompanyId();
   const locationId = useLocationId();
-  const { membershipReady, multiLocationEnabled } = useAuth();
+  const { membershipReady } = useAuth();
 
   const getInitials = (firstName: string | null, lastName: string | null) => {
     const first = firstName?.charAt(0).toUpperCase() || "";
@@ -105,11 +100,7 @@ export default function Participants() {
       setIsLoading,
       async (isCancelled) => {
         try {
-          const rows = await loadCalendarStaff(
-            companyId,
-            locationId,
-            multiLocationEnabled,
-          );
+          const rows = await loadCalendarStaff(companyId, locationId);
           if (isCancelled()) return;
           setStaff(rows);
           initializeStaffSelection(rows.map((member) => member.id));
@@ -124,7 +115,7 @@ export default function Participants() {
     // initializeStaffSelection is not a dep — a new identity every render
     // would cancel in-flight loads and leave the sidebar on skeletons.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId, locationId, membershipReady, multiLocationEnabled]);
+  }, [companyId, locationId, membershipReady]);
 
   const handleStaffToggle = (staffId: string) => {
     toggleStaffVisibility(staffId);

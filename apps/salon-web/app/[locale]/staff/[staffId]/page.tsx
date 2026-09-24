@@ -10,14 +10,60 @@ import BigCalendar from "@/components/calendar/big-calendar";
 import type { Staff } from "@/components/staff-sheet";
 import { Button } from "@/components/ui/button";
 import { CalendarProvider } from "@/components/event-calendar/calendar-context";
+import { useLocationId } from "@/lib/company-util";
+import { asLocationClient } from "@/lib/location";
+
+const STAFF_DETAIL_SELECT =
+  "id, first_name, last_name, email, phone, slug, specialization, image_path, status, hire_date, specialties";
+
+async function fetchStaffRecord(staffId: string): Promise<Staff | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("staff")
+    .select(STAFF_DETAIL_SELECT)
+    .eq("id", staffId)
+    .single();
+  if (error || !data) return null;
+  return data;
+}
+
+/** Role lives on location_membership + role, not staff. Prefer the selected shop. */
+async function fetchMembershipRoleName(
+  staffId: string,
+  locationId: string | null,
+): Promise<string | null> {
+  const supabase = asLocationClient(createClient());
+  const { data, error } = await supabase
+    .from("location_membership")
+    .select("location_id, role_id")
+    .eq("staff_id", staffId)
+    .eq("is_active", true);
+  if (error || !Array.isArray(data) || data.length === 0) return null;
+
+  const rows = data as { location_id: string; role_id: string | null }[];
+  const preferred =
+    (locationId && rows.find((row) => row.location_id === locationId)) || rows[0];
+  if (!preferred?.role_id) return null;
+
+  const { data: role, error: roleError } = await supabase
+    .from("role")
+    .select("name")
+    .eq("id", preferred.role_id)
+    .maybeSingle();
+  const roleRow = role as { name?: string | null } | null;
+  if (roleError || !roleRow?.name) return null;
+  return roleRow.name.trim() || null;
+}
 
 export default function StaffDetailPage() {
   const params = useParams();
   const router = useRouter();
   const t = useTranslations();
   const staffId = params.staffId as string;
+  const locationId = useLocationId();
 
   const [staff, setStaff] = useState<Staff | null>(null);
+  const [membershipRole, setMembershipRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
@@ -26,22 +72,14 @@ export default function StaffDetailPage() {
       if (!staffId) return;
 
       try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("staff")
-          .select(
-            `id, first_name, last_name, email, phone, slug, specialization, image_path, role, status, hire_date, specialties`
-          )
-          .eq("id", staffId)
-          .single();
-
-        if (error) {
-          console.error("Error fetching staff:", error);
+        const data = await fetchStaffRecord(staffId);
+        if (!data) {
           toast.error("Failed to load staff information");
           router.push(`/${params.locale}/staff`);
-        } else {
-          setStaff(data);
+          return;
         }
+        setStaff(data);
+        setMembershipRole(await fetchMembershipRoleName(staffId, locationId));
       } catch (error) {
         console.error("Error:", error);
         toast.error("An error occurred while loading staff information");
@@ -51,7 +89,7 @@ export default function StaffDetailPage() {
     }
 
     fetchStaff();
-  }, [staffId, router, params.locale]);
+  }, [staffId, router, params.locale, locationId]);
 
   const handleSave = (updatedStaff: Staff) => {
     setStaff(updatedStaff);
@@ -59,18 +97,9 @@ export default function StaffDetailPage() {
   };
 
   const handleRefresh = async () => {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("staff")
-      .select(
-        `id, first_name, last_name, email, phone, slug, specialization, image_path, role, status, hire_date, specialties`
-      )
-      .eq("id", staffId)
-      .single();
-
-    if (!error && data) {
-      setStaff(data);
-    }
+    const data = await fetchStaffRecord(staffId);
+    if (data) setStaff(data);
+    setMembershipRole(await fetchMembershipRoleName(staffId, locationId));
   };
 
   if (loading) {
@@ -148,7 +177,7 @@ export default function StaffDetailPage() {
                   {t("staff.role")}
                 </span>
                 <span className="text-lg font-semibold capitalize">
-                  {staff.role || "—"}
+                  {membershipRole || "—"}
                 </span>
               </div>
             </div>

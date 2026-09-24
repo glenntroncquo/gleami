@@ -29,12 +29,6 @@ export type LocationWrite = {
   is_active?: boolean;
 };
 
-export type MultiLocationFlag = {
-  enabled: boolean;
-  /** False when company.multi_location_enabled is not on this backend yet. */
-  columnPresent: boolean;
-};
-
 export const DEFAULT_LOCATION_TIMEZONE = "Europe/Brussels";
 
 export const LOCATION_SELECT =

@@ -1,6 +1,5 @@
 import { isMissingSchemaError } from "./errors";
 import {
-  canCreateAnotherLocation,
   companyIdForLocation,
   mergeAccessibleLocationIds,
   pickSelectedLocationId,
@@ -117,44 +116,16 @@ function run() {
   );
 
   assertFalse(
-    shouldShowLocationSwitcher({
-      accessibleCount: 1,
-      multiLocationEnabled: false,
-      locationMembershipCount: 1,
-    }),
-    "1:1 / flag off hides the switcher",
+    shouldShowLocationSwitcher({ accessibleCount: 1 }),
+    "one accessible location hides the switcher",
   );
   assertFalse(
-    shouldShowLocationSwitcher({
-      accessibleCount: 1,
-      multiLocationEnabled: true,
-      locationMembershipCount: 1,
-    }),
-    "flag on with one location still hides the switcher",
-  );
-  assertFalse(
-    shouldShowLocationSwitcher({
-      accessibleCount: 2,
-      multiLocationEnabled: false,
-      locationMembershipCount: 1,
-    }),
-    "owner inheriting two locations with flag off does not show switcher clutter",
+    shouldShowLocationSwitcher({ accessibleCount: 0 }),
+    "no accessible locations hides the switcher",
   );
   assertTrue(
-    shouldShowLocationSwitcher({
-      accessibleCount: 2,
-      multiLocationEnabled: true,
-      locationMembershipCount: 1,
-    }),
-    "flag on + two locations shows the switcher",
-  );
-  assertTrue(
-    shouldShowLocationSwitcher({
-      accessibleCount: 2,
-      multiLocationEnabled: false,
-      locationMembershipCount: 2,
-    }),
-    "multiple memberships show the switcher even if the tenant flag is off",
+    shouldShowLocationSwitcher({ accessibleCount: 2 }),
+    "two accessible locations show the switcher",
   );
 
   assertEqual(
@@ -175,22 +146,9 @@ function run() {
     "no location keeps the membership company",
   );
 
-  assertFalse(
-    canCreateAnotherLocation({ multiLocationEnabled: false, activeCount: 1 }),
-    "second location requires the tenant flag",
-  );
-  assertTrue(
-    canCreateAnotherLocation({ multiLocationEnabled: true, activeCount: 1 }),
-    "flag on allows a second location",
-  );
-  assertTrue(
-    canCreateAnotherLocation({ multiLocationEnabled: false, activeCount: 0 }),
-    "first location can be created without the flag",
-  );
-
   assertTrue(isMissingSchemaError({ code: "PGRST204" }), "missing column is a fallback");
   assertTrue(
-    isMissingSchemaError({ message: "column company.multi_location_enabled does not exist" }),
+    isMissingSchemaError({ message: "column public.example does not exist", code: "42703" }),
     "Postgres missing-column message is a fallback",
   );
   assertFalse(

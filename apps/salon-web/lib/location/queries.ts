@@ -13,7 +13,7 @@ import {
   buildLocationMembershipInsert,
   pickLocationStaffRoleId,
 } from "./staff-scope";
-import { LOCATION_SELECT, type LocationRecord, type LocationWrite, type MultiLocationFlag } from "./types";
+import { LOCATION_SELECT, type LocationRecord, type LocationWrite } from "./types";
 
 async function tryRpc(
   supabase: LocationSupabase,
@@ -98,52 +98,6 @@ export async function fetchCompanyLocations(
     return [];
   }
   return data;
-}
-
-export async function fetchCompanyMultiLocationFlag(
-  supabase: LocationSupabase,
-  companyId: string | null,
-): Promise<MultiLocationFlag> {
-  if (!companyId) return { enabled: false, columnPresent: false };
-
-  const { data, error } = await supabase
-    .from("company")
-    .select("multi_location_enabled")
-    .eq("id", companyId)
-    .maybeSingle();
-
-  if (error) {
-    if (isMissingSchemaError(error)) {
-      return { enabled: false, columnPresent: false };
-    }
-    console.warn("Failed to read multi_location_enabled", error);
-    return { enabled: false, columnPresent: false };
-  }
-
-  const row = data as { multi_location_enabled?: boolean | null } | null;
-  return {
-    enabled: Boolean(row?.multi_location_enabled),
-    columnPresent: true,
-  };
-}
-
-export async function setCompanyMultiLocationEnabled(
-  supabase: LocationSupabase,
-  companyId: string,
-  enabled: boolean,
-): Promise<{ error: LocationQueryError; columnPresent: boolean }> {
-  const { error } = await supabase
-    .from("company")
-    .update({ multi_location_enabled: enabled })
-    .eq("id", companyId);
-
-  if (error) {
-    return {
-      error,
-      columnPresent: !isMissingSchemaError(error),
-    };
-  }
-  return { error: null, columnPresent: true };
 }
 
 export async function createLocation(

@@ -22,14 +22,16 @@ export async function resolveBookingLocation(
     return { locationId: location.id, timezone: location.timezone || SALON_TIMEZONE };
   }
 
-  if (await locationRepository.isCompanyMultiLocation(companyId)) {
+  const primary = await locationRepository.findPrimary(companyId);
+  if (!primary) {
     throw new BookingLocationError(
       "LOCATION_REQUIRED",
-      "location_id is required when company.multi_location_enabled is true",
+      "location_id is required when the company has no primary location",
     );
   }
 
-  const timezone =
-    (await locationRepository.findPrimaryTimezone(companyId)) ?? SALON_TIMEZONE;
-  return { locationId: null, timezone };
+  return {
+    locationId: primary.id,
+    timezone: primary.timezone || SALON_TIMEZONE,
+  };
 }

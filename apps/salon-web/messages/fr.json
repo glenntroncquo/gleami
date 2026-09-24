@@ -176,12 +176,6 @@
     "locations": {
       "title": "Établissements",
       "description": "Le travail quotidien se fait par établissement. Créez, modifiez ou désactivez des salons.",
-      "flagTitle": "Activer le multi-établissements",
-      "flagHint": "Obligatoire avant d'ajouter un second établissement. Laissez désactivé si vous n'avez qu'un salon.",
-      "flagColumnMissing": "Le flag backend n'est pas encore disponible. Le mode mono-établissement reste actif.",
-      "flagEnabled": "Multi-établissements activé",
-      "flagDisabled": "Multi-établissements désactivé",
-      "flagRequiredToCreate": "Activez le multi-établissements avant de créer un second établissement.",
       "listHint": "Ces établissements appartiennent à l'entreprise. Le personnel en choisit un dans la barre latérale s'il en a plusieurs.",
       "create": "Ajouter un établissement",
       "createTitle": "Nouvel établissement",

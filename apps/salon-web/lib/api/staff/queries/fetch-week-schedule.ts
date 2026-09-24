@@ -4,7 +4,6 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import {
   asLocationClient,
   fetchStaffIdsForLocation,
-  staffIdsForLocationScope,
   withLocationId,
 } from "@/lib/location";
 import type {
@@ -55,7 +54,6 @@ export async function fetchWeekSchedule(
   companyId: string,
   weekDays: Date[],
   locationId?: string | null,
-  multiLocationEnabled = false,
 ): Promise<{ data: WeekScheduleData | null; error: PostgrestError | null }> {
   const supabase = createClient();
 
@@ -87,12 +85,8 @@ export async function fetchWeekSchedule(
       asLocationClient(supabase),
       locationId,
     );
-    const staffIds = staffIdsForLocationScope(
-      scoped.tablePresent ? scoped.data : null,
-      multiLocationEnabled,
-    );
-    if (staffIds) {
-      if (staffIds.length === 0) {
+    if (scoped.tablePresent) {
+      if (scoped.data.length === 0) {
         return {
           data: {
             staff: [],
@@ -103,7 +97,7 @@ export async function fetchWeekSchedule(
           error: null,
         };
       }
-      staffQuery = staffQuery.in("id", staffIds);
+      staffQuery = staffQuery.in("id", scoped.data);
     }
   }
 

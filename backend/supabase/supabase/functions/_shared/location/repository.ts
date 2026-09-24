@@ -34,25 +34,10 @@ export const locationRepository = {
     };
   },
 
-  async findPrimaryTimezone(companyId: string): Promise<string | null> {
+  async findPrimary(companyId: string): Promise<{ id: string; timezone: string } | null> {
     const { data, error } = await supabaseAdmin
       .from("location")
-      .select("timezone")
-      .eq("company_id", companyId)
-      .eq("is_primary", true)
-      .maybeSingle();
-
-    if (error) {
-      throw new RepositoryError("Failed to fetch primary location timezone", { cause: error });
-    }
-
-    return data?.timezone ?? null;
-  },
-
-  async findPrimaryId(companyId: string): Promise<string | null> {
-    const { data, error } = await supabaseAdmin
-      .from("location")
-      .select("id")
+      .select("id, timezone")
       .eq("company_id", companyId)
       .eq("is_primary", true)
       .maybeSingle();
@@ -61,21 +46,8 @@ export const locationRepository = {
       throw new RepositoryError("Failed to fetch primary location", { cause: error });
     }
 
-    return data?.id ?? null;
-  },
-
-  async isCompanyMultiLocation(companyId: string): Promise<boolean> {
-    const { data, error } = await supabaseAdmin
-      .from("company")
-      .select("multi_location_enabled")
-      .eq("id", companyId)
-      .maybeSingle();
-
-    if (error) {
-      throw new RepositoryError("Failed to fetch company multi-location flag", { cause: error });
-    }
-
-    return data?.multi_location_enabled === true;
+    if (!data) return null;
+    return { id: data.id, timezone: data.timezone };
   },
 
   async findServiceIdsForLocation(locationId: string): Promise<string[]> {

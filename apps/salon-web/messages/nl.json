@@ -176,12 +176,6 @@
     "locations": {
       "title": "Locaties",
       "description": "Dagelijks werk is per locatie. Maak, bewerk of deactiveer salonlocaties.",
-      "flagTitle": "Multi-locatie inschakelen",
-      "flagHint": "Nodig voor een tweede locatie. Laat uit als je maar één salon hebt.",
-      "flagColumnMissing": "De backend-vlag is nog niet beschikbaar. Enkele locatie blijft actief.",
-      "flagEnabled": "Multi-locatie ingeschakeld",
-      "flagDisabled": "Multi-locatie uitgeschakeld",
-      "flagRequiredToCreate": "Schakel multi-locatie in voor je een tweede locatie aanmaakt.",
       "listHint": "Deze locaties horen bij het bedrijf. Medewerkers kiezen er één in de zijbalk als ze er meerdere hebben.",
       "create": "Locatie toevoegen",
       "createTitle": "Nieuwe locatie",

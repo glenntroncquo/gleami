@@ -49,19 +49,11 @@ export function pickSelectedLocationId(input: {
   return accessible[0] ?? null;
 }
 
-/**
- * Switcher is hidden in 1:1 / flag-off (prod today).
- * Show when the user can actually reach more than one location
- * and either the tenant flag is on or they have multiple memberships
- * (e.g. a freelancer across locations).
- */
+/** Show the switcher only when the user can reach more than one location. */
 export function shouldShowLocationSwitcher(input: {
   accessibleCount: number;
-  multiLocationEnabled: boolean;
-  locationMembershipCount: number;
 }): boolean {
-  if (input.accessibleCount <= 1) return false;
-  return input.multiLocationEnabled || input.locationMembershipCount > 1;
+  return input.accessibleCount > 1;
 }
 
 export function companyIdForLocation(
@@ -94,11 +86,3 @@ export function shouldWaitForLocationPick(
   return !locationId && !locationsReady;
 }
 
-export function canCreateAnotherLocation(input: {
-  multiLocationEnabled: boolean;
-  activeCount: number;
-}): boolean {
-  if (input.activeCount <= 0) return true;
-  if (input.activeCount === 1) return input.multiLocationEnabled;
-  return input.multiLocationEnabled;
-}

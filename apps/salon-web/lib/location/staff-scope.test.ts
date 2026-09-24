@@ -2,7 +2,6 @@ import {
   buildLocationMembershipInsert,
   pickLocationStaffRoleId,
   resolveWriteLocationId,
-  staffIdsForLocationScope,
   withOptionalLocationFields,
 } from "./staff-scope";
 
@@ -80,27 +79,6 @@ function run() {
       user_id: USER_ID,
     },
     "staff.user_id is linked when the column/value exists",
-  );
-
-  assertEqual(
-    staffIdsForLocationScope(null, true),
-    null,
-    "missing table / timeout stays unscoped even in multi-location",
-  );
-  assertEqual(
-    staffIdsForLocationScope([], false),
-    null,
-    "empty memberships on a 1:1 tenant still fail-open to company staff",
-  );
-  assertEqual(
-    staffIdsForLocationScope([], true),
-    [],
-    "empty memberships at a multi-location shop are an empty roster",
-  );
-  assertEqual(
-    staffIdsForLocationScope([STAFF_ID], true),
-    [STAFF_ID],
-    "present memberships filter the roster",
   );
 
   assertEqual(

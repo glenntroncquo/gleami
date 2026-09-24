@@ -545,7 +545,6 @@ export type Database = {
           geo_location: unknown
           id: string
           image_url: string | null
-          multi_location_enabled: boolean
           name: string
           postal_code: string | null
           reader_id: string | null
@@ -564,7 +563,6 @@ export type Database = {
           geo_location?: unknown
           id?: string
           image_url?: string | null
-          multi_location_enabled?: boolean
           name: string
           postal_code?: string | null
           reader_id?: string | null
@@ -583,7 +581,6 @@ export type Database = {
           geo_location?: unknown
           id?: string
           image_url?: string | null
-          multi_location_enabled?: boolean
           name?: string
           postal_code?: string | null
           reader_id?: string | null
@@ -1419,7 +1416,6 @@ export type Database = {
           image_path: string | null
           last_name: string | null
           phone: string | null
-          role: string | null
           slug: string | null
           specialization: string | null
           specialties: string[] | null
@@ -1437,7 +1433,6 @@ export type Database = {
           image_path?: string | null
           last_name?: string | null
           phone?: string | null
-          role?: string | null
           slug?: string | null
           specialization?: string | null
           specialties?: string[] | null
@@ -1455,7 +1450,6 @@ export type Database = {
           image_path?: string | null
           last_name?: string | null
           phone?: string | null
-          role?: string | null
           slug?: string | null
           specialization?: string | null
           specialties?: string[] | null

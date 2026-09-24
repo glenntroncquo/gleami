@@ -112,7 +112,6 @@ import { useCompanyId, useLocationId } from "@/lib/company-util";
 import {
   asLocationClient,
   fetchStaffIdsForLocation,
-  staffIdsForLocationScope,
 } from "@/lib/location";
 import {
   PAGE_FETCH_TIMEOUT_MS,
@@ -130,7 +129,6 @@ type Staff = {
   slug: string | null;
   specialization: string | null;
   image_path: string | null;
-  role: string | null;
   status: string | null;
   hire_date: string | null;
   specialties: string[] | null;
@@ -153,22 +151,16 @@ const getWeekdayAbbr = (dayOfWeek: number, locale: string = "nl") => {
   return days[locale as keyof typeof days]?.[dayOfWeek] || days.en[dayOfWeek];
 };
 
-const STAFF_LIST_SELECT = `id, first_name, last_name, email, phone, slug, specialization, image_path, role, status, hire_date, specialties,
+const STAFF_LIST_SELECT = `id, first_name, last_name, email, phone, slug, specialization, image_path, status, hire_date, specialties,
            staff_schedule_rule (id, start_time, end_time, day_of_week, is_active)`;
 
-async function loadStaffRows(
-  locationId: string | null,
-  multiLocationEnabled: boolean,
-): Promise<Staff[]> {
+async function loadStaffRows(locationId: string | null): Promise<Staff[]> {
   const supabase = createClient();
   let query = supabase.from("staff").select(STAFF_LIST_SELECT);
-  if (locationId && multiLocationEnabled) {
-    const scopedIds = staffIdsForLocationScope(
-      await resolveLocationScopeIds(
-        () => fetchStaffIdsForLocation(asLocationClient(supabase), locationId),
-        "staff location scope",
-      ),
-      multiLocationEnabled,
+  if (locationId) {
+    const scopedIds = await resolveLocationScopeIds(
+      () => fetchStaffIdsForLocation(asLocationClient(supabase), locationId),
+      "staff location scope",
     );
     if (scopedIds) {
       if (scopedIds.length === 0) return [];
@@ -495,7 +487,7 @@ function MobileStaffCard({
 export default function StaffPage() {
   const t = useTranslations();
   const id = useId();
-  const { user, multiLocationEnabled } = useAuth();
+  const { user } = useAuth();
   const isMobile = useIsMobile();
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -582,7 +574,7 @@ export default function StaffPage() {
     setScheduleLoading(true);
     try {
       const { data: result, error } = await withTimeout(
-        fetchWeekSchedule(companyId, weekDays, locationId, multiLocationEnabled),
+        fetchWeekSchedule(companyId, weekDays, locationId),
         PAGE_FETCH_TIMEOUT_MS,
         "staff schedule",
       );
@@ -646,7 +638,7 @@ export default function StaffPage() {
       loadSchedule();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, weekStart, companyId, locationId, multiLocationEnabled]);
+  }, [view, weekStart, companyId, locationId]);
 
   useEffect(() => {
     const stored = localStorage.getItem("staffScheduleOrientation");
@@ -788,7 +780,7 @@ export default function StaffPage() {
   const refreshStaffData = async () => {
     setLoading(true);
     try {
-      setData(await loadStaffRows(locationId, multiLocationEnabled));
+      setData(await loadStaffRows(locationId));
     } catch (error) {
       console.error("Error refreshing staff data:", error);
       setData([]);
@@ -808,7 +800,7 @@ export default function StaffPage() {
       setLoading,
       async (isCancelled) => {
         try {
-          const rows = await loadStaffRows(locationId, multiLocationEnabled);
+          const rows = await loadStaffRows(locationId);
           if (!isCancelled()) setData(rows);
         } catch (error) {
           console.error("Error fetching staff:", error);
@@ -817,7 +809,7 @@ export default function StaffPage() {
       },
       { label: "staff" },
     );
-  }, [user, locationId, multiLocationEnabled]);
+  }, [user, locationId]);
 
   const handleDeleteRows = async () => {
     const selectedRows = table.getSelectedRowModel().rows;
@@ -988,7 +980,6 @@ export default function StaffPage() {
                           slug: null,
                           specialization: null,
                           image_path: first.imagePath,
-                          role: null,
                           status: null,
                           hire_date: null,
                           specialties: null,

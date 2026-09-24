@@ -33,22 +33,6 @@ export function buildLocationMembershipInsert(input: {
 }
 
 /**
- * Staff roster scope after `resolveLocationScopeIds`.
- * - `null` → do not filter (missing table, timeout, or 1:1 empty memberships)
- * - `[]` → empty roster (multi-location shop with no memberships — never
- *   fail-open to every company staff)
- * - `[ids]` → filter to those staff
- */
-export function staffIdsForLocationScope(
-  scopedIds: string[] | null,
-  multiLocationEnabled: boolean,
-): string[] | null {
-  if (scopedIds == null) return null;
-  if (scopedIds.length > 0) return scopedIds;
-  return multiLocationEnabled ? [] : null;
-}
-
-/**
  * Prefer the selected shop. If nothing is selected, keep the location
  * already stored on the row (appointment / segment / phase).
  */

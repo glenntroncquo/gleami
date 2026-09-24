@@ -10,7 +10,6 @@ export interface Company {
   country: string | null;
   slug: string | null;
   imageUrl: string | null;
-  multiLocationEnabled: boolean;
   geoLocation: unknown;
   createdAt: string;
   updatedAt: string | null;

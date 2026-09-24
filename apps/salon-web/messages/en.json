@@ -176,12 +176,6 @@
     "locations": {
       "title": "Locations",
       "description": "Day-to-day work is per location. Create, edit or deactivate salon locations.",
-      "flagTitle": "Enable multi-location",
-      "flagHint": "Required before a company can have a second location. Leave off if you only have one salon.",
-      "flagColumnMissing": "The backend flag is not available yet. Single-location mode stays on.",
-      "flagEnabled": "Multi-location enabled",
-      "flagDisabled": "Multi-location disabled",
-      "flagRequiredToCreate": "Enable multi-location before creating a second location.",
       "listHint": "These locations belong to the company. Staff pick one in the sidebar when they have more than one.",
       "create": "Add location",
       "createTitle": "New location",

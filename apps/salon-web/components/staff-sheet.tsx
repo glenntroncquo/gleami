@@ -43,7 +43,6 @@ export interface Staff {
   slug: string | null;
   specialization: string | null;
   image_path: string | null;
-  role: string | null;
   status: string | null;
   hire_date: string | null;
   specialties: string[] | null;
@@ -435,7 +434,6 @@ export function StaffSheet({
                   files[0].file.name.split(".").pop()?.toLowerCase() || "jpg"
                 }`
               : staff?.image_path || null,
-          role: staff?.role || null,
           status: staff?.status || null,
           hire_date: staff?.hire_date || null,
           specialties: staff?.specialties || null,

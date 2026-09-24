@@ -158,14 +158,18 @@ $$;
 -- ---------------------------------------------------------------------------
 create table public.marketplace_category (
   id uuid primary key,
+  parent_id uuid,
   name text not null,
   slug text not null,
   sort_order integer not null,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   constraint marketplace_category_slug_key unique (slug),
   constraint marketplace_category_name_key unique (name),
-  constraint marketplace_category_sort_order_key unique (sort_order)
+  constraint marketplace_category_sort_order_key unique (sort_order),
+  constraint marketplace_category_parent_id_fkey
+    foreign key (parent_id) references public.marketplace_category (id) on delete restrict
 );
 
 comment on table public.marketplace_category is
@@ -192,6 +196,12 @@ insert into public.marketplace_category (id, name, slug, sort_order) values
 create index marketplace_category_name_trgm_idx
   on public.marketplace_category
   using gin (lower(name) extensions.gin_trgm_ops);
+
+create index marketplace_category_parent_id_idx
+  on public.marketplace_category (parent_id);
+
+comment on column public.marketplace_category.parent_id is
+  'Optional parent. The seed is flat (all null). No touch trigger on updated_at.';
 
 create index marketplace_category_active_sort_idx
   on public.marketplace_category (sort_order)
@@ -312,11 +322,8 @@ create table public.marketplace_search_location (
   name text not null,
   slug text not null,
   image_url text,
-  street text,
-  postal_code text,
   city text,
-  country text,
-  timezone text not null,
+  address text,
   coordinates public.geography(point, 4326) not null,
   category_ids uuid[] not null default '{}',
   search_text text not null default '',
@@ -324,7 +331,7 @@ create table public.marketplace_search_location (
     to_tsvector('simple', search_text)
   ) stored,
   treatments jsonb not null default '[]'::jsonb,
-  rating numeric,
+  rating numeric(3, 2),
   review_count integer not null default 0,
   like_count integer not null default 0,
   updated_at timestamptz not null default now(),
@@ -338,6 +345,11 @@ create table public.marketplace_search_location (
   constraint marketplace_search_location_rating_range
     check (rating is null or (rating >= 0 and rating <= 5))
 );
+
+comment on column public.marketplace_search_location.address is
+  'Street and postal code, composed by sync from location.street and '
+  'location.postal_code. City stays its own column. The public profile '
+  'reads the live location columns, not this copy.';
 
 comment on table public.marketplace_search_location is
   'Derived marketplace search document. No is_published column: if the row '
@@ -416,22 +428,26 @@ create table public.marketplace_media (
   id uuid primary key default gen_random_uuid(),
   location_id uuid not null references public.location (id) on delete cascade,
   company_id uuid not null references public.company (id) on delete cascade,
-  path text not null,
+  storage_path text not null,
+  type text not null default 'IMAGE',
   sort_order integer not null default 0,
   created_at timestamptz not null default now(),
-  constraint marketplace_media_path_prefix check (
-    starts_with(path, company_id::text || '/')
+  constraint marketplace_media_storage_path_prefix check (
+    starts_with(storage_path, company_id::text || '/')
   ),
-  constraint marketplace_media_path_nonempty check (path <> '')
+  constraint marketplace_media_storage_path_nonempty check (storage_path <> ''),
+  constraint marketplace_media_type_nonempty check (type <> '')
 );
 
 comment on table public.marketplace_media is
-  'Gallery rows for a location. path is an object name in the marketplace '
-  'bucket and must start with {company_id}/. Public read is listed active '
-  'locations only. locations:manage or settings:manage on the company may '
-  'read and write even before the location is listed.';
+  'Gallery rows for a location. storage_path is an object name in the '
+  'marketplace bucket and must start with {company_id}/. company_id is '
+  'denormalized so the storage policies can check the prefix without a '
+  'join. Public read is listed active locations only. locations:manage or '
+  'settings:manage on the company may read and write even before the '
+  'location is listed. type defaults to IMAGE.';
 
-comment on column public.marketplace_media.path is
+comment on column public.marketplace_media.storage_path is
   'Object name inside bucket marketplace. Lowercase company uuid prefix, '
   'matching storage.objects policies. Example: '
   '{company_id}/locations/{location_id}/{file}.jpg';
@@ -739,6 +755,44 @@ begin
   select count(*) into tattoo_count
   from public.marketplace_category
   where slug = 'tatoeages-en-piercings';
+
+  if not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'marketplace_category'
+      and column_name = 'parent_id'
+  ) or not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'marketplace_search_location'
+      and column_name = 'address'
+  ) or not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'marketplace_media'
+      and column_name = 'storage_path'
+  ) or not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'marketplace_media'
+      and column_name = 'type'
+  ) then
+    raise exception 'plan columns parent_id, address, storage_path, or type missing';
+  end if;
+
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'marketplace_search_location'
+      and column_name in ('street', 'postal_code', 'timezone')
+  ) then
+    raise exception 'projection must store address, not street/postal_code/timezone';
+  end if;
 
   if category_count <> 11 then
     raise exception 'expected 11 marketplace categories, found %', category_count;

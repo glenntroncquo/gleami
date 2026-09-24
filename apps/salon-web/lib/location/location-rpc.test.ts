@@ -80,7 +80,7 @@ function rpcClient(
         then: (resolve: (value: { data: unknown; error: null }) => unknown) =>
           Promise.resolve({ data: [], error: null }).then(resolve),
       };
-      return builder;
+      return builder as never;
     },
   };
   return client;
@@ -211,7 +211,7 @@ async function run() {
           error: null,
         }).then(resolve),
     };
-    return builder as ReturnType<typeof listClient.from>;
+    return builder as unknown as ReturnType<typeof listClient.from>;
   };
   const list = await fetchCompanyLocations(listClient, COMPANY);
   assertEqual(

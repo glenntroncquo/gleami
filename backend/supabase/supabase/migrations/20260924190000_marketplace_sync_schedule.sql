@@ -75,9 +75,7 @@ create trigger marketplace_sync_location_update
     or old.city is distinct from new.city
     or old.street is distinct from new.street
     or old.postal_code is distinct from new.postal_code
-    or old.country is distinct from new.country
     or old.image_url is distinct from new.image_url
-    or old.timezone is distinct from new.timezone
     or old.geo_location is distinct from new.geo_location
   )
   execute function supabase_functions.http_request(

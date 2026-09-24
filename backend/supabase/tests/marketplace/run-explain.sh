@@ -39,7 +39,7 @@ select
 from generate_series(${from}, ${to}) as i;
 
 insert into public.marketplace_search_location (
-  location_id, company_id, name, slug, city, timezone, coordinates,
+  location_id, company_id, name, slug, city, address, coordinates,
   category_ids, search_text, treatments, like_count, updated_at
 )
 select
@@ -48,7 +48,7 @@ select
   l.name,
   l.slug,
   l.city,
-  l.timezone,
+  l.city,
   l.geo_location,
   array[(array[
     '01900000-0000-4000-8000-000000000001'::uuid,

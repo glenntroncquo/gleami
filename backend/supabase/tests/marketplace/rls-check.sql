@@ -90,18 +90,18 @@ insert into public.service (id, company_id, name, is_active, is_deleted) values
   ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Knippen', true, false);
 
 insert into public.marketplace_search_location (
-  location_id, company_id, name, slug, timezone, coordinates, search_text
+  location_id, company_id, name, slug, address, coordinates, search_text
 ) values (
   'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   'Listed',
   'listed-shop',
-  'Europe/Brussels',
+  'Kerkstraat 1, 2000',
   st_setsrid(st_makepoint(4.4, 51.2), 4326)::public.geography,
   'listed antwerpen'
 );
 
-insert into public.marketplace_media (location_id, company_id, path) values
+insert into public.marketplace_media (location_id, company_id, storage_path) values
   (
     'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
     'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -154,11 +154,11 @@ begin
 
   begin
     insert into public.marketplace_search_location (
-      location_id, company_id, name, slug, timezone, coordinates
+      location_id, company_id, name, slug, address, coordinates
     ) values (
       'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-      'x', 'x', 'Europe/Brussels',
+      'x', 'x', 'Nowhere 1',
       st_setsrid(st_makepoint(4, 51), 4326)::public.geography
     );
     raise exception 'anon inserted a projection row';
@@ -183,7 +183,7 @@ begin
   end;
 
   begin
-    insert into public.marketplace_media (location_id, company_id, path)
+    insert into public.marketplace_media (location_id, company_id, storage_path)
     values (
       'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -311,7 +311,7 @@ begin
     '01900000-0000-4000-8000-000000000001'
   );
 
-  insert into public.marketplace_media (location_id, company_id, path, sort_order)
+  insert into public.marketplace_media (location_id, company_id, storage_path, sort_order)
   values (
     'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
     'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -321,7 +321,7 @@ begin
 
   select count(*) into n
   from public.marketplace_media
-  where path like '%hidden%';
+  where storage_path like '%hidden%';
   if n < 1 then
     raise exception 'owner could not read unlisted media';
   end if;
@@ -344,7 +344,7 @@ begin
   end;
 
   begin
-    insert into public.marketplace_media (location_id, company_id, path)
+    insert into public.marketplace_media (location_id, company_id, storage_path)
     values (
       'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -368,7 +368,7 @@ declare
 begin
   select count(*) into n
   from public.marketplace_media
-  where path like '%intruder%';
+  where storage_path like '%intruder%';
   if n <> 0 then
     raise exception 'intruder media row exists';
   end if;

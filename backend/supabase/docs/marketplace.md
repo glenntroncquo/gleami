@@ -38,16 +38,19 @@ A location is indexed only when it is listed, active, has a non-blank slug, and 
 
 Defined in `_shared/marketplace/ranking.ts` and interpolated into the one search statement.
 
+Plan A4 names the factors and does not give coefficients: distance, text rank, rating, `review_count`, `like_count`. Text rank is the full-text term plus the trigram term. These are the coefficients this API ships:
+
 ```
 score =
     10   * ts_rank_cd(search_vector, plainto_tsquery('simple', q))
   +  6   * word_similarity(q, search_text)
   +  3   * (1 / (1 + distance_km))
   +  2   * (coalesce(rating, 0) / 5)
+  +  0.25 * ln(1 + review_count)
   +  0.35 * ln(1 + like_count)
 ```
 
-No `q`: the text terms are 0. No `center`: the geo term is 0. `rating` null counts as 0. `review_count` is not in the score (there is no reviews table; the column stays 0). The score is rounded to 6 decimal places before the keyset comparison so the cursor round-trips.
+No `q`: the text terms are 0. No `center`: the geo term is 0. `rating` null counts as 0. `review_count` stays 0 until a reviews table exists; the term is in the formula anyway. The score is rounded to 6 decimal places before the keyset comparison so the cursor round-trips. `search_vector` uses `simple` because the plan writes `to_tsvector('simple', search_text)`.
 
 `ts_rank_cd` is often small, so the text weight is 10. `word_similarity` is 0..1 and is what makes a name hit beat a merely popular neighbour. Standing on the pin is worth 3. One hundred likes add about 1.6.
 
@@ -91,7 +94,7 @@ JWT verification:
 
 Response: `{ items: [{ locationId, companyId, name, slug, imageUrl, city, address, lat, lng, distanceKm, categoryIds, treatments, rating, reviewCount, likeCount, score }], nextCursor }`
 
-`address` is street and postal code. `imageUrl` is `location.image_url`, not the gallery.
+`address` is the projection column: street and postal code joined by sync. `city` is separate. `imageUrl` is `location.image_url`, not the gallery. The profile reads street, postal code, and gallery rows live.
 
 `marketplace-suggest` body: `{ q, limit? }` (default 8, max 20)
 
@@ -103,7 +106,7 @@ Each of the three branches keeps its own `LIMIT`. The outer query keeps the best
 
 Response: `{ location: { locationId, companyId, name, slug, description, imageUrl, images, street, postalCode, city, country, lat, lng, timezone, likeCount }, categories: [{ id, name, slug }], services: [{ serviceId, name, description, variants: [{ serviceVariantId, name, price, durationMinutes }] }] }`
 
-`images` are public URLs in the `marketplace` bucket. `likeCount` is a live `count(*)`, not the projection (search cards can be a day behind). `description` is `location.marketplace_description`. Variant `durationMinutes` is `client_duration_minutes`, same field `service-list` uses. The query is not `service-list` itself: it has to restrict to `location_service` and `is_marketplace_visible`.
+`images` are public URLs for `marketplace_media` rows with `type = 'IMAGE'`, ordered by `sort_order`. The object name is `storage_path`. `likeCount` is a live `count(*)`, not the projection (search cards can be a day behind). `description` is `location.marketplace_description`. Variant `durationMinutes` is `client_duration_minutes`, same field `service-list` uses. The query is not `service-list` itself: it has to restrict to `location_service` and `is_marketplace_visible`.
 
 `marketplace-next-available` body: `{ pairs: [{ locationId, serviceId, serviceVariantId }] }` (max 24)
 

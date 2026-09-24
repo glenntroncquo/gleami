@@ -75,6 +75,7 @@ describe("buildMarketplaceSearchDocument", () => {
       locationId: "11111111-1111-4111-8111-111111111111",
       companyId: "22222222-2222-4222-8222-222222222222",
       slug: "salon-noord",
+      address: "Kerkstraat 1, 2000",
       likeCount: 4,
       categoryIds: [categoryKeratin],
       treatments: [

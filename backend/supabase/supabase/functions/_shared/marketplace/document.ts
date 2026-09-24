@@ -51,15 +51,20 @@ export interface ProjectionDocument {
   name: string;
   slug: string;
   imageUrl: string | null;
-  street: string | null;
-  postalCode: string | null;
   city: string | null;
-  country: string | null;
-  timezone: string;
+  address: string | null;
   categoryIds: string[];
   searchText: string;
   treatments: TreatmentDocument[];
   likeCount: number;
+}
+
+/** Plan column `address`: street and postal code. City stays its own column. */
+export function formatAddress(street: string | null, postalCode: string | null): string | null {
+  const parts = [street, postalCode]
+    .map((part) => part?.trim() ?? "")
+    .filter((part) => part.length > 0);
+  return parts.length > 0 ? parts.join(", ") : null;
 }
 
 function isLive(isActive: boolean | null, isDeleted: boolean | null): boolean {
@@ -137,11 +142,8 @@ export function buildMarketplaceSearchDocument(source: LocationSource): Projecti
     name: source.name,
     slug,
     imageUrl: source.imageUrl,
-    street: source.street,
-    postalCode: source.postalCode,
     city: source.city,
-    country: source.country,
-    timezone: source.timezone,
+    address: formatAddress(source.street, source.postalCode),
     categoryIds: [...categoryIds].sort(),
     searchText: buildSearchText({
       name: source.name,

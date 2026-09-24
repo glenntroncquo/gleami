@@ -161,7 +161,7 @@ export async function searchMarketplace(sql: MarketplaceSql, input: SearchInput)
         m.slug,
         m.image_url,
         m.city,
-        concat_ws(', ', nullif(btrim(m.street), ''), nullif(btrim(m.postal_code), '')) as address,
+        m.address,
         st_y(m.coordinates::geometry)::float8 as lat,
         st_x(m.coordinates::geometry)::float8 as lng,
         ${distanceExpr} as distance_km,
@@ -174,6 +174,7 @@ export async function searchMarketplace(sql: MarketplaceSql, input: SearchInput)
           ${textScoreExpr}
           + ${geoScoreExpr}
           + ${RANKING.rating}::float8 * (coalesce(m.rating, 0) / 5.0)
+          + ${RANKING.reviews}::float8 * ln(1 + m.review_count)
           + ${RANKING.likes}::float8 * ln(1 + m.like_count)
         )::numeric, 6)::float8 as score
       from public.marketplace_search_location m

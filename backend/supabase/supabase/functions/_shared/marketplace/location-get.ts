@@ -84,9 +84,10 @@ export async function getMarketplaceLocation(
       l.marketplace_description as description,
       l.image_url,
       coalesce((
-        select json_agg(m.path order by m.sort_order, m.id)
+        select json_agg(m.storage_path order by m.sort_order, m.id)
         from public.marketplace_media m
         where m.location_id = l.id
+          and m.type = 'IMAGE'
       ), '[]'::json) as images,
       l.street,
       l.postal_code,

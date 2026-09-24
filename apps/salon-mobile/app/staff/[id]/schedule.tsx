@@ -3,7 +3,7 @@ import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,6 +12,7 @@ import { VisitPhaseBar } from '@/components/visit-phase-bar';
 import { addDays, getISOWeekNumber, getMonthShortLabel, getWeekStartMonday, getWeekdayLong, toDateKey } from '@/components/calendar/date-utils';
 import { EventItem } from '@/components/calendar/types';
 import { EmptyState } from '@/components/empty-state';
+import { RowListSkeleton } from '@/components/content-skeletons';
 import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
@@ -128,9 +129,7 @@ export default function StaffScheduleScreen() {
       ) : null}
 
       {loading ? (
-        <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color={theme.text} />
-        </View>
+        <RowListSkeleton count={7} avatar={false} />
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {weekDays.map((day) => {

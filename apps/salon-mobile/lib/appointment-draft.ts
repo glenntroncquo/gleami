@@ -26,5 +26,6 @@ export const APPOINTMENT_DRAFT_EVENTS = {
   selectNewClient: 'appointmentDraft:selectNewClient',
   selectStaff: 'appointmentDraft:selectStaff',
   addService: 'appointmentDraft:addService',
+  removeService: 'appointmentDraft:removeService',
   setDateTime: 'appointmentDraft:setDateTime',
 } as const;

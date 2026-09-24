@@ -49,10 +49,11 @@ export function SwipeableRow({ children, onDelete, deleteLabel }: Props) {
   return <SwipeActionRow onAction={onDelete} actionLabel={deleteLabel} icon="delete" destructive>{children}</SwipeActionRow>;
 }
 
-export function SwipeActionRow({ children, onAction, actionLabel, icon, destructive = false, onPress }: {
+export function SwipeActionRow({ children, onAction, actionLabel, icon, destructive = false, onPress, actionDisabled = false }: {
   children: React.ReactNode;
   onAction: () => void;
   actionLabel: string;
+  actionDisabled?: boolean;
   icon: AppIconName;
   destructive?: boolean;
   onPress?: () => void;
@@ -81,7 +82,7 @@ export function SwipeActionRow({ children, onAction, actionLabel, icon, destruct
   };
   const handleDelete = () => {
     swipeableRef.current?.close();
-    onAction();
+    if (!actionDisabled) onAction();
   };
 
   return (
@@ -99,7 +100,7 @@ export function SwipeActionRow({ children, onAction, actionLabel, icon, destruct
       onSwipeableClose={() => {
         if (openRow === swipeableRef.current) openRow = null;
       }}
-      renderRightActions={(_, translation) => (
+      renderRightActions={actionDisabled ? undefined : (_, translation) => (
         <RowAction translation={translation} label={actionLabel} icon={icon} destructive={destructive} onPress={handleDelete} />
       )}>
       <GestureDetector gesture={tapGesture}>
@@ -108,7 +109,8 @@ export function SwipeActionRow({ children, onAction, actionLabel, icon, destruct
         accessible
         accessibilityRole={onPress ? 'button' : undefined}
         onAccessibilityTap={onPress}
-        accessibilityActions={[...(onPress ? [{ name: 'activate' as const }] : []), { name: 'rowAction', label: actionLabel }]}
+        accessibilityActions={[...(onPress ? [{ name: 'activate' as const }] : []), ...(actionDisabled ? [] : [{ name: 'rowAction', label: actionLabel }])]}
+
         onAccessibilityAction={(event) => {
           if (event.nativeEvent.actionName === 'rowAction') handleDelete();
           if (event.nativeEvent.actionName === 'activate') onPress?.();

@@ -1,3 +1,4 @@
+import { useAppointmentPayments } from '@/hooks/use-appointment-payments';
 import { SwipeableRow } from '@/components/swipeable-row';
 import { deleteClientNote } from '@/lib/api/clients';
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
@@ -7,7 +8,6 @@ import { HeaderButton } from '@/components/header-button';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import {
-  ActivityIndicator,
   StyleSheet,
   Text,
   TextInput,
@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { DetailSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
 import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
@@ -30,7 +31,6 @@ import {
   fetchClientNotes,
   updateClient,
 } from '@/lib/api/clients';
-import { fetchAppointmentPaymentStatuses, type AppointmentPaymentInfo } from '@/lib/api/orders';
 import { getInitialsFromLabel } from '@/lib/text';
 
 import { appointmentToEvent } from '@/components/calendar/calendar-data';
@@ -56,7 +56,7 @@ export default function ClientDetailScreen() {
   const [addingNote, setAddingNote] = React.useState(false);
 
   const [history, setHistory] = React.useState<EventItem[]>([]);
-  const [paymentStatuses, setPaymentStatuses] = React.useState<Record<string, AppointmentPaymentInfo>>({});
+  const paymentStatuses = useAppointmentPayments(companyId, history.map(event => event.appointmentId));
 
   const [isEditing, setIsEditing] = React.useState(false);
   const [firstName, setFirstName] = React.useState('');
@@ -81,8 +81,6 @@ export default function ClientDetailScreen() {
       setNotes(notesData);
       const historyEvents = appointmentsData.map(appointmentToEvent);
       setHistory(historyEvents);
-      // A failed payment lookup must not hide the appointment or imply unpaid.
-      setPaymentStatuses(await fetchAppointmentPaymentStatuses(companyId, historyEvents.map((item) => item.appointmentId)).catch(() => ({})));
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('client.failedToLoad'));
@@ -169,11 +167,7 @@ export default function ClientDetailScreen() {
           headerRight: () =>
             isEditing ? (
               <HeaderButton onPress={handleSaveProfile} disabled={saving} hitSlop={8} style={styles.headerTextButton}>
-                {saving ? (
-                  <ActivityIndicator size="small" color={theme.text} />
-                ) : (
-                  <Text style={styles.saveText}>{t('client.save')}</Text>
-                )}
+                <Text style={styles.saveText}>{t('client.save')}</Text>
               </HeaderButton>
             ) : (
               <HeaderButton onPress={startEditing} hitSlop={8} style={styles.headerTextButton}>
@@ -190,9 +184,7 @@ export default function ClientDetailScreen() {
       ) : null}
 
       {loading ? (
-        <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color={theme.text} />
-        </View>
+        <DetailSkeleton />
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.profileSection}>
@@ -300,11 +292,7 @@ export default function ClientDetailScreen() {
                 onChangeText={setNewNote}
               />
               <Pressable style={styles.addNoteButton} onPress={handleAddNote} disabled={addingNote}>
-                {addingNote ? (
-                  <ActivityIndicator size="small" color={theme.text} />
-                ) : (
-                  <Text style={styles.addNoteButtonText}>{t('client.addNote')}</Text>
-                )}
+                <Text style={styles.addNoteButtonText}>{t('client.addNote')}</Text>
               </Pressable>
             </View>
             {notes.length === 0 ? (

@@ -29,11 +29,12 @@ export type ServiceWithVariants = {
   id: string;
   name: string;
   color: string | null;
+  is_active: boolean | null;
   service_variant: ServiceVariant[];
 };
 
 const BOOKING_SERVICE_SELECT = `
-  id, name, color,
+  id, name, color, is_active,
   service_variant (
     id, name, price, vat_rate, client_duration_minutes, staff_duration_minutes,
     is_active, is_deleted, display_order,
@@ -66,7 +67,7 @@ function normalizeVariant(variant: ServiceVariant): ServiceVariant {
 }
 
 function isBookableVariant(variant: ServiceVariant): boolean {
-  return variant.is_deleted !== true && variant.is_active !== false;
+  return variant.is_deleted !== true && variant.is_active === true;
 }
 
 function compareVariants(a: ServiceVariant, b: ServiceVariant): number {
@@ -101,6 +102,7 @@ export async function fetchServices(companyId: string, locationId?: string | nul
 
   if (error) throw error;
   return ((data as unknown as ServiceWithVariants[]) ?? [])
+    .filter((service) => service.is_active === true)
     .map((service) => ({
       ...service,
       service_variant: (service.service_variant ?? [])

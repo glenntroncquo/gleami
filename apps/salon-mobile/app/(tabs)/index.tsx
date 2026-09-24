@@ -1,3 +1,4 @@
+import { readPreferredCalendarView, writePreferredCalendarView, type CalendarViewMode } from '@/lib/preferences';
 import { TimeGrid } from '@/components/calendar/components/TimeGrid';
 import { calendarPreviewLayout } from '@/lib/calendar-layout';
 import { Pressable } from '@/components/pressable-scale';
@@ -104,7 +105,21 @@ export default function CalendarScreen() {
   const modeButtonRef = React.useRef<View>(null);
   const staffChipRef = React.useRef<View>(null);
   const monthButtonRef = React.useRef<View>(null);
-  const [viewMode, setViewMode] = React.useState<'month' | 'week' | 'list' | 'dayGrid' | 'weekGrid'>('month');
+  const [viewMode, updateViewMode] = React.useState<CalendarViewMode>('month');
+  const [viewPreferenceLoaded, setViewPreferenceLoaded] = React.useState(false);
+  React.useEffect(() => {
+    let active = true;
+    readPreferredCalendarView().then(mode => {
+      if (!active) return;
+      updateViewMode(mode);
+      setViewPreferenceLoaded(true);
+    });
+    return () => { active = false; };
+  }, []);
+  const setViewMode = React.useCallback((mode: CalendarViewMode) => {
+    updateViewMode(mode);
+    void writePreferredCalendarView(mode);
+  }, []);
   const [gridDate, setGridDate] = React.useState(() => toDateKey(new Date()));
   const [offsets, setOffsets] = React.useState(() => {
     const todayOffset = getOffsetForDate(new Date());
@@ -238,7 +253,7 @@ export default function CalendarScreen() {
   // already-loaded data instead of triggering a fresh fetch at the boundary.
   const neededMonthOffsets = React.useMemo(() => {
     if (viewMode === 'dayGrid' || viewMode === 'weekGrid') {
-      const start = viewMode === 'weekGrid' ? getWeekStartMonday(parseSalonWallClock(gridDate + 'T00:00:00')) : parseSalonWallClock(gridDate + 'T00:00:00');
+      const start = viewMode === 'dayGrid' ? parseSalonWallClock(gridDate + 'T00:00:00') : getWeekStartMonday(parseSalonWallClock(gridDate + 'T00:00:00'));
       return Array.from(new Set([...buildPrefetchWindow(getOffsetForDate(start)), getOffsetForDate(addDays(start, 6))]));
     }
     if (viewMode === 'week') {
@@ -792,6 +807,10 @@ export default function CalendarScreen() {
 
   const showNoCompanyState = !locationLoading && !companyId;
   const showNoLocationState = !locationLoading && !!companyId && !locationId;
+
+  if (!viewPreferenceLoaded) {
+    return <TabScreen><MonthGridSkeleton styles={styles} /></TabScreen>;
+  }
 
   return (
     <TabScreen>

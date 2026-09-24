@@ -3,7 +3,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Pressable } from '@/components/pressable-scale';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
   StyleSheet,
   TextInput,
 } from 'react-native';
@@ -100,13 +99,9 @@ export default function LoginScreen() {
           style={[styles.button, { backgroundColor: theme.tint, opacity: canSubmit ? 1 : 0.5 }]}
           onPress={handleSubmit}
           disabled={!canSubmit}>
-          {isSubmitting ? (
-            <ActivityIndicator color={theme.onTint} />
-          ) : (
-            <ThemedText style={styles.buttonText} lightColor={theme.onTint} darkColor={theme.onTint}>
-              {t('auth.signIn')}
-            </ThemedText>
-          )}
+          <ThemedText style={styles.buttonText} lightColor={theme.onTint} darkColor={theme.onTint}>
+            {t('auth.signIn')}
+          </ThemedText>
         </Pressable>
       </ScreenScrollView>
     </SafeAreaView>

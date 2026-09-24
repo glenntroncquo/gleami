@@ -2,10 +2,11 @@ import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { RowListSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
 import { StaffAvatar } from '@/components/staff-avatar';
 import { Colors, Design } from '@/constants/theme';
@@ -71,9 +72,7 @@ export default function StaffListScreen() {
       ) : null}
 
       {loading ? (
-        <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color={theme.text} />
-        </View>
+        <RowListSkeleton />
       ) : showNoCompanyState ? (
         <EmptyState icon="groups" title={t('calendar.noCompany')} />
       ) : (

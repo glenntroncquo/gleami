@@ -1,10 +1,11 @@
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { Stack, useFocusEffect } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { DashboardSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
 import { MonthlyBarChart } from '@/components/monthly-bar-chart';
 import { Colors, Design } from '@/constants/theme';
@@ -82,9 +83,7 @@ export default function DashboardScreen() {
       ) : null}
 
       {loading || locationLoading ? (
-        <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color={theme.text} />
-        </View>
+        <DashboardSkeleton />
       ) : showNoCompanyState ? (
         <EmptyState icon="viewAgenda" title={t('calendar.noCompany')} />
       ) : showNoLocationState ? (

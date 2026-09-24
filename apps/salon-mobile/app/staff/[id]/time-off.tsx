@@ -3,10 +3,11 @@ import { Pressable } from '@/components/pressable-scale';
 import { SwipeableRow } from '@/components/swipeable-row';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { RowListSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
 import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
@@ -83,9 +84,7 @@ export default function StaffTimeOffScreen() {
       ) : null}
 
       {loading ? (
-        <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color={theme.text} />
-        </View>
+        <RowListSkeleton avatar={false} />
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {blocks.length === 0 ? (

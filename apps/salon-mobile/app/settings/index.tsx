@@ -3,11 +3,12 @@ import { Pressable } from '@/components/pressable-scale';
 import { HeaderButton } from '@/components/header-button';
 import { Stack, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { AccountDeletionButton } from '@/components/account-deletion-button';
+import { FormSkeleton } from '@/components/content-skeletons';
 import { LegalLinkRows, useLegalUrls } from '@/components/legal-link-rows';
 import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
@@ -97,11 +98,7 @@ export default function SettingsScreen() {
           headerRight: () =>
             !showNoCompanyState ? (
               <HeaderButton onPress={handleSave} disabled={saving || !name.trim()} hitSlop={8} style={styles.headerTextButton}>
-                {saving ? (
-                  <ActivityIndicator size="small" color={theme.text} />
-                ) : (
-                  <Text style={[styles.saveText, !name.trim() && styles.saveTextDisabled]}>{t('client.save')}</Text>
-                )}
+                <Text style={[styles.saveText, !name.trim() && styles.saveTextDisabled]}>{t('client.save')}</Text>
               </HeaderButton>
             ) : undefined,
         }}
@@ -114,9 +111,7 @@ export default function SettingsScreen() {
       ) : null}
 
       {loading ? (
-        <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color={theme.text} />
-        </View>
+        <FormSkeleton />
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           {!showNoCompanyState ? (

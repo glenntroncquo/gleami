@@ -4,7 +4,7 @@ import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
 import { Stack, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, DeviceEventEmitter, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { DeviceEventEmitter, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -124,11 +124,7 @@ export default function NewProductScreen() {
           ),
           headerRight: () => (
             <HeaderButton onPress={handleSave} disabled={!canSave} hitSlop={8} style={styles.headerTextButton}>
-              {saving ? (
-                <ActivityIndicator size="small" color={theme.text} />
-              ) : (
-                <Text style={[styles.saveText, !canSave && styles.saveTextDisabled]}>{t('client.save')}</Text>
-              )}
+              <Text style={[styles.saveText, !canSave && styles.saveTextDisabled]}>{t('client.save')}</Text>
             </HeaderButton>
           ),
         }}

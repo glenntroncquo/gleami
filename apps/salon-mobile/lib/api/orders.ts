@@ -1,3 +1,4 @@
+import { appointmentPaymentStatuses, type PaymentHistoryItem } from '@/lib/appointment-payment-state';
 import { supabase } from '@/lib/supabase';
 
 /** Live `order.location_id` predates the generated snapshot in this repo. */
@@ -75,59 +76,46 @@ export async function fetchOrder(orderId: string): Promise<OrderDetail | null> {
   return data as unknown as OrderDetail | null;
 }
 
-export type AppointmentPaymentStatus = 'paid' | 'partial' | 'unpaid';
+export { normalizePaymentStatus } from '@/lib/appointment-payment-state';
+export type { AppointmentPaymentInfo, AppointmentPaymentStatus } from '@/lib/appointment-payment-state';
 
-export type AppointmentPaymentInfo = {
-  status: AppointmentPaymentStatus;
-  amountPaid: number | null;
-  totalAmount: number | null;
-};
+const ORDER_LINK_SELECT = 'appointment_id, appointment_segment_id, order:order_id ( id, payment_status, amount_paid, total_amount, created_at )';
 
-/**
- * Collapse every `order.payment_status` value the backend produces down to the
- * three states staff act on. `pending`/`failed`/null all mean "money hasn't
- * been collected yet" — same as `unpaid` — and `completed` is a `paid`
- * synonym, so there is no case where a real order should read as "unknown".
- */
-export function normalizePaymentStatus(status: string | null | undefined): AppointmentPaymentStatus {
-  if (status === 'paid' || status === 'completed') return 'paid';
-  if (status === 'partial' || status === 'partially_paid') return 'partial';
-  return 'unpaid';
-}
-
-/** Read the actual orders linked to a visit, rather than its booking status. */
-export async function fetchAppointmentPaymentStatuses(companyId: string, appointmentIds: string[]): Promise<Record<string, AppointmentPaymentInfo>> {
-  if (!appointmentIds.length) return {};
+/** Linked orders, with payment rows attached when that read succeeds. */
+export async function fetchAppointmentPaymentItems(companyId: string, appointmentIds: string[]): Promise<PaymentHistoryItem[]> {
+  if (!appointmentIds.length) return [];
   const { data, error } = await supabase
     .from('order_item')
-    .select('appointment_id, order:order_id ( id, payment_status, amount_paid, total_amount )')
+    .select(ORDER_LINK_SELECT)
     .eq('company_id', companyId)
     .in('appointment_id', appointmentIds);
   if (error) throw error;
+  const items = (data ?? []) as PaymentHistoryItem[];
+  const orderIds = [...new Set(items.flatMap(item => {
+    if (!item.order) return [];
+    return (Array.isArray(item.order) ? item.order : [item.order]).map(order => order.id);
+  }))];
+  if (!orderIds.length) return items;
+  const { data: payments, error: paymentError } = await supabase
+    .from('payment')
+    .select('order_id, status, payment_status, amount_gross')
+    .eq('company_id', companyId)
+    .in('order_id', orderIds);
+  if (paymentError || !payments) return items;
+  const byOrder = new Map<string, Array<{ status: string | null; payment_status: string | null; amount: number | null; amount_gross: number | null }>>();
+  payments.forEach(payment => {
+    if (!payment.order_id) return;
+    const row = { status: payment.status, payment_status: payment.payment_status, amount: payment.amount_gross, amount_gross: payment.amount_gross };
+    byOrder.set(payment.order_id, [...(byOrder.get(payment.order_id) ?? []), row]);
+  });
+  return items.map(item => {
+    if (!item.order) return item;
+    const orders = (Array.isArray(item.order) ? item.order : [item.order]).map(order => ({ ...order, payment: byOrder.get(order.id) ?? order.payment ?? [] }));
+    return { ...item, order: Array.isArray(item.order) ? orders : orders[0] };
+  });
+}
 
-  const byAppointment = new Map<string, Map<string, { payment_status: string | null; amount_paid: number | null; total_amount: number | null }>>();
-  for (const item of data ?? []) {
-    if (!item.appointment_id) continue;
-    const orders = byAppointment.get(item.appointment_id) ?? new Map();
-    orders.set(item.order?.id ?? 'unknown', {
-      payment_status: item.order?.payment_status ?? null,
-      amount_paid: item.order?.amount_paid ?? null,
-      total_amount: item.order?.total_amount ?? null,
-    });
-    byAppointment.set(item.appointment_id, orders);
-  }
-  return Object.fromEntries(appointmentIds.map((id) => {
-    const orders = [...(byAppointment.get(id)?.values() ?? [])];
-    const statuses = orders.map((order) => normalizePaymentStatus(order.payment_status));
-    // No order yet on this visit is still "nothing collected" — same bucket as unpaid.
-    let status: AppointmentPaymentStatus = 'unpaid';
-    if (statuses.length && statuses.every((value) => value === 'paid')) status = 'paid';
-    else if (statuses.length && statuses.every((value) => value === 'unpaid')) status = 'unpaid';
-    else if (statuses.length) status = 'partial';
-
-    const amountPaid = orders.reduce((sum, order) => sum + (order.amount_paid ?? 0), 0);
-    const totalAmount = orders.reduce((sum, order) => sum + (order.total_amount ?? 0), 0);
-
-    return [id, { status, amountPaid: orders.length ? amountPaid : null, totalAmount: orders.length ? totalAmount : null }];
-  }));
+/** Read linked service orders. A failed payment read still keeps the order status. */
+export async function fetchAppointmentPaymentStatuses(companyId: string, appointmentIds: string[]) {
+  return appointmentPaymentStatuses(appointmentIds, await fetchAppointmentPaymentItems(companyId, appointmentIds));
 }

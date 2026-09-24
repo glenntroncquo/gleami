@@ -5,10 +5,11 @@ import { Pressable } from '@/components/pressable-scale';
 import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, DeviceEventEmitter, StyleSheet, Text, View } from 'react-native';
+import { DeviceEventEmitter, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { RowListSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
 import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
@@ -91,7 +92,7 @@ export default function ServiceVariantsScreen() {
         }}
       />
       {loading ? (
-        <ActivityIndicator style={styles.loading} color={theme.muted} />
+        <RowListSkeleton count={4} />
       ) : !service || service.service_variant.length === 0 ? (
         <EmptyState icon="gridView" title={t('service.noVariants')} subtitle={t('service.noVariantsHint')} />
       ) : (

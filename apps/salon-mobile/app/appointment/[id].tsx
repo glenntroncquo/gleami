@@ -1,3 +1,4 @@
+import { useAppointmentPayments } from '@/hooks/use-appointment-payments';
 import { SwipeableRow } from '@/components/swipeable-row';
 import { deleteClientNote } from '@/lib/api/clients';
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
@@ -7,7 +8,6 @@ import { HeaderButton } from '@/components/header-button';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import {
-  ActivityIndicator,
   Alert,
   DeviceEventEmitter,
   StyleSheet,
@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { DetailSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
 import { Colors } from '@/constants/theme';
 import { useCheckout } from '@/contexts/checkout-context';
@@ -28,7 +29,6 @@ import { cancelAppointment } from '@/lib/api/appointment-cancel';
 import { isAppointmentCanceled } from '@/lib/api/appointment-status';
 import { fetchAppointmentById, fetchClientAppointments, type AppointmentRow } from '@/lib/api/calendar';
 import { addClientNote, Client, ClientNote, fetchClient, fetchClientNotes } from '@/lib/api/clients';
-import { fetchAppointmentPaymentStatuses, type AppointmentPaymentInfo } from '@/lib/api/orders';
 import { getInitialsFromLabel } from '@/lib/text';
 
 import { appointmentToEvent, visitDurationMinutes } from '@/components/calendar/calendar-data';
@@ -42,6 +42,8 @@ export default function AppointmentDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { companyId } = useAuth();
   const { locationId, loading: locationLoading } = useLocation();
+  const currentPayment = useAppointmentPayments(companyId, id ? [id] : []);
+  const paid = currentPayment[id]?.status === 'paid';
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
 
@@ -52,8 +54,8 @@ export default function AppointmentDetailScreen() {
   const [newNote, setNewNote] = React.useState('');
   const [noteComposerOpen, setNoteComposerOpen] = React.useState(false);
   const [addingNote, setAddingNote] = React.useState(false);
-  const [paymentStatuses, setPaymentStatuses] = React.useState<Record<string, AppointmentPaymentInfo>>({});
   const [history, setHistory] = React.useState<EventItem[]>([]);
+  const paymentStatuses = useAppointmentPayments(companyId, history.map(event => event.appointmentId));
   const [loading, setLoading] = React.useState(true);
   const [cancelling, setCancelling] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -86,8 +88,6 @@ export default function AppointmentDetailScreen() {
         setNotes(notesData);
         const historyEvents = appointmentsData.map(appointmentToEvent).filter((item) => item.appointmentId !== nextEvent.appointmentId);
         setHistory(historyEvents);
-        // A failed payment lookup must not hide the appointment or imply unpaid.
-        setPaymentStatuses(await fetchAppointmentPaymentStatuses(companyId, historyEvents.map((item) => item.appointmentId)).catch(() => ({})));
       }
       setError(null);
     } catch (err) {
@@ -200,7 +200,11 @@ export default function AppointmentDetailScreen() {
             </HeaderButton>
           ),
           unstable_headerRightItems: () =>
-            event && appointment && !canceled ? [
+            event && appointment && !canceled ? paid ? [{
+              type: 'custom',
+              hidesSharedBackground: true,
+              element: <HeaderButton disabled accessibilityLabel={t('order.status.paid')} style={{ backgroundColor: theme.successSurface }}><AppIcon name="pointOfSale" size={22} color={theme.success} /></HeaderButton>,
+            }] : [
               {
                 type: 'button',
                 label: t('checkout.title'),
@@ -215,21 +219,23 @@ export default function AppointmentDetailScreen() {
           headerRight: () =>
             event && appointment && !canceled ? (
               <HeaderButton
+                disabled={paid}
+                accessibilityLabel={paid ? t('order.status.paid') : t('checkout.title')}
+                style={paid ? { backgroundColor: theme.successSurface } : undefined}
                 onPress={() => {
+                  if (paid) return;
                   prepareCheckout(appointment);
                   router.push({ pathname: '/checkout/[appointmentId]', params: { appointmentId: event.appointmentId } });
                 }}
                 hitSlop={8}>
-                <AppIcon name="pointOfSale" size={22} color={theme.tint} />
+                <AppIcon name="pointOfSale" size={22} color={paid ? theme.success : theme.tint} />
               </HeaderButton>
             ) : null,
         }}
       />
 
       {loading ? (
-        <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color={theme.muted} />
-        </View>
+        <DetailSkeleton />
       ) : !event ? (
         <EmptyState icon="eventBusy" title={error ?? t('client.failedToLoad')} />
       ) : (
@@ -358,11 +364,7 @@ export default function AppointmentDetailScreen() {
                 onChangeText={setNewNote}
               />
               <Pressable style={[styles.addNoteButton, { borderColor: theme.border }]} onPress={handleAddNote} disabled={addingNote || !newNote.trim()}>
-                {addingNote ? (
-                  <ActivityIndicator size="small" color={theme.text} />
-                ) : (
-                  <Text style={[styles.addNoteButtonText, { color: theme.text }]}>{t('client.addNote')}</Text>
-                )}
+                <Text style={[styles.addNoteButtonText, { color: theme.text }]}>{t('client.addNote')}</Text>
               </Pressable>
             </View>
             ) : (
@@ -381,11 +383,7 @@ export default function AppointmentDetailScreen() {
               style={[styles.cancelButton, { backgroundColor: `${theme.error}12` }]}
               onPress={handleCancel}
               disabled={cancelling}>
-              {cancelling ? (
-                <ActivityIndicator size="small" color={theme.error} />
-              ) : (
-                <Text style={[styles.cancelButtonText, { color: theme.error }]}>{t('appointment.cancelAppointment')}</Text>
-              )}
+              <Text style={[styles.cancelButtonText, { color: theme.error }]}>{t('appointment.cancelAppointment')}</Text>
             </Pressable>
           ) : null}
         </ScrollView>

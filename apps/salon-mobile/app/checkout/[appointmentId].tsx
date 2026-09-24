@@ -5,16 +5,19 @@ import { HeaderButton } from '@/components/header-button';
 import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, DeviceEventEmitter, StyleSheet, Text, TextInput, View } from 'react-native';
+import { DeviceEventEmitter, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { DetailSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
 import { Colors, Design } from '@/constants/theme';
 import { useCheckout } from '@/contexts/checkout-context';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { checkoutBalance, ordersForAppointment, publishPayments, type LinkedOrder } from '@/lib/appointment-payment-state';
+import { fetchAppointmentPaymentItems } from '@/lib/api/orders';
 import {
   CheckoutLineItem,
   CheckoutPaymentType,
@@ -54,12 +57,9 @@ export default function CheckoutScreen() {
   const [productSearchTerm, setProductSearchTerm] = React.useState('');
 
   const [paymentType, setPaymentType] = React.useState<CheckoutPaymentType>('bank_transfer');
-  const [amount, setAmount] = React.useState(() => initialAppointment
-    ? checkoutLineItems(initialAppointment).reduce((sum, item) => sum + item.price, 0).toFixed(2)
-    : '');
+  const [priorOrders, setPriorOrders] = React.useState<LinkedOrder[]>([]);
+  const [amountDraft, setAmountDraft] = React.useState<{ id: string; value: string } | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
-  const [success, setSuccess] = React.useState(false);
-  const [orderNumber, setOrderNumber] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!appointmentId) {
@@ -86,8 +86,6 @@ export default function CheckoutScreen() {
           `${appointment.client?.first_name ?? ''} ${appointment.client?.last_name ?? ''}`.trim() ||
             t('calendar.unknownClient')
         );
-        const total = items.reduce((sum, item) => sum + item.price, 0);
-        setAmount(total.toFixed(2));
         setError(null);
       })
       .catch((err) => {
@@ -98,6 +96,19 @@ export default function CheckoutScreen() {
       });
     return () => { active = false; };
   }, [appointmentId, initialAppointment, t]);
+
+  React.useEffect(() => {
+    if (!companyId || !appointmentId) return;
+    let active = true;
+    fetchAppointmentPaymentItems(companyId, [appointmentId])
+      .then(items => {
+        if (active) setPriorOrders(ordersForAppointment(items, appointmentId));
+      })
+      .catch(() => {
+        if (active) setPriorOrders([]);
+      });
+    return () => { active = false; };
+  }, [companyId, appointmentId]);
 
   React.useEffect(() => {
     if (!companyId) return;
@@ -132,7 +143,6 @@ export default function CheckoutScreen() {
           },
         ];
       });
-      setAmount((current) => (Math.max(0, Number(current) || 0) + price).toFixed(2));
       setShowProductPicker(false);
       setProductSearchTerm('');
     },
@@ -143,13 +153,11 @@ export default function CheckoutScreen() {
     const line = productLines[index];
     if (!line) return;
     const clamped = Math.max(0, nextQuantity);
-    const delta = (clamped - line.quantity) * line.price;
     if (clamped === 0) {
       setProductLines(productLines.filter((_, i) => i !== index));
     } else {
       setProductLines(productLines.map((item, i) => (i === index ? { ...item, quantity: clamped } : item)));
     }
-    setAmount((current) => Math.max(0, (Number(current) || 0) + delta).toFixed(2));
   };
 
   React.useEffect(() => {
@@ -181,12 +189,21 @@ export default function CheckoutScreen() {
   const total =
     lineItems.reduce((sum, item) => sum + item.price, 0) +
     productLines.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const amountValue = Number(amount);
+  const balance = checkoutBalance(total, priorOrders);
+  const alreadySettled = total > 0 && balance.remainder <= 0.001;
+  const amount = amountDraft?.id === appointmentId ? amountDraft.value : balance.remainder.toFixed(2);
+  const amountValue = Number(amount.replace(',', '.'));
   const canSubmit =
-    (lineItems.length > 0 || productLines.length > 0) && Number.isFinite(amountValue) && amountValue >= 0 && !submitting;
+    (lineItems.length > 0 || productLines.length > 0) && Number.isFinite(amountValue) && amountValue >= 0 && !submitting
+    && (alreadySettled || amountValue > 0);
 
   const handleComplete = async () => {
     if (!companyId || !appointmentId || !canSubmit) return;
+    if (alreadySettled && amountValue <= 0) {
+      publishPayments(companyId, { [appointmentId]: { status: 'paid', amountPaid: total, totalAmount: total } });
+      router.back();
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -200,9 +217,22 @@ export default function CheckoutScreen() {
         paymentType,
         amount: amountValue,
       });
-      setOrderNumber(result.order_number ?? null);
-      setSuccess(true);
+      if (result.amountPaid <= 0) {
+        setError(t('checkout.failedToComplete'));
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        return;
+      }
+      const collectedNow = Math.round((balance.collected + result.amountPaid) * 100) / 100;
+      const status = collectedNow + 0.001 >= total ? 'paid' : 'partial';
+      publishPayments(companyId, {
+        [appointmentId]: {
+          status,
+          amountPaid: status === 'paid' ? total : collectedNow,
+          totalAmount: total,
+        },
+      });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.back();
     } catch (err) {
       setError(err instanceof Error ? err.message : t('checkout.failedToComplete'));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -238,25 +268,7 @@ export default function CheckoutScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         {header}
-        <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color={theme.text} />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (success) {
-    return (
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
-        {header}
-        <View style={styles.successContainer}>
-          <AppIcon name="checkCircle" size={64} color={theme.tint} />
-          <Text style={styles.successTitle}>{t('checkout.success')}</Text>
-          {orderNumber ? <Text style={styles.successSubtitle}>{orderNumber}</Text> : null}
-          <Pressable style={styles.doneButton} onPress={() => router.back()}>
-            <Text style={styles.doneButtonText}>{t('checkout.done')}</Text>
-          </Pressable>
-        </View>
+        <DetailSkeleton />
       </SafeAreaView>
     );
   }
@@ -298,6 +310,18 @@ export default function CheckoutScreen() {
             <Text style={styles.totalLabel}>{t('checkout.total')}</Text>
             <Text style={styles.totalValue}>{`€${total.toFixed(2)}`}</Text>
           </View>
+          {balance.collected > 0 ? (
+            <>
+              <View style={styles.totalRow}>
+                <Text style={styles.lineItemName}>{t('checkout.paid')}</Text>
+                <Text style={styles.lineItemPrice}>{`€${balance.collected.toFixed(2)}`}</Text>
+              </View>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>{t('checkout.remaining')}</Text>
+                <Text style={styles.totalValue}>{`€${balance.remainder.toFixed(2)}`}</Text>
+              </View>
+            </>
+          ) : null}
         </View>
 
         <View style={styles.section}>
@@ -386,17 +410,20 @@ export default function CheckoutScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>{t('checkout.amount')}</Text>
-          <TextInput style={styles.input} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
+          <TextInput
+            style={styles.input}
+            value={amount}
+            onChangeText={(value) => {
+              if (appointmentId) setAmountDraft({ id: appointmentId, value });
+            }}
+            keyboardType="decimal-pad"
+          />
         </View>
       </ScrollView>
 
       <View style={styles.footer}>
         <Pressable style={[styles.completeButton, !canSubmit && styles.completeButtonDisabled]} onPress={handleComplete} disabled={!canSubmit}>
-          {submitting ? (
-            <ActivityIndicator size="small" color={theme.onTint} />
-          ) : (
-            <Text style={styles.completeButtonText}>{t('checkout.complete')}</Text>
-          )}
+          <Text style={styles.completeButtonText}>{alreadySettled && amountValue <= 0 ? t('checkout.done') : t('checkout.complete')}</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -619,34 +646,6 @@ const createStyles = (theme: typeof Colors.light) =>
     completeButtonText: {
       color: theme.onTint,
       fontSize: 16,
-      fontWeight: '700',
-    },
-    successContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 12,
-      padding: 24,
-    },
-    successTitle: {
-      fontSize: 18,
-      fontWeight: '700',
-      color: theme.text,
-    },
-    successSubtitle: {
-      fontSize: 14,
-      color: theme.muted,
-    },
-    doneButton: {
-      marginTop: 16,
-      backgroundColor: theme.tint,
-      borderRadius: 14,
-      paddingVertical: 12,
-      paddingHorizontal: 32,
-    },
-    doneButtonText: {
-      color: theme.onTint,
-      fontSize: 15,
       fontWeight: '700',
     },
   });

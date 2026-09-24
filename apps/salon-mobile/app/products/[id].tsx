@@ -4,10 +4,11 @@ import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Alert, DeviceEventEmitter, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, DeviceEventEmitter, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { FormSkeleton } from '@/components/content-skeletons';
 import { TaxonomyChipPicker } from '@/components/taxonomy-chip-picker';
 import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
@@ -168,9 +169,7 @@ export default function ProductDetailScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
         <Stack.Screen options={{ headerShown: true, title: t('products.edit') }} />
-        <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color={theme.text} />
-        </View>
+        <FormSkeleton />
       </SafeAreaView>
     );
   }
@@ -184,18 +183,10 @@ export default function ProductDetailScreen() {
           headerRight: () => (
             <View style={styles.headerActions}>
               <HeaderButton onPress={handleDelete} disabled={deleting} hitSlop={8}>
-                {deleting ? (
-                  <ActivityIndicator size="small" color={theme.error} />
-                ) : (
-                  <AppIcon name="delete" size={20} color={theme.error} />
-                )}
+                <AppIcon name="delete" size={20} color={theme.error} />
               </HeaderButton>
               <HeaderButton onPress={handleSave} disabled={!canSave} hitSlop={8} style={styles.headerTextButton}>
-                {saving ? (
-                  <ActivityIndicator size="small" color={theme.text} />
-                ) : (
-                  <Text style={[styles.saveText, !canSave && styles.saveTextDisabled]}>{t('client.save')}</Text>
-                )}
+                <Text style={[styles.saveText, !canSave && styles.saveTextDisabled]}>{t('client.save')}</Text>
               </HeaderButton>
             </View>
           ),

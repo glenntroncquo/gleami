@@ -10,7 +10,6 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import {
-  ActivityIndicator,
   StyleSheet,
   Text,
   TextInput,
@@ -19,6 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { FormSkeleton } from '@/components/content-skeletons';
 import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -141,11 +141,7 @@ export default function PriceOptionScreen() {
           ),
           headerRight: () => (
             <HeaderButton onPress={handleSave} disabled={!canSave} hitSlop={8} style={styles.headerTextButton}>
-              {saving ? (
-                <ActivityIndicator size="small" color={theme.tint} />
-              ) : (
-                <Text style={[styles.saveText, { color: canSave ? theme.tint : theme.muted }]}>{t('client.save')}</Text>
-              )}
+              <Text style={[styles.saveText, { color: canSave ? theme.tint : theme.muted }]}>{t('client.save')}</Text>
             </HeaderButton>
           ),
         }}
@@ -158,9 +154,7 @@ export default function PriceOptionScreen() {
       ) : null}
 
       {loading ? (
-        <View style={styles.loading}>
-          <ActivityIndicator size="large" color={theme.text} />
-        </View>
+        <FormSkeleton fields={4} />
       ) : (
         <View style={styles.flex}>
           <ScrollView

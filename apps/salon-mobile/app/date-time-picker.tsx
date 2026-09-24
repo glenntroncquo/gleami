@@ -52,6 +52,7 @@ export default function DateTimePickerScreen() {
           value={current}
           mode={mode}
           display="spinner"
+          minuteInterval={mode === 'time' ? 5 : undefined}
           onChange={(_, selected) => {
             if (!selected) return;
             setCurrent(selected);

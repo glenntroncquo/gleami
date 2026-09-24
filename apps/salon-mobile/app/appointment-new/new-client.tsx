@@ -5,10 +5,11 @@ import { Pressable } from '@/components/pressable-scale';
 import * as Haptics from 'expo-haptics';
 import { Stack, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, DeviceEventEmitter, StyleSheet, Text, TextInput, View } from 'react-native';
+import { DeviceEventEmitter, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { RowListSkeleton } from '@/components/content-skeletons';
 import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -125,7 +126,7 @@ export default function NewClientScreen() {
         </View>
 
         {duplicateStatus === 'checking' ? (
-          <ActivityIndicator style={styles.inlineSpinner} color={theme.muted} />
+          <RowListSkeleton count={1} avatar={false} style={{ paddingHorizontal: 0, paddingTop: 0 }} />
         ) : duplicateStatus === 'clear' ? (
           <View style={[styles.duplicateBanner, styles.duplicateBannerClear]}>
             <AppIcon name="checkCircle" size={18} color={theme.text} />

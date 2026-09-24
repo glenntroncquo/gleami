@@ -3,10 +3,11 @@ import { HeaderButton } from '@/components/header-button';
 import { Pressable } from '@/components/pressable-scale';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, DeviceEventEmitter, StyleSheet, Switch, Text, View } from 'react-native';
+import { DeviceEventEmitter, StyleSheet, Switch, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { RowListSkeleton } from '@/components/content-skeletons';
 import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
@@ -202,11 +203,7 @@ export default function StaffAvailabilityScreen() {
         title: t('staff.availability'),
         headerRight: () => (
           <HeaderButton onPress={handleSave} disabled={saving} hitSlop={8} style={styles.headerTextButton}>
-            {saving ? (
-              <ActivityIndicator size="small" color={theme.text} />
-            ) : (
-              <Text style={styles.saveText}>{t('client.save')}</Text>
-            )}
+            <Text style={styles.saveText}>{t('client.save')}</Text>
           </HeaderButton>
         ),
       }}
@@ -217,9 +214,7 @@ export default function StaffAvailabilityScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
         {screenOptions}
-        <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color={theme.text} />
-        </View>
+        <RowListSkeleton count={7} avatar={false} />
       </SafeAreaView>
     );
   }

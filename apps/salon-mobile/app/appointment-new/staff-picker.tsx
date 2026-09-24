@@ -5,10 +5,11 @@ import { StaffAvatar } from '@/components/staff-avatar';
 import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, DeviceEventEmitter, StyleSheet, Text } from 'react-native';
+import { DeviceEventEmitter, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { RowListSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
@@ -25,7 +26,7 @@ function clientDisplayName(first: string | null | undefined, last: string | null
 export default function StaffPickerScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { staffId: selectedStaffId } = useLocalSearchParams<{ staffId?: string }>();
+  const { staffId: selectedStaffId, next } = useLocalSearchParams<{ staffId?: string; next?: string }>();
   const { companyId } = useAuth();
   const { locationId } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
@@ -47,9 +48,13 @@ export default function StaffPickerScreen() {
     (id: string) => {
       Haptics.selectionAsync();
       DeviceEventEmitter.emit(APPOINTMENT_DRAFT_EVENTS.selectStaff, { staffId: id });
+      if (next === 'services') {
+        router.replace({ pathname: '/appointment-new/service-picker', params: { staffId: id } });
+        return;
+      }
       router.back();
     },
-    [router]
+    [next, router]
   );
 
   return (
@@ -61,7 +66,7 @@ export default function StaffPickerScreen() {
         }}
       />
       {loading ? (
-        <ActivityIndicator style={styles.loading} color={theme.muted} />
+        <RowListSkeleton count={6} />
       ) : staffList.length === 0 ? (
         <EmptyState compact icon="groups" title={t('staff.noStaff')} subtitle={t('staff.noStaffHint')} />
       ) : (
@@ -71,7 +76,7 @@ export default function StaffPickerScreen() {
             const isSelected = selectedStaffId === staff.id;
             return (
               <Pressable key={staff.id} style={styles.row} onPress={() => selectStaff(staff.id)}>
-                <StaffAvatar imagePath={null} name={name} size={40} />
+                <StaffAvatar imagePath={staff.image_path} name={name} size={40} />
                 <Text style={[styles.rowName, styles.flexFill]}>{name}</Text>
                 {isSelected ? <AppIcon name="check" size={18} color={theme.text} /> : null}
               </Pressable>

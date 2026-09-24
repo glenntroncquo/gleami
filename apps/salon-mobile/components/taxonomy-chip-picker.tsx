@@ -1,7 +1,7 @@
 import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
 import React from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Colors, Design } from '@/constants/theme';
 import type { ProductTaxonomyRow } from '@/lib/api/products';
@@ -92,7 +92,7 @@ export function TaxonomyChipPicker({
             onSubmitEditing={handleCreate}
           />
           <Pressable style={styles.addConfirm} onPress={handleCreate} disabled={saving || !draftName.trim()}>
-            {saving ? <ActivityIndicator size="small" color={theme.text} /> : <AppIcon name="check" size={18} color={theme.text} />}
+            <AppIcon name="check" size={18} color={theme.text} />
           </Pressable>
           <Pressable
             style={styles.addConfirm}

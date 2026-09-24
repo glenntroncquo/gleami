@@ -1,3 +1,4 @@
+import { useAppointmentPayments } from '@/hooks/use-appointment-payments';
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { AppIcon } from '@/components/app-icon';
 import { SwipeActionRow } from '@/components/swipeable-row';
@@ -45,6 +46,7 @@ export default function DayScreen() {
   const theme = Colors[colorScheme];
 
   const [events, setEvents] = React.useState<EventItem[]>([]);
+  const payments = useAppointmentPayments(companyId, events.map(event => event.appointmentId));
   const [staffImageById, setStaffImageById] = React.useState<Map<string, string | null>>(new Map());
   const [loading, setLoading] = React.useState(true);
 
@@ -163,13 +165,19 @@ export default function DayScreen() {
             <Text style={[styles.title, { color: theme.text }]}>{date ? getFullDateLabel(date) : ''}</Text>
             <Text style={[styles.subtitle, { color: theme.muted }]}>{t('calendar.weekLabel', { number: weekNumber })}</Text>
           </View>
-          {events.map((event) => (
+          {events.map((event) => {
+            const payment = payments[event.appointmentId];
+            const paid = payment?.status === 'paid';
+            const partial = payment?.status === 'partial';
+            return (
             <SwipeActionRow
               key={event.appointmentId}
+              actionDisabled={paid}
               actionLabel={t('checkout.title')}
               icon="pointOfSale"
               onPress={() => router.push({ pathname: '/appointment/[id]', params: { id: event.appointmentId } })}
               onAction={() => {
+                if (paid) return;
                 const appointment = appointmentsById.current.get(event.appointmentId);
                 if (appointment) prepareCheckout(appointment);
                 router.push({ pathname: '/checkout/[appointmentId]', params: { appointmentId: event.appointmentId } });
@@ -185,9 +193,18 @@ export default function DayScreen() {
                   {event.label}
                 </Text>
                 <Text style={[styles.eventSubtitle, { color: theme.muted }]}>
-                  {event.clientName} · {event.staffName}
+                  {event.clientName}
                 </Text>
               </View>
+              {paid ? (
+                <View accessibilityLabel={t('order.status.paid')} style={[styles.paymentBadge, { backgroundColor: theme.successSurface }]}>
+                  <Text style={[styles.paymentBadgeAmount, { color: theme.success }]}>{t('order.status.paid')}</Text>
+                </View>
+              ) : partial ? (
+                <View accessibilityLabel={`€${(payment.amountPaid ?? 0).toFixed(2)}`} style={[styles.paymentBadge, { backgroundColor: theme.warningSurface }]}>
+                  <Text style={[styles.paymentBadgeAmount, { color: theme.warning }]}>{`€${(payment.amountPaid ?? 0).toFixed(2)}`}</Text>
+                </View>
+              ) : null}
               <StaffAvatar
                 imagePath={staffImageById.get(event.staffId ?? '')}
                 name={event.staffName}
@@ -198,7 +215,8 @@ export default function DayScreen() {
 
             </View>
             </SwipeActionRow>
-          ))}
+            );
+          })}
         </ScrollView>
       )}
     </SafeAreaView>
@@ -269,6 +287,16 @@ const styles = StyleSheet.create({
   eventSubtitle: {
     marginTop: 2,
     fontSize: 13,
+  },
+  paymentBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    alignItems: 'flex-end',
+  },
+  paymentBadgeAmount: {
+    fontSize: 11,
+    fontWeight: '600',
   },
 
 });

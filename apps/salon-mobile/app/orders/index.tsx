@@ -1,10 +1,11 @@
 import { Pressable } from '@/components/pressable-scale';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { RowListSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
 import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
@@ -87,9 +88,7 @@ export default function OrdersListScreen() {
       ) : null}
 
       {loading || locationLoading ? (
-        <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color={theme.text} />
-        </View>
+        <RowListSkeleton />
       ) : showNoCompanyState ? (
         <EmptyState icon="pointOfSale" title={t('calendar.noCompany')} />
       ) : showNoLocationState ? (

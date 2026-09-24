@@ -4,10 +4,11 @@ import { Pressable } from '@/components/pressable-scale';
 import { StaffAvatar } from '@/components/staff-avatar';
 import { Stack, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, DeviceEventEmitter, StyleSheet, Text, TextInput, View } from 'react-native';
+import { DeviceEventEmitter, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { RowListSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
@@ -112,7 +113,7 @@ export default function ClientPickerScreen() {
 
         {searchTerm.trim().length >= 2 ? (
           searching ? (
-            <ActivityIndicator style={styles.inlineSpinner} color={theme.muted} />
+            <RowListSkeleton count={4} style={{ paddingHorizontal: 0 }} />
           ) : results.length === 0 ? (
             <EmptyState compact icon="search" title={t('appointment.noResults')} subtitle={t('appointment.noResultsHint')} />
           ) : (
@@ -132,7 +133,7 @@ export default function ClientPickerScreen() {
           <View>
             <Text style={styles.listLabel}>{t('appointment.recentClients')}</Text>
             {recentClientsLoading ? (
-              <ActivityIndicator style={styles.inlineSpinner} color={theme.muted} />
+              <RowListSkeleton count={5} style={{ paddingHorizontal: 0 }} />
             ) : recentClients.length === 0 ? (
               <EmptyState compact icon="peopleOutline" title={t('appointment.noResults')} subtitle={t('appointment.noResultsHint')} />
             ) : (

@@ -5,10 +5,11 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { AccountDeletionButton } from '@/components/account-deletion-button';
+import { SkeletonBlock } from '@/components/skeleton-block';
 import { LegalLinkRows, useLegalUrls } from '@/components/legal-link-rows';
 import { TabScreen } from '@/components/tab-screen';
 import { ThemedText } from '@/components/themed-text';
@@ -118,9 +119,7 @@ export default function MoreScreen() {
           onPress={handleChangePhoto}
           style={styles.avatarButton}>
         {profileLoading ? (
-          <View style={styles.avatar}>
-            <ActivityIndicator color={theme.muted} />
-          </View>
+          <SkeletonBlock style={[styles.avatar, { backgroundColor: theme.border }]} />
         ) : avatarUrl ? (
           <Image source={{ uri: avatarUrl }} style={styles.avatar} contentFit="cover" />
         ) : (
@@ -130,7 +129,7 @@ export default function MoreScreen() {
         )}
         {profile && !profileLoading ? (
           <View style={styles.avatarEditBadge}>
-            {uploadingPhoto ? <ActivityIndicator size="small" color={theme.onTint} /> : <AppIcon name="camera" size={14} color={theme.onTint} />}
+            <AppIcon name="camera" size={14} color={theme.onTint} />
           </View>
         ) : null}
         </Pressable>

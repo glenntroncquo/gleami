@@ -5,10 +5,11 @@ import { HeaderButton } from '@/components/header-button';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import React from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { FormSkeleton } from '@/components/content-skeletons';
 import { StaffAvatar } from '@/components/staff-avatar';
 import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
@@ -130,11 +131,7 @@ export default function StaffDetailScreen() {
         title: name || t('staff.title'),
         headerRight: () => (
           <HeaderButton onPress={handleSave} disabled={saving || !email.trim()} hitSlop={8} style={styles.headerTextButton}>
-            {saving ? (
-              <ActivityIndicator size="small" color={theme.text} />
-            ) : (
-              <Text style={[styles.saveText, !email.trim() && styles.saveTextDisabled]}>{t('client.save')}</Text>
-            )}
+            <Text style={[styles.saveText, !email.trim() && styles.saveTextDisabled]}>{t('client.save')}</Text>
           </HeaderButton>
         ),
       }}
@@ -145,9 +142,7 @@ export default function StaffDetailScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
         {screenOptions}
-        <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color={theme.text} />
-        </View>
+        <FormSkeleton />
       </SafeAreaView>
     );
   }
@@ -167,11 +162,7 @@ export default function StaffDetailScreen() {
           <Pressable accessibilityRole="button" accessibilityLabel={t('staff.changePhoto')} style={styles.avatarPressable} onPress={handleChangePhoto} disabled={uploadingPhoto}>
             <StaffAvatar imagePath={staff?.image_path} name={name} size={72} fontSize={24} />
             <View style={styles.avatarEditBadge}>
-              {uploadingPhoto ? (
-                <ActivityIndicator size="small" color={theme.background} />
-              ) : (
-                <AppIcon name="camera" size={14} color={theme.background} />
-              )}
+              <AppIcon name="camera" size={14} color={theme.background} />
             </View>
           </Pressable>
           <Pressable onPress={handleChangePhoto} disabled={uploadingPhoto} hitSlop={8}>

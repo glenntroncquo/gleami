@@ -5,10 +5,11 @@ import { HeaderButton } from '@/components/header-button';
 import { SwipeableRow } from '@/components/swipeable-row';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { FormSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
 import { Colors, Design } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -130,11 +131,7 @@ export default function TreatmentDetailScreen() {
         title: service?.name || t('service.title'),
         headerRight: () => (
           <HeaderButton onPress={handleSave} disabled={saving || !name.trim()} hitSlop={8} style={styles.headerTextButton}>
-            {saving ? (
-              <ActivityIndicator size="small" color={theme.text} />
-            ) : (
-              <Text style={[styles.saveText, !name.trim() && styles.saveTextDisabled]}>{t('client.save')}</Text>
-            )}
+            <Text style={[styles.saveText, !name.trim() && styles.saveTextDisabled]}>{t('client.save')}</Text>
           </HeaderButton>
         ),
       }}
@@ -145,9 +142,7 @@ export default function TreatmentDetailScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
         {screenOptions}
-        <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color={theme.text} />
-        </View>
+        <FormSkeleton />
       </SafeAreaView>
     );
   }

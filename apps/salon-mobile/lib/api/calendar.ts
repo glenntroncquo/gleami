@@ -1,3 +1,4 @@
+import { compareAppointmentHistory } from '@/lib/appointment-history';
 import { isAppointmentCanceled } from '@/lib/api/appointment-status';
 import { parsePhaseType, type PhaseType } from '@/lib/api/services';
 import { supabase } from '@/lib/supabase';
@@ -183,7 +184,7 @@ export async function fetchStaff(companyId: string, locationId?: string): Promis
   return data ?? [];
 }
 
-/** Appointment history for a single client, newest first (for the client detail screen). */
+/** Shared history for client and appointment details: dates descending, times ascending. */
 export async function fetchClientAppointments(
   clientId: string,
   companyId: string,
@@ -200,7 +201,7 @@ export async function fetchClientAppointments(
     .order('start', { ascending: false });
 
   if (error) throw error;
-  return excludeCanceled(sortSegments((data as unknown as AppointmentRow[]) ?? []));
+  return excludeCanceled(sortSegments((data as unknown as AppointmentRow[]) ?? [])).sort(compareAppointmentHistory);
 }
 
 /**

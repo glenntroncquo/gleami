@@ -4,7 +4,7 @@ import { HeaderButton } from '@/components/header-button';
 import { Pressable } from '@/components/pressable-scale';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, DeviceEventEmitter, StyleSheet, Text, View } from 'react-native';
+import { DeviceEventEmitter, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -121,11 +121,7 @@ export default function StaffTimeOffNewScreen() {
           ),
           headerRight: () => (
             <HeaderButton onPress={handleSave} disabled={saving} hitSlop={8} style={styles.headerTextButton}>
-              {saving ? (
-                <ActivityIndicator size="small" color={theme.tint} />
-              ) : (
-                <Text style={[styles.saveText, { color: theme.tint }]}>{t('client.save')}</Text>
-              )}
+              <Text style={[styles.saveText, { color: theme.tint }]}>{t('client.save')}</Text>
             </HeaderButton>
           ),
         }}

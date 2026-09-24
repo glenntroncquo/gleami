@@ -6,10 +6,11 @@ import { StaffAvatar } from '@/components/staff-avatar';
 import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, DeviceEventEmitter, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
+import { DeviceEventEmitter, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { RowListSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
 import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
@@ -18,7 +19,6 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { createAppointment } from '@/lib/api/appointment-create';
 import { fetchStaff, StaffMember } from '@/lib/api/calendar';
 import { ClientSearchResult } from '@/lib/api/clients';
-import { fetchServices, ServiceWithVariants } from '@/lib/api/services';
 import { COLOR_MAP, mapTreatmentColorToEventColor } from '@/lib/treatment-colors';
 
 import { getMonthShortLabel } from '@/components/calendar/date-utils';
@@ -72,8 +72,6 @@ export default function NewAppointmentScreen() {
   const [staffList, setStaffList] = React.useState<StaffMember[]>([]);
   const [staffLoading, setStaffLoading] = React.useState(true);
   const [staffId, setStaffId] = React.useState<string | null>(params.staffId ?? null);
-
-  const [servicesList, setServicesList] = React.useState<ServiceWithVariants[]>([]);
   const [cart, setCart] = React.useState<CartItem[]>([]);
 
   const [selectedClient, setSelectedClient] = React.useState<ClientSearchResult | null>(null);
@@ -82,6 +80,7 @@ export default function NewAppointmentScreen() {
   const [startDate, setStartDate] = React.useState<Date>(() => defaultStartDate(params.date, params.time));
 
   const [notes, setNotes] = React.useState('');
+  const [notesOpen, setNotesOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
@@ -89,13 +88,12 @@ export default function NewAppointmentScreen() {
     if (!companyId || !locationId) return;
     setStaffLoading(true);
     fetchStaff(companyId, locationId)
-      .then(setStaffList)
+      .then((staff) => {
+        setStaffList(staff);
+        setStaffId((current) => current ?? (staff.length === 1 ? staff[0].id : null));
+      })
       .catch(() => setStaffList([]))
       .finally(() => setStaffLoading(false));
-
-    fetchServices(companyId, locationId)
-      .then(setServicesList)
-      .catch(() => setServicesList([]));
   }, [companyId, locationId]);
 
   React.useEffect(() => {
@@ -114,6 +112,16 @@ export default function NewAppointmentScreen() {
     const serviceSub = DeviceEventEmitter.addListener(APPOINTMENT_DRAFT_EVENTS.addService, (item: CartItem) => {
       setCart((prev) => [...prev, item]);
     });
+    const removeServiceSub = DeviceEventEmitter.addListener(
+      APPOINTMENT_DRAFT_EVENTS.removeService,
+      ({ serviceVariantId }: { serviceVariantId: string }) => {
+        setCart((prev) => {
+          const index = prev.findLastIndex((item) => item.serviceVariantId === serviceVariantId);
+          if (index < 0) return prev;
+          return prev.filter((_, i) => i !== index);
+        });
+      }
+    );
     const dateTimeSub = DeviceEventEmitter.addListener(
       APPOINTMENT_DRAFT_EVENTS.setDateTime,
       ({ field, value }: { field: 'date' | 'time'; value: string }) => {
@@ -132,6 +140,7 @@ export default function NewAppointmentScreen() {
       newClientSub.remove();
       staffSub.remove();
       serviceSub.remove();
+      removeServiceSub.remove();
       dateTimeSub.remove();
     };
   }, []);
@@ -156,6 +165,37 @@ export default function NewAppointmentScreen() {
   const canSave = cart.length > 0 && Boolean(staffId) && emailValue.length > 0 && hasClientIdentity && !submitting;
 
   const selectedStaff = staffList.find((s) => s.id === staffId) ?? null;
+  const staffName = selectedStaff
+    ? clientDisplayName(selectedStaff.first_name, selectedStaff.last_name, t('calendar.employee'))
+    : '';
+  const weekdays = t('calendar.weekdaysShort', { returnObjects: true }) as string[];
+  const dateLabel = `${weekdays[startDate.getDay()]} ${startDate.getDate()} ${getMonthShortLabel(startDate.getMonth())}${
+    startDate.getFullYear() === new Date().getFullYear() ? '' : ` ${startDate.getFullYear()}`
+  }`;
+  const totalPrice = cart.reduce((sum, item) => sum + item.price, 0);
+
+  const openServices = () => {
+    if (!staffId) {
+      router.push({ pathname: '/appointment-new/staff-picker', params: { next: 'services' } });
+      return;
+    }
+    router.push({
+      pathname: '/appointment-new/service-picker',
+      params: { staffId, selected: cart.map((item) => item.serviceVariantId).join(',') },
+    });
+  };
+
+  const openDate = () =>
+    router.push({
+      pathname: '/date-time-picker',
+      params: { mode: 'date', value: startDate.toISOString(), event: APPOINTMENT_DRAFT_EVENTS.setDateTime, field: 'date', title: t('appointment.dateAndTime') },
+    });
+
+  const openTime = () =>
+    router.push({
+      pathname: '/date-time-picker',
+      params: { mode: 'time', value: startDate.toISOString(), event: APPOINTMENT_DRAFT_EVENTS.setDateTime, field: 'time', title: formatTimeForInput(startDate) },
+    });
 
   const handleSave = React.useCallback(async () => {
     if (!companyId || !locationId || cart.length === 0 || !emailValue || !hasClientIdentity || !staffId) {
@@ -316,12 +356,19 @@ export default function NewAppointmentScreen() {
             },
           ],
           headerRight: () => (
-            <HeaderButton onPress={handleSave} disabled={!canSave} hitSlop={8} style={styles.headerTextButton}>
-              {submitting ? (
-                <ActivityIndicator size="small" color={theme.tint} />
-              ) : (
-                <Text style={[styles.headerSaveText, { color: canSave ? theme.tint : theme.muted }]}>{t('appointment.save')}</Text>
-              )}
+            <HeaderButton
+              onPress={() => {
+                if (!canSave) {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                  setErrorMessage(t('appointment.validationMissingFields'));
+                  return;
+                }
+                handleSave();
+              }}
+              disabled={submitting}
+              hitSlop={8}
+              style={styles.headerTextButton}>
+              <Text style={[styles.headerSaveText, { color: canSave ? theme.tint : theme.muted }]}>{t('appointment.save')}</Text>
             </HeaderButton>
           ),
         }}
@@ -334,86 +381,47 @@ export default function NewAppointmentScreen() {
       ) : null}
 
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        {/* Client */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <AppIcon name="person" size={18} color={theme.muted} />
-            <Text style={styles.sectionHeaderText}>{t('appointment.client')}</Text>
-          </View>
-          {selectedClient || newClientDraft ? (
-            <View style={styles.selectedCard}>
-              <StaffAvatar
-                imagePath={null}
-                name={
-                  selectedClient
-                    ? clientDisplayName(selectedClient.first_name, selectedClient.last_name, selectedClient.email)
-                    : clientDisplayName(newClientDraft?.firstName, newClientDraft?.lastName, newClientDraft?.email ?? '')
-                }
-                size={40}
-              />
-              <View style={styles.flexFill}>
-                <Text style={styles.clientRowName}>
-                  {selectedClient
-                    ? clientDisplayName(selectedClient.first_name, selectedClient.last_name, selectedClient.email)
-                    : clientDisplayName(newClientDraft?.firstName, newClientDraft?.lastName, newClientDraft?.email ?? '')}
-                </Text>
-                <Text style={styles.clientRowMeta}>{selectedClient ? selectedClient.email : newClientDraft?.email}</Text>
-              </View>
-              <Pressable onPress={handleClearClient} hitSlop={8}>
-                <AppIcon name="close" size={18} color={theme.muted} />
-              </Pressable>
+        <View style={styles.slotCard}>
+          {Platform.OS === 'web' ? (
+            <View style={styles.dateTimeRow}>
+              {renderDatePill()}
+              {renderTimePill()}
             </View>
           ) : (
-            <Pressable style={styles.searchInputRow} onPress={() => router.push('/appointment-new/client-picker')}>
-              <AppIcon name="search" size={18} color={theme.muted} />
-              <Text style={styles.searchInputPlaceholder}>{t('appointment.searchClientPlaceholder')}</Text>
-              <Pressable hitSlop={8} onPress={() => router.push('/appointment-new/new-client')}>
-                <AppIcon name="personAdd" size={20} color={theme.muted} />
+            <View style={styles.slotWhen}>
+              <Pressable onPress={openDate} hitSlop={8}>
+                <Text style={styles.slotDate}>{dateLabel}</Text>
               </Pressable>
-            </Pressable>
+              <Pressable onPress={openTime} hitSlop={8}>
+                <Text style={styles.slotTime}>{formatTimeForInput(startDate)}</Text>
+              </Pressable>
+            </View>
           )}
-        </View>
-
-        {/* Staff */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <AppIcon name="groups" size={18} color={theme.muted} />
-            <Text style={styles.sectionHeaderText}>{t('appointment.staffMember')}</Text>
-          </View>
           {staffLoading ? (
-            <ActivityIndicator color={theme.muted} />
+            <RowListSkeleton count={1} style={{ paddingHorizontal: 0, paddingTop: 0 }} />
           ) : staffList.length === 0 ? (
             <EmptyState compact icon="groups" title={t('staff.noStaff')} subtitle={t('staff.noStaffHint')} />
-          ) : selectedStaff ? (
-            <Pressable
-              style={styles.selectedCard}
-              onPress={() => router.push({ pathname: '/appointment-new/staff-picker', params: { staffId: selectedStaff.id } })}>
-              <StaffAvatar imagePath={null} name={clientDisplayName(selectedStaff.first_name, selectedStaff.last_name, t('calendar.employee'))} size={40} />
-              <Text style={[styles.clientRowName, styles.flexFill]}>
-                {clientDisplayName(selectedStaff.first_name, selectedStaff.last_name, t('calendar.employee'))}
-              </Text>
-              <AppIcon name="chevronRight" size={18} color={theme.muted} />
-            </Pressable>
           ) : (
-            <Pressable style={styles.searchInputRow} onPress={() => router.push('/appointment-new/staff-picker')}>
-              <AppIcon name="groups" size={18} color={theme.muted} />
-              <Text style={[styles.searchInputPlaceholder, styles.flexFill]}>{t('appointment.defaultStaff')}</Text>
+            <Pressable
+              style={styles.staffRow}
+              onPress={() => router.push({ pathname: '/appointment-new/staff-picker', params: staffId ? { staffId } : {} })}>
+              <StaffAvatar imagePath={selectedStaff?.image_path} name={staffName || t('appointment.staffMember')} size={36} fontSize={13} />
+              <Text style={[styles.clientRowName, styles.flexFill]}>{staffName || t('appointment.selectStaffFirstHint')}</Text>
               <AppIcon name="chevronRight" size={18} color={theme.muted} />
             </Pressable>
           )}
+          {totalMinutes > 0 ? (
+            <Text style={styles.endsHint}>{`${formatTimeForInput(startDate)}–${formatTimeForInput(endDate)} · ${totalMinutes} ${t('appointment.minutesShort')}`}</Text>
+          ) : null}
         </View>
 
-        {/* Services */}
         <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <AppIcon name="cut" size={18} color={theme.muted} />
-            <Text style={styles.sectionHeaderText}>{t('appointment.services')}</Text>
-          </View>
+          <Text style={styles.sectionLabel}>{t('appointment.services')}</Text>
           {cart.map((item, index) => (
-            <View key={`${item.serviceId}-${item.serviceVariantId}-${index}`} style={styles.cartRow}>
+            <View key={`${item.serviceId}-${item.serviceVariantId}-${index}`} style={styles.staffRow}>
               <View style={[styles.serviceSwatch, { backgroundColor: COLOR_MAP[mapTreatmentColorToEventColor(item.color, item.serviceName)] }]} />
               <View style={styles.flexFill}>
-                <Text style={styles.serviceRowTitle}>{item.serviceName}</Text>
+                <Text style={styles.clientRowName}>{item.serviceName}</Text>
                 <Text style={styles.clientRowMeta}>
                   {`${item.variantName} · ${item.durationMinutes} ${t('appointment.minutesShort')} · €${item.price}`}
                 </Text>
@@ -423,50 +431,72 @@ export default function NewAppointmentScreen() {
               </Pressable>
             </View>
           ))}
-          <Pressable
-            style={[styles.addTile, !staffId && styles.addTileDisabled]}
-            disabled={!staffId}
-            onPress={() => staffId && router.push({ pathname: '/appointment-new/service-picker', params: { staffId } })}>
-            <AppIcon name="add" size={16} color={theme.text} />
-            <Text style={styles.addTileText}>{t('appointment.addService')}</Text>
+          <Pressable style={styles.noteAction} onPress={openServices}>
+            <AppIcon name="add" size={16} color={theme.muted} />
+            <Text style={styles.noteActionText}>{t('appointment.addService')}</Text>
           </Pressable>
-          {!staffId ? (
-            <Text style={styles.emptyHintText}>{t('appointment.selectStaffFirstHint')}</Text>
-          ) : cart.length === 0 ? (
-            <Text style={styles.emptyHintText}>{t('appointment.noServicesAddedHint')}</Text>
+          {cart.length > 0 ? (
+            <Text style={styles.endsHint}>{`${totalMinutes} ${t('appointment.minutesShort')} · €${totalPrice}`}</Text>
           ) : null}
         </View>
 
-        {/* Date & time */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <AppIcon name="calendar" size={18} color={theme.muted} />
-            <Text style={styles.sectionHeaderText}>{t('appointment.dateAndTime')}</Text>
+        {selectedClient || newClientDraft ? (
+          <View style={styles.staffRow}>
+            <Pressable style={styles.searchMain} onPress={() => router.push('/appointment-new/client-picker')}>
+              <StaffAvatar
+                imagePath={null}
+                name={
+                  selectedClient
+                    ? clientDisplayName(selectedClient.first_name, selectedClient.last_name, selectedClient.email)
+                    : clientDisplayName(newClientDraft?.firstName, newClientDraft?.lastName, newClientDraft?.email ?? '')
+                }
+                size={36}
+                fontSize={13}
+              />
+              <View style={styles.flexFill}>
+                <Text style={styles.clientRowName}>
+                  {selectedClient
+                    ? clientDisplayName(selectedClient.first_name, selectedClient.last_name, selectedClient.email)
+                    : clientDisplayName(newClientDraft?.firstName, newClientDraft?.lastName, newClientDraft?.email ?? '')}
+                </Text>
+                <Text style={styles.clientRowMeta}>{selectedClient ? selectedClient.email : newClientDraft?.email}</Text>
+              </View>
+            </Pressable>
+            <Pressable onPress={handleClearClient} hitSlop={8}>
+              <AppIcon name="close" size={18} color={theme.muted} />
+            </Pressable>
           </View>
-          <View style={styles.dateTimeRow}>
-            {renderDatePill()}
-            {renderTimePill()}
-          </View>
-          <Text style={styles.endsHint}>{`${t('appointment.ends')}: ${formatTimeForInput(endDate)}  ·  ${t('appointment.endsComputedHint')}`}</Text>
-        </View>
+        ) : (
+          <Pressable style={styles.staffRow} onPress={() => router.push('/appointment-new/client-picker')}>
+            <View style={styles.clientMark}>
+              <AppIcon name="person" size={18} color={theme.muted} />
+            </View>
+            <Text style={[styles.clientRowName, styles.flexFill, styles.placeholderName]}>{t('appointment.chooseClient')}</Text>
+            <AppIcon name="chevronRight" size={18} color={theme.muted} />
+          </Pressable>
+        )}
 
-        {/* Notes */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <AppIcon name="note" size={18} color={theme.muted} />
-            <Text style={styles.sectionHeaderText}>{t('appointment.notes')}</Text>
+        {notesOpen || notes.length > 0 ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>{t('appointment.notes')}</Text>
+            <TextInput
+              style={[styles.fieldInput, styles.notesInput]}
+              placeholder={t('appointment.notesPlaceholder')}
+              placeholderTextColor={theme.muted}
+              value={notes}
+              onChangeText={(text) => setNotes(text.slice(0, 500))}
+              maxLength={500}
+              multiline
+              autoFocus={notesOpen && notes.length === 0}
+            />
+            <Text style={styles.notesCounter}>{`${notes.length}/500`}</Text>
           </View>
-          <TextInput
-            style={[styles.fieldInput, styles.notesInput]}
-            placeholder={t('appointment.notesPlaceholder')}
-            placeholderTextColor={theme.muted}
-            value={notes}
-            onChangeText={(text) => setNotes(text.slice(0, 500))}
-            maxLength={500}
-            multiline
-          />
-          <Text style={styles.notesCounter}>{`${notes.length}/500`}</Text>
-        </View>
+        ) : (
+          <Pressable style={styles.noteAction} onPress={() => setNotesOpen(true)}>
+            <AppIcon name="add" size={16} color={theme.muted} />
+            <Text style={styles.noteActionText}>{t('appointment.addNoteAction')}</Text>
+          </Pressable>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -509,6 +539,68 @@ function createStyles(theme: typeof Colors.light) {
     },
     section: {
       gap: 10,
+    },
+    sectionLabel: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: theme.muted,
+      textTransform: 'uppercase',
+    },
+    slotCard: {
+      gap: 12,
+      paddingBottom: 4,
+    },
+    slotWhen: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'space-between',
+    },
+    slotDate: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    slotTime: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: theme.text,
+      fontVariant: ['tabular-nums'],
+    },
+    staffRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    clientMark: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.surface,
+    },
+    placeholderName: {
+      color: theme.muted,
+      fontWeight: '600',
+    },
+    searchMain: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    noteAction: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      alignSelf: 'stretch',
+      minHeight: Design.touchTarget,
+    },
+    noteActionText: {
+      flex: 1,
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.muted,
     },
     sectionHeaderRow: {
       flexDirection: 'row',

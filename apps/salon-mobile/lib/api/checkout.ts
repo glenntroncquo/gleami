@@ -84,7 +84,25 @@ export type CreateOrderPayload = {
   amount: number;
 };
 
-export async function createOrderWithPayment(payload: CreateOrderPayload): Promise<{ order_number?: string }> {
+export type CreatedCheckout = { order_number?: string; amountPaid: number };
+
+function settledPaymentAmount(payment: { status?: string; payment_status?: string; amount?: number; amount_gross?: number }): number {
+  const status = String(payment.status ?? '').toLowerCase();
+  const paymentStatus = String(payment.payment_status ?? '').toLowerCase();
+  const succeeded = status === 'succeeded' || status === 'success' || status === 'completed';
+  const paid = paymentStatus === 'paid' || paymentStatus === 'completed' || paymentStatus === 'succeeded' || paymentStatus === 'partially_paid';
+  if (!succeeded || !paid) return 0;
+  return Number(payment.amount ?? payment.amount_gross ?? 0);
+}
+
+function responsePayments(data: unknown): Array<{ status?: string; payment_status?: string; amount?: number; amount_gross?: number }> {
+  if (!data || typeof data !== 'object') return [];
+  const body = data as { payments?: unknown; data?: { payments?: unknown } };
+  const payments = body.data?.payments ?? body.payments;
+  return Array.isArray(payments) ? payments : [];
+}
+
+export async function createOrderWithPayment(payload: CreateOrderPayload): Promise<CreatedCheckout> {
   const { data, error } = await supabase.functions.invoke('order-create', {
     body: {
       company_id: payload.companyId,
@@ -132,5 +150,6 @@ export async function createOrderWithPayment(payload: CreateOrderPayload): Promi
     data?.data?.order_number ??
     data?.data?.order_id ??
     data?.order_id;
-  return { order_number: orderNumber };
+  const amountPaid = responsePayments(data).reduce((sum, payment) => sum + settledPaymentAmount(payment), 0);
+  return { order_number: orderNumber, amountPaid: Math.round(amountPaid * 100) / 100 };
 }

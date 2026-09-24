@@ -25,21 +25,26 @@ begin
 end
 $$;
 
-create extension if not exists pg_net;
-
+-- pg_net and pg_cron are already installed on SalonFlow. Do not CREATE EXTENSION:
+-- that requires superuser even with IF NOT EXISTS, and it would try to create
+-- objects in the Supabase-managed net and cron schemas. Enable a missing
+-- extension in the dashboard (pg_cron must use schema cron), then re-apply.
 do $$
 begin
-  if exists (select 1 from pg_extension where extname = 'pg_cron') then
-    return;
+  if not exists (select 1 from pg_extension where extname = 'pg_net') then
+    raise exception
+      'pg_net is not installed. Enable it in Database → Extensions, then re-apply this migration.';
   end if;
 
-  begin
-    create extension pg_cron with schema cron;
-  exception when others then
+  if not exists (select 1 from pg_extension where extname = 'pg_cron') then
     raise exception
-      'Enable pg_cron in the Supabase dashboard (Database → Extensions, schema cron), then re-apply this migration. %',
-      sqlerrm;
-  end;
+      'pg_cron is not installed. Enable it in Database → Extensions with schema cron, then re-apply this migration.';
+  end if;
+
+  if to_regnamespace('net') is null or to_regnamespace('cron') is null then
+    raise exception
+      'pg_net must expose schema net and pg_cron must expose schema cron.';
+  end if;
 end
 $$;
 

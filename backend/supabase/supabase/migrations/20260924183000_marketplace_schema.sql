@@ -544,7 +544,10 @@ insert into storage.buckets (
   array['image/jpeg', 'image/png', 'image/webp', 'image/avif']::text[]
 );
 
-alter table storage.objects enable row level security;
+-- storage.objects already has row level security enabled on Supabase.
+-- The table is owned by supabase_storage_admin. The migration role (postgres)
+-- is not a member of that role, so `alter table storage.objects` fails here.
+-- Do not try to enable RLS again. The policies below are created as postgres.
 
 create policy "marketplace objects select (public)"
   on storage.objects

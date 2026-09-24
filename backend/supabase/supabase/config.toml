@@ -312,3 +312,15 @@ verify_jwt = false
 
 [functions.payment-webhook]
 verify_jwt = false
+
+# Public marketplace reads still verify the anon (or user) JWT. The gateway
+# accepts the anon key. These three are called by database webhooks and
+# pg_cron with MARKETPLACE_WEBHOOK_SECRET, which is not a Supabase JWT.
+[functions.marketplace-sync]
+verify_jwt = false
+
+[functions.marketplace-refresh-like-counts]
+verify_jwt = false
+
+[functions.marketplace-drift-check]
+verify_jwt = false

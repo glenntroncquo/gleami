@@ -1,7 +1,7 @@
 /**
- * Marketplace edge-function contract. Another PR owns the backend.
- * Field names here match that contract; do not rename them to the
- * underlying Postgres columns.
+ * Marketplace edge-function contract.
+ * Field names match that contract; do not rename them to Postgres columns.
+ * Search items include `images`: up to five public URLs, cover first.
  */
 
 export type BBox = {
@@ -37,7 +37,8 @@ export type SearchItem = {
   companyId: string;
   name: string;
   slug: string;
-  imageUrl: string;
+  imageUrl: string | null;
+  images: string[];
   city: string;
   address: string;
   lat: number;
@@ -146,7 +147,8 @@ export type MarketplaceCategoryRow = {
 /**
  * Client view of a liked salon. There is no favorites edge function.
  * Live mode hydrates this from marketplace_location_like plus a public
- * read of marketplace_search_location. See the PR notes.
+ * read of marketplace_search_location, plus up to five IMAGE rows from
+ * marketplace_media (cover first). See the PR notes.
  */
 export type FavoriteSalon = {
   locationId: string;
@@ -154,6 +156,7 @@ export type FavoriteSalon = {
   name: string;
   slug: string;
   imageUrl: string | null;
+  images: string[];
   city: string;
   likeCount: number;
 };

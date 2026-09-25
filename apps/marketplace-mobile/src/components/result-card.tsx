@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import { galleryFromItem } from '@/src/api/gallery';
 import type { AvailabilityBucket, SearchItem } from '@/src/api/types';
 import { useAuth } from '@/src/auth/auth-context';
 import { AvailabilityBadge } from '@/src/components/availability-badge';
@@ -24,6 +25,7 @@ export function ResultCard({ item, availability, availabilityLoading }: ResultCa
   const liked = likes.likedIds.has(item.locationId);
   const treatment = item.treatments[0]?.name;
   const place = cityLine(item.city, item.distanceKm);
+  const images = galleryFromItem(item.images, item.imageUrl);
 
   const open = () => {
     router.push({ pathname: '/salon/[slug]', params: { slug: item.slug } });
@@ -40,10 +42,10 @@ export function ResultCard({ item, availability, availabilityLoading }: ResultCa
 
   return (
     <View className="mb-8">
+      <View className="overflow-hidden rounded-card bg-surface">
+        <MediaCarousel images={images} label={item.name} onPress={open} />
+      </View>
       <Pressable onPress={open} accessibilityRole="button" accessibilityLabel={item.name}>
-        <View className="overflow-hidden rounded-card bg-surface">
-          <MediaCarousel images={item.imageUrl ? [item.imageUrl] : []} label={item.name} />
-        </View>
         <View className="mt-3 flex-row items-start justify-between">
           <View className="flex-1 pr-3">
             <Text className="text-base font-semibold text-ink">{item.name}</Text>

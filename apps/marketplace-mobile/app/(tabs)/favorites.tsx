@@ -5,6 +5,7 @@ import React from 'react';
 import { FlatList, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { galleryFromItem } from '@/src/api/gallery';
 import type { FavoriteSalon } from '@/src/api/types';
 import { useAuth } from '@/src/auth/auth-context';
 import { ExampleBanner } from '@/src/components/example-banner';
@@ -87,6 +88,7 @@ function FavoriteRow({
   liked: boolean;
   onUnlike: () => void;
 }) {
+  const cover = galleryFromItem(item.images, item.imageUrl)[0] ?? null;
   return (
     <View className="mb-3 flex-row items-center gap-3 rounded-card bg-surface p-2">
       <Pressable
@@ -94,8 +96,8 @@ function FavoriteRow({
         accessibilityRole="button"
         accessibilityLabel={item.name}
         className="flex-1 flex-row items-center gap-3">
-        {item.imageUrl ? (
-          <Image source={{ uri: item.imageUrl }} style={{ width: 72, height: 72, borderRadius: 16 }} contentFit="cover" />
+        {cover ? (
+          <Image source={{ uri: cover }} style={{ width: 72, height: 72, borderRadius: 16 }} contentFit="cover" />
         ) : (
           <View className="h-[72px] w-[72px] rounded-2xl bg-line" />
         )}

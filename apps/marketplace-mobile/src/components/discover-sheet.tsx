@@ -79,6 +79,8 @@ export function DiscoverSheet() {
       snapPoints={snapPoints}
       bottomInset={insets.bottom + 74}
       enablePanDownToClose={false}
+      activeOffsetY={[-12, 12]}
+      failOffsetX={[-20, 20]}
       handleIndicatorStyle={{ backgroundColor: '#d6d3d1', width: 36 }}
       backgroundStyle={{ backgroundColor: '#ffffff', borderRadius: 28 }}>
       {placeholder ?? (

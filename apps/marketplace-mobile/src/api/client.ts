@@ -1,4 +1,5 @@
-import { useMocks } from '@/src/config';
+import { cardGallery, SEARCH_CARD_IMAGE_LIMIT } from '@/src/api/gallery';
+import { supabaseUrl, useMocks } from '@/src/config';
 import {
   mockCategories,
   mockFavorites,
@@ -122,6 +123,25 @@ type ProjectionRow = {
   like_count: number | null;
 };
 
+type MediaRow = {
+  location_id: string;
+  storage_path: string;
+  sort_order: number | null;
+  id: string;
+};
+
+/** Preserve query order (sort_order, id) and keep the first five paths per location. */
+function pathsByLocation(rows: MediaRow[]): Map<string, string[]> {
+  const grouped = new Map<string, string[]>();
+  for (const row of rows) {
+    const paths = grouped.get(row.location_id) ?? [];
+    if (paths.length >= SEARCH_CARD_IMAGE_LIMIT || row.storage_path.length === 0) continue;
+    paths.push(row.storage_path);
+    grouped.set(row.location_id, paths);
+  }
+  return grouped;
+}
+
 export async function listFavorites(userId: string): Promise<FavoriteSalon[]> {
   if (useMocks) return mockFavorites();
   const supabase = getSupabase();
@@ -138,12 +158,22 @@ export async function listFavorites(userId: string): Promise<FavoriteSalon[]> {
     .select('location_id, company_id, name, slug, image_url, city, like_count')
     .in('location_id', ids);
   if (rowError) throw new Error(rowError.message);
+  const { data: mediaRows, error: mediaError } = await supabase
+    .from('marketplace_media')
+    .select('location_id, storage_path, sort_order, id')
+    .eq('type', 'IMAGE')
+    .in('location_id', ids)
+    .order('sort_order', { ascending: true })
+    .order('id', { ascending: true });
+  if (mediaError) throw new Error(mediaError.message);
   const byId = new Map(
     ((rows ?? []) as ProjectionRow[]).map((row) => [row.location_id, row]),
   );
+  const paths = pathsByLocation((mediaRows ?? []) as MediaRow[]);
   return ids.flatMap((locationId) => {
     const row = byId.get(locationId);
     if (!row?.slug || !row.name) return [];
+    const images = cardGallery(paths.get(locationId) ?? [], row.image_url, supabaseUrl);
     return [
       {
         locationId,
@@ -151,6 +181,7 @@ export async function listFavorites(userId: string): Promise<FavoriteSalon[]> {
         name: row.name,
         slug: row.slug,
         imageUrl: row.image_url,
+        images,
         city: row.city ?? '',
         likeCount: Number(row.like_count ?? 0),
       },

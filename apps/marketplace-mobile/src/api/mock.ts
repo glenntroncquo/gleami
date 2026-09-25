@@ -4,6 +4,7 @@
  */
 import { PAGE_SIZE } from '@/src/config';
 import { bboxCenter, distanceKm, inBBox } from '@/src/lib/geo';
+import { galleryFromItem } from '@/src/api/gallery';
 import { categoryById, MOCK_CATEGORIES, MOCK_SALONS, type MockSalon } from '@/src/api/mock-data';
 import type {
   AvailabilityBucket,
@@ -47,7 +48,8 @@ function toItem(salon: MockSalon, origin: { lat: number; lng: number } | null): 
     companyId: salon.companyId,
     name: salon.name,
     slug: salon.slug,
-    imageUrl: salon.imageUrl,
+    imageUrl: salon.imageUrl || null,
+    images: galleryFromItem(salon.images, salon.imageUrl),
     city: salon.city,
     address: `${salon.street}, ${salon.postalCode} ${salon.city}`,
     lat: salon.lat,
@@ -219,7 +221,8 @@ export async function mockFavorites(): Promise<FavoriteSalon[]> {
       companyId: salon.companyId,
       name: salon.name,
       slug: salon.slug,
-      imageUrl: salon.imageUrl,
+      imageUrl: salon.imageUrl || null,
+      images: galleryFromItem(salon.images, salon.imageUrl),
       city: salon.city,
       likeCount: salon.likeCount,
     }));

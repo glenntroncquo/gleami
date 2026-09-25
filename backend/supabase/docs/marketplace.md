@@ -129,9 +129,13 @@ supabase.from('marketplace_location_like').select('location_id')
 supabase.from('marketplace_search_location')
   .select('location_id, company_id, name, slug, image_url, city, like_count')
   .in('location_id', ids)
+supabase.from('marketplace_media')
+  .select('location_id, storage_path, sort_order, id')
+  .eq('type', 'IMAGE')
+  .in('location_id', ids)
 ```
 
-Those columns are on the table grant. The client merges its own likes; responses do not include `viewerHasLiked`.
+The projection has no gallery column. The client keeps the first five `storage_path` values per location (`sort_order`, then `id`), turns them into public `marketplace` bucket URLs, and falls back to `[image_url]` when that list is empty. Those columns are on the table grants. The client merges its own likes; responses do not include `viewerHasLiked`.
 
 - `marketplace_location_like`: a user selects, inserts, and deletes only their own rows. Insert also requires the location to be listed and active.
 - `marketplace_media`: anon and other users read rows for listed active locations. `locations:manage` or `settings:manage` can read and write their company’s rows, including before publish. `storage_path` must start with `{company_id}/`.

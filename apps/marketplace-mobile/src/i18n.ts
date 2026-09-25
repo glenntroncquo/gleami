@@ -28,6 +28,8 @@ const nl = {
     yourLocation: 'Jouw locatie',
     defaultCity: 'Brussel',
     results: '{{count}} salons',
+    photoLabel: '{{name}}, foto {{index}} van {{total}}',
+    photoHint: "Veeg horizontaal voor meer foto's.",
     emptyTitle: 'Geen salons in dit gebied',
     emptyBody: 'Verplaats de kaart of pas je zoekopdracht aan.',
     categoriesError: 'Categorieën laden lukt niet.',

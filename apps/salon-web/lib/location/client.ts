@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/client";
 
 /**
- * Location tables / location_id columns are live on SalonFlow but not
- * in the generated supabase-types yet. Keep those queries on this
- * untyped surface so Phase 4 typechecks without a full codegen.
+ * Location queries stay on this untyped surface. Generated Database types
+ * include location and the marketplace tables, but RPC payloads and
+ * PostgREST filters are still loosely shaped.
  */
 export type LocationQueryError = { code?: string; message?: string } | null;
 

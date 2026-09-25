@@ -387,7 +387,7 @@ async function runAsync() {
           };
           return builder;
         },
-      },
+      } as never,
       USER,
     );
     assertEqual(
@@ -451,7 +451,7 @@ async function runAsync() {
           };
           return builder;
         },
-      },
+      } as never,
       USER,
     );
     assertEqual(

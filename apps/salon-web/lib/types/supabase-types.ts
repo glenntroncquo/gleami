@@ -627,6 +627,169 @@ export type Database = {
         }
         Relationships: []
       }
+      location: {
+        Row: {
+          city: string | null
+          company_id: string
+          country: string | null
+          created_at: string
+          email: string | null
+          geo_location: unknown
+          id: string
+          image_url: string | null
+          is_active: boolean
+          is_listed: boolean
+          is_primary: boolean
+          marketplace_description: string | null
+          marketplace_published_at: string | null
+          name: string
+          postal_code: string | null
+          slug: string | null
+          state: string | null
+          street: string | null
+          timezone: string
+          updated_at: string | null
+        }
+        Insert: {
+          city?: string | null
+          company_id: string
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          geo_location?: unknown
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          is_listed?: boolean
+          is_primary?: boolean
+          marketplace_description?: string | null
+          marketplace_published_at?: string | null
+          name: string
+          postal_code?: string | null
+          slug?: string | null
+          state?: string | null
+          street?: string | null
+          timezone?: string
+          updated_at?: string | null
+        }
+        Update: {
+          city?: string | null
+          company_id?: string
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          geo_location?: unknown
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          is_listed?: boolean
+          is_primary?: boolean
+          marketplace_description?: string | null
+          marketplace_published_at?: string | null
+          name?: string
+          postal_code?: string | null
+          slug?: string | null
+          state?: string | null
+          street?: string | null
+          timezone?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_category: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          parent_id: string | null
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          parent_id?: string | null
+          slug: string
+          sort_order: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          parent_id?: string | null
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_category_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_category"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_media: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          location_id: string
+          sort_order: number
+          storage_path: string
+          type: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          location_id: string
+          sort_order?: number
+          storage_path: string
+          type?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          location_id?: string
+          sort_order?: number
+          storage_path?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_media_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_media_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "location"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order: {
         Row: {
           amount_paid: number | null
@@ -1198,6 +1361,7 @@ export type Database = {
           image_path: string | null
           is_active: boolean | null
           is_deleted: boolean | null
+          is_marketplace_visible: boolean
           name: string
           updated_at: string | null
         }
@@ -1212,6 +1376,7 @@ export type Database = {
           image_path?: string | null
           is_active?: boolean | null
           is_deleted?: boolean | null
+          is_marketplace_visible?: boolean
           name: string
           updated_at?: string | null
         }
@@ -1226,6 +1391,7 @@ export type Database = {
           image_path?: string | null
           is_active?: boolean | null
           is_deleted?: boolean | null
+          is_marketplace_visible?: boolean
           name?: string
           updated_at?: string | null
         }
@@ -1235,6 +1401,39 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_marketplace_category: {
+        Row: {
+          created_at: string
+          marketplace_category_id: string
+          service_id: string
+        }
+        Insert: {
+          created_at?: string
+          marketplace_category_id: string
+          service_id: string
+        }
+        Update: {
+          created_at?: string
+          marketplace_category_id?: string
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_marketplace_category_marketplace_category_id_fkey"
+            columns: ["marketplace_category_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_category"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_marketplace_category_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service"
             referencedColumns: ["id"]
           },
         ]

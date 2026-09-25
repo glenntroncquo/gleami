@@ -10,6 +10,7 @@ import {
   RiPaletteLine,
   RiLayoutLine,
   RiPlugLine,
+  RiStore2Line,
   RiSunLine,
   RiMoonClearLine,
   RiComputerLine,
@@ -43,6 +44,7 @@ import { setCookie } from "cookies-next";
 import { BookingWidgetSettings } from "@/components/booking-widget/booking-widget-settings";
 import { IntegrationsSettings } from "@/components/integrations/integrations-settings";
 import { LocationsSettings } from "@/components/locations/locations-settings";
+import { MarketplaceSettings } from "@/components/marketplace/marketplace-settings";
 import { useAuth } from "@/providers/auth-provider";
 import {
   PAGE_FETCH_TIMEOUT_MS,
@@ -54,6 +56,7 @@ type SectionId =
   | "general"
   | "company"
   | "locations"
+  | "marketplace"
   | "appearance"
   | "booking"
   | "integrations";
@@ -249,6 +252,11 @@ export default function SettingsPage() {
             id: "locations" as const,
             label: t("nav.locations"),
             icon: <RiMapPinLine size={18} />,
+          },
+          {
+            id: "marketplace" as const,
+            label: t("nav.marketplace"),
+            icon: <RiStore2Line size={18} />,
           },
         ]
       : []),
@@ -485,6 +493,15 @@ export default function SettingsPage() {
                     </SettingsSection>
                   )}
 
+                  {active === "marketplace" && (
+                    <SettingsSection
+                      title={t("marketplace.title")}
+                      description={t("marketplace.description")}
+                    >
+                      <MarketplaceSettings />
+                    </SettingsSection>
+                  )}
+
                   {active === "appearance" && (
                     <SettingsSection
                       title={t("appearance.title")}
@@ -562,7 +579,8 @@ export default function SettingsPage() {
                   {active !== "appearance" &&
                     active !== "booking" &&
                     active !== "integrations" &&
-                    active !== "locations" && (
+                    active !== "locations" &&
+                    active !== "marketplace" && (
                       <div className="flex justify-end">
                         <Button onClick={handleSave} disabled={saving}>
                           {saving && (

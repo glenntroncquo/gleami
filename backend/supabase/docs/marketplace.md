@@ -8,7 +8,7 @@ Apply, in order, on SalonFlow (there is no staging). Do not apply from CI.
 2. `supabase/migrations/20260924184500_marketplace_suggest_name_gist.sql`
 3. `supabase/migrations/20260924190000_marketplace_sync_schedule.sql`
 
-In file 3, replace every `__MARKETPLACE_WEBHOOK_SECRET__` before apply. Set the same value as the edge secret `MARKETPLACE_WEBHOOK_SECRET`. Also set `SUPABASE_DB_URL` to the session connection string (direct port 5432 or the session pooler). The transaction pooler is a poor fit for these statements.
+In file 3, replace every `__MARKETPLACE_WEBHOOK_SECRET__` before apply. Set the same value as the edge secret `MARKETPLACE_WEBHOOK_SECRET`. Set the edge secret `MARKETPLACE_DATABASE_URL` to the session pooler URL. `getMarketplaceDb` reads that first and falls back to `SUPABASE_DB_URL`. The direct database host is IPv6-only and unreachable from many edge runtimes, so the pooler session URL is the one that works. The transaction pooler is a poor fit for these statements.
 
 `marketplace-reindex` is not on the cron. Call it with the service-role JWT when you want a full rebuild (backfill).
 
@@ -65,7 +65,7 @@ The plan document was not in the repo. These weights are the ones the API ships.
 3. Delete the projection row when the location is not indexable. Otherwise upsert. `rating` / `review_count` are left null / 0 on insert and are not overwritten on update.
 4. If the location is listed and `marketplace_published_at` is null, set it to `now()`. Later syncs do not move it, so the location UPDATE trigger does not loop.
 
-Database webhooks (`supabase_functions.http_request`, no new function) on `location`, `service`, `location_service`, and `service_marketplace_category` POST to `marketplace-sync`. The function reads ids from the payload and then ignores every other field. For a service (or a category mapping) it loads location ids from `location_service`. `location_service.service_id` is `ON DELETE CASCADE`, so a service delete is also delivered by the `location_service` trigger while the link still exists.
+Database webhooks (`supabase_functions.http_request`, no new function) on `location`, `service`, `location_service`, and `service_marketplace_category` POST to `marketplace-sync`. The trigger body is a static `{}` because `http_request` cannot interpolate the row. `targetsFromWebhook` returns kind `ignore` for that body (and for any payload with no usable table and record ids). `marketplace-sync` then calls `rebuildAllListed`, which deletes projection rows that are no longer indexable and rebuilds every listed active location. A body that includes `table` plus a location or service id still rebuilds only those locations. For a service (or a category mapping) it loads location ids from `location_service`. `location_service.service_id` is `ON DELETE CASCADE`, so a service delete is also delivered by the `location_service` trigger while the link still exists.
 
 There is **no** webhook on `marketplace_location_like`. `marketplace-refresh-like-counts` runs daily at 03:15 UTC and sets `like_count` with one `UPDATE ... FROM (SELECT location_id, count(*) ...)`, including zeros. It does not change `updated_at`.
 

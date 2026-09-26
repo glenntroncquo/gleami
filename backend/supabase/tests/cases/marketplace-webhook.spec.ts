@@ -41,6 +41,11 @@ describe("webhook targets", () => {
     expect(targetsFromWebhook(null)).toEqual({ kind: "ignore" });
     expect(targetsFromWebhook({ table: "location", record: { id: "nope" } })).toEqual({ kind: "ignore" });
   });
+
+  it("treats the static trigger body as ignore", () => {
+    expect(targetsFromWebhook({})).toEqual({ kind: "ignore" });
+    expect(targetsFromWebhook({ table: "", record: {} })).toEqual({ kind: "ignore" });
+  });
 });
 
 describe("webhook secret", () => {

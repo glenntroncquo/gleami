@@ -8,6 +8,7 @@ import {
   AccessibilityInfo,
   Platform,
   Pressable,
+  type PressableProps,
   StyleSheet,
   Text,
   View,
@@ -119,6 +120,40 @@ export function GlassPill({ children, style, ...props }: ViewProps) {
   );
 }
 
+type GlassButtonProps = Omit<PressableProps, 'style' | 'children'> & {
+  children: React.ReactNode;
+  /** Extra layout for the capsule, e.g. horizontal padding for a label. */
+  contentStyle?: StyleProp<ViewStyle>;
+};
+
+/**
+ * Floating control over imagery (back, like, share). Native interactive Liquid
+ * Glass on iOS 26; a frosted, near-opaque capsule elsewhere so the icon stays
+ * legible on any photo.
+ */
+export function GlassButton({ children, contentStyle, ...props }: GlassButtonProps) {
+  const reduceTransparency = useReduceTransparency();
+  const native = liquidGlass() && !reduceTransparency;
+  const inner = [styles.button, contentStyle];
+
+  return (
+    <Pressable {...props} hitSlop={props.hitSlop ?? 6} style={({ pressed }) => (native ? null : { opacity: pressed ? 0.7 : 1 })}>
+      {native ? (
+        <GlassView isInteractive glassEffectStyle="regular" colorScheme="light" style={inner}>
+          {children}
+        </GlassView>
+      ) : (
+        <View style={[inner, styles.buttonFallback, reduceTransparency ? styles.buttonSolid : null]}>
+          {reduceTransparency || Platform.OS !== 'ios' ? null : (
+            <BlurView pointerEvents="none" intensity={40} tint="light" style={StyleSheet.absoluteFill} />
+          )}
+          {children}
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
 export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   return (
@@ -177,6 +212,24 @@ const styles = StyleSheet.create({
   },
   solid: {
     backgroundColor: '#f7f6f4',
+  },
+  button: {
+    minWidth: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+  },
+  buttonFallback: {
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.9)',
+  },
+  buttonSolid: {
+    backgroundColor: '#FFFFFF',
   },
   cardInner: {
     padding: 16,

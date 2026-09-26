@@ -96,9 +96,14 @@ export default function AuthVerifyScreen() {
       <FieldError message={error} />
       <PrimaryButton
         label={t('auth.continue')}
-        disabled={code.length !== CODE_LENGTH}
         loading={verifying}
         onPress={() => {
+          if (code.length !== CODE_LENGTH) {
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            setError(code ? t('auth.errors.incompleteCode') : t('auth.errors.required'));
+            setShakeKey((key) => key + 1);
+            return;
+          }
           submitted.current = null;
           void verify(code);
         }}

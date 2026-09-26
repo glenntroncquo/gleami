@@ -11,13 +11,16 @@ import { BOOKING_WEB_ORIGIN } from '@/src/config';
 export function buildServiceBookingUrl(input: {
   companyId: string;
   locationId: string;
-  serviceId: string;
-  variantIds: string[];
+  /** Omit to open the salon's full booking widget without a preselection. */
+  serviceId?: string;
+  variantIds?: string[];
 }): string {
+  const base = `${BOOKING_WEB_ORIGIN}/${input.companyId}/${input.locationId}`;
+  if (!input.serviceId) return base;
   const params = new URLSearchParams();
   params.set('serviceIds', input.serviceId);
-  if (input.variantIds.length === 1) {
+  if (input.variantIds?.length === 1) {
     params.set('serviceVariantIds', input.variantIds[0]);
   }
-  return `${BOOKING_WEB_ORIGIN}/${input.companyId}/${input.locationId}?${params.toString()}`;
+  return `${base}?${params.toString()}`;
 }

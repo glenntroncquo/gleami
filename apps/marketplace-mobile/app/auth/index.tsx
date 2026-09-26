@@ -37,10 +37,18 @@ export default function AuthWelcomeScreen() {
     };
   }, []);
 
-  const valid = isValidEmail(email);
-
   const continueWithEmail = async () => {
-    if (!valid || busy) return;
+    if (busy) return;
+    if (!email.trim()) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setError(t('auth.errors.required'));
+      return;
+    }
+    if (!isValidEmail(email)) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setError(t('auth.errors.invalidEmail'));
+      return;
+    }
     setError(null);
     setBusy('email');
     const address = email.trim().toLowerCase();
@@ -81,24 +89,6 @@ export default function AuthWelcomeScreen() {
 
   return (
     <AuthScreen title={t('auth.welcomeTitle')} subtitle={t('auth.welcomeBody')} leading="close" onLeading={finish}>
-      {providers.length ? (
-        <>
-          <View style={{ gap: 10 }}>
-            {providers.map((provider) => (
-              <SocialButton
-                key={provider}
-                provider={provider}
-                loading={busy === provider}
-                disabled={busy !== null && busy !== provider}
-                onPress={() => {
-                  void continueWithSocial(provider);
-                }}
-              />
-            ))}
-          </View>
-          <OrDivider />
-        </>
-      ) : null}
       <AuthField
         label={t('auth.email')}
         value={email}
@@ -106,7 +96,6 @@ export default function AuthWelcomeScreen() {
           setEmail(value);
           if (error) setError(null);
         }}
-        placeholder={t('auth.emailPlaceholder')}
         keyboardType="email-address"
         autoCapitalize="none"
         autoComplete="email"
@@ -121,12 +110,28 @@ export default function AuthWelcomeScreen() {
       <FieldError message={error} />
       <PrimaryButton
         label={t('auth.continue')}
-        disabled={!valid}
         loading={busy === 'email'}
         onPress={() => {
           void continueWithEmail();
         }}
       />
+      {providers.length ? (
+        <>
+          <OrDivider />
+          <View style={{ gap: 12 }}>
+            {providers.map((provider) => (
+              <SocialButton
+                key={provider}
+                provider={provider}
+                loading={busy === provider}
+                onPress={() => {
+                  void continueWithSocial(provider);
+                }}
+              />
+            ))}
+          </View>
+        </>
+      ) : null}
     </AuthScreen>
   );
 }

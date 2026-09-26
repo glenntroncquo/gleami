@@ -31,7 +31,10 @@ export async function isSocialAvailable(provider: SocialProvider): Promise<boole
   try {
     const Apple = await import('expo-apple-authentication');
     return await Apple.isAvailableAsync();
-  } catch {
+  } catch (error) {
+    if (__DEV__) {
+      console.warn('[auth] Apple sign-in hidden: native module missing. Rebuild with `npx expo run:ios --device`.', error);
+    }
     return false;
   }
 }

@@ -17,7 +17,12 @@ export default function AuthPasswordScreen() {
   const [busy, setBusy] = useState<'signIn' | 'forgot' | null>(null);
 
   const signIn = async () => {
-    if (!password || busy) return;
+    if (busy) return;
+    if (!password) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setError(t('auth.errors.required'));
+      return;
+    }
     setError(null);
     setBusy('signIn');
     const result = await auth.signInWithPassword(email, password);
@@ -67,7 +72,6 @@ export default function AuthPasswordScreen() {
       <View style={{ alignItems: 'flex-start', marginTop: -6 }}>
         <TextLink
           label={t('auth.forgotPassword')}
-          disabled={busy !== null}
           onPress={() => {
             void forgot();
           }}
@@ -75,7 +79,6 @@ export default function AuthPasswordScreen() {
       </View>
       <PrimaryButton
         label={t('auth.signIn')}
-        disabled={!password}
         loading={busy === 'signIn'}
         onPress={() => {
           void signIn();

@@ -134,6 +134,15 @@ export type LocationGetResponse = {
   };
   categories: LocationCategory[];
   services: LocationService[];
+  /** Not sent by marketplace-location-get yet; the Team section appears once it is. */
+  team?: LocationTeamMember[];
+};
+
+export type LocationTeamMember = {
+  id: string;
+  name: string;
+  role?: string | null;
+  imageUrl?: string | null;
 };
 
 /** Direct read: marketplace_category (snake_case, as PostgREST returns it). */

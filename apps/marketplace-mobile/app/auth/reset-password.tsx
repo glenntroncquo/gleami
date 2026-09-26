@@ -16,8 +16,14 @@ export default function AuthResetPasswordScreen() {
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
-    if (!password || saving) return;
+    if (saving) return;
+    if (!password) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setError(t('auth.errors.required'));
+      return;
+    }
     if (password.length < PASSWORD_MIN) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setError(t('auth.errors.passwordTooShort'));
       return;
     }
@@ -62,7 +68,6 @@ export default function AuthResetPasswordScreen() {
       <FieldError message={error} />
       <PrimaryButton
         label={t('auth.savePassword')}
-        disabled={!password}
         loading={saving}
         onPress={() => {
           void save();

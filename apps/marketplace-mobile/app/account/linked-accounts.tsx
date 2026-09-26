@@ -137,8 +137,11 @@ export default function LinkedAccountsScreen() {
                     linked={Boolean(identity)}
                     action={identity ? t('account.unlink') : t('account.link')}
                     busy={busy === provider}
-                    disabled={busy !== null}
-                    onAction={() => (identity ? unlink(provider) : void link(provider))}
+                    onAction={() => {
+                      if (busy) return;
+                      if (identity) unlink(provider);
+                      else void link(provider);
+                    }}
                   />
                 </React.Fragment>
               );
@@ -165,7 +168,6 @@ function ProviderRow({
   linked,
   action,
   busy,
-  disabled,
   onAction,
 }: {
   icon: React.ReactNode;
@@ -174,7 +176,6 @@ function ProviderRow({
   linked: boolean;
   action?: string;
   busy?: boolean;
-  disabled?: boolean;
   onAction?: () => void;
 }) {
   return (
@@ -191,14 +192,14 @@ function ProviderRow({
       </View>
       {action && onAction ? (
         <Pressable
-          onPress={onAction}
-          disabled={disabled}
+          onPress={busy ? undefined : onAction}
           accessibilityRole="button"
           accessibilityLabel={`${action} ${title}`}
+          accessibilityState={{ busy }}
           style={({ pressed }) => [
             styles.action,
             linked ? styles.actionSecondary : styles.actionPrimary,
-            (pressed || (disabled && !busy)) && { opacity: 0.6 },
+            pressed && { opacity: 0.6 },
           ]}>
           {busy ? (
             <ActivityIndicator size="small" color={linked ? brandColors.navy : '#ffffff'} />

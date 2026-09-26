@@ -1,22 +1,49 @@
 import { Image } from 'expo-image';
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Platform, View } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { Animated, Platform, Text, View } from 'react-native';
+import { Gesture, GestureDetector, type ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import Reanimated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { t } from '@/src/i18n';
+import { brandColors } from '@/src/theme/colors';
 
 type MediaCarouselProps = {
   images: string[];
   height?: number;
   label: string;
   onPress?: () => void;
+  /** `count` shows a "3/10" pill bottom-right instead of dots. */
+  indicator?: 'dots' | 'count';
+  /** Lifts the indicator, e.g. when content overlaps the bottom of the photo. */
+  indicatorInset?: number;
 };
+
+type IndicatorConfig = { kind: 'dots' | 'count'; inset: number };
+const IndicatorContext = createContext<IndicatorConfig>({ kind: 'dots', inset: 0 });
+
+/** Photos dissolve in over the surface colour instead of popping in. */
+const IMAGE_FADE = { duration: 320, effect: 'cross-dissolve', timing: 'ease-out' } as const;
+/** Same colour as the skeleton blocks, so skeleton → card → photo is one continuous surface. */
+const PLACEHOLDER = brandColors.line;
 
 /** How far a drag must travel, as a fraction of the card width, to change photo. */
 const PAGE_FRACTION = 0.18;
 
-export function MediaCarousel({ images, height = 210, label, onPress }: MediaCarouselProps) {
+/**
+ * Ref to a horizontal gesture-handler ScrollView the carousel sits in. Horizontal
+ * swipes on the photos page the carousel; the row only scrolls when the photo pan
+ * fails (vertical drag, single photo) or the swipe starts outside the photo.
+ */
+export const CarouselParentScrollContext = createContext<React.RefObject<GestureScrollView | null> | null>(null);
+
+export function MediaCarousel({
+  images,
+  height = 210,
+  label,
+  onPress,
+  indicator = 'dots',
+  indicatorInset = 0,
+}: MediaCarouselProps) {
   const frames = images.filter((uri) => uri.length > 0);
   if (frames.length === 0) {
     return <View style={{ height }} className="bg-surface" accessibilityLabel={label} />;
@@ -29,11 +56,29 @@ export function MediaCarousel({ images, height = 210, label, onPress }: MediaCar
       <NativeCarouselTrack frames={frames} height={height} label={label} onPress={onPress} />
     );
 
-  return <View key={frames.join('\n')}>{track}</View>;
+  return (
+    <IndicatorContext.Provider value={{ kind: indicator, inset: indicatorInset }}>
+      <View key={frames.join('\n')}>{track}</View>
+    </IndicatorContext.Provider>
+  );
 }
 
 function Dots({ frames, page }: { frames: string[]; page: number }) {
+  const { kind, inset } = useContext(IndicatorContext);
   if (frames.length < 2) return null;
+  if (kind === 'count') {
+    return (
+      <View
+        className="absolute right-4 rounded-full bg-black/45 px-2.5 py-1"
+        style={{ bottom: 12 + inset, pointerEvents: 'none' }}
+        accessibilityElementsHidden
+        importantForAccessibility="no">
+        <Text className="text-xs font-semibold text-white">
+          {page + 1}/{frames.length}
+        </Text>
+      </View>
+    );
+  }
   return (
     <View
       className="absolute bottom-3 left-0 right-0 items-center"
@@ -174,7 +219,7 @@ function WebCarouselTrack({
       accessibilityLabel={captionFor(label, page, count)}
       accessibilityHint={count > 1 ? t('discover.photoHint') : undefined}
       accessibilityLiveRegion="polite"
-      style={{ height, overflow: 'hidden', touchAction: 'none' }}>
+      style={{ height, overflow: 'hidden', touchAction: 'none', backgroundColor: PLACEHOLDER }}>
       {width > 0 ? (
         <Animated.View style={{ flexDirection: 'row', width: width * count, height, transform: [{ translateX: translate }] }}>
           {frames.map((uri, frameIndex) => (
@@ -183,6 +228,7 @@ function WebCarouselTrack({
               source={{ uri }}
               style={{ width, height }}
               contentFit="cover"
+              transition={IMAGE_FADE}
               accessibilityIgnoresInvertColors
             />
           ))}
@@ -211,10 +257,11 @@ function NativeCarouselTrack({
   const widthSv = useSharedValue(0);
   const countSv = useSharedValue(frames.length);
   const count = frames.length;
+  const parentScroll = useContext(CarouselParentScrollContext);
 
   const pan = Gesture.Pan()
     .enabled(count > 1)
-    .activeOffsetX([-14, 14])
+    .activeOffsetX([-10, 10])
     .failOffsetY([-18, 18])
     .onUpdate((event) => {
       const cardWidth = widthSv.value;
@@ -242,6 +289,7 @@ function NativeCarouselTrack({
       drag.value = withTiming(0, { duration: 220 });
       runOnJS(setPage)(next);
     });
+  if (parentScroll) pan.blocksExternalGesture(parentScroll as React.RefObject<React.ComponentType | null>);
 
   const tap = Gesture.Tap()
     .maxDistance(12)
@@ -267,7 +315,7 @@ function NativeCarouselTrack({
       accessibilityLabel={captionFor(label, page, count)}
       accessibilityHint={count > 1 ? t('discover.photoHint') : undefined}
       accessibilityLiveRegion="polite"
-      style={{ height, overflow: 'hidden' }}>
+      style={{ height, overflow: 'hidden', backgroundColor: PLACEHOLDER }}>
       {width > 0 ? (
         <GestureDetector gesture={Gesture.Exclusive(pan, tap)}>
           <Reanimated.View style={[{ flexDirection: 'row', width: width * count, height }, slide]}>
@@ -277,6 +325,7 @@ function NativeCarouselTrack({
                 source={{ uri }}
                 style={{ width, height }}
                 contentFit="cover"
+                transition={IMAGE_FADE}
                 accessibilityIgnoresInvertColors
               />
             ))}

@@ -10,6 +10,7 @@ import { COUNTRIES, fromE164, PhoneField, toE164, type Country } from '@/src/com
 import { t } from '@/src/i18n';
 
 type Params = { method?: AuthMethod; firstName?: string; lastName?: string };
+type Field = 'firstName' | 'lastName' | 'password' | 'phone' | 'form';
 
 export default function AuthCompleteScreen() {
   const params = useLocalSearchParams<Params>();
@@ -23,30 +24,30 @@ export default function AuthCompleteScreen() {
   const [password, setPassword] = useState('');
   const [country, setCountry] = useState<Country>(initialPhone?.country ?? COUNTRIES[0]);
   const [phone, setPhone] = useState(initialPhone?.national ?? '');
-  const [error, setError] = useState<{ field: 'password' | 'phone' | 'form'; message: string } | null>(null);
+  const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
   const [saving, setSaving] = useState(false);
 
   const lastNameRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
 
-  const filled =
-    firstName.trim().length > 0 &&
-    lastName.trim().length > 0 &&
-    phone.trim().length > 0 &&
-    (!needsPassword || password.length > 0);
-
   const submit = async () => {
-    if (!filled || saving) return;
-    if (needsPassword && password.length < PASSWORD_MIN) {
-      setError({ field: 'password', message: t('auth.errors.passwordTooShort') });
-      return;
-    }
+    if (saving) return;
     const e164 = toE164(country, phone);
-    if (!e164) {
-      setError({ field: 'phone', message: t('auth.errors.invalidPhone') });
+    const next: Partial<Record<Field, string>> = {};
+    if (!firstName.trim()) next.firstName = t('auth.errors.required');
+    if (!lastName.trim()) next.lastName = t('auth.errors.required');
+    if (needsPassword) {
+      if (!password) next.password = t('auth.errors.required');
+      else if (password.length < PASSWORD_MIN) next.password = t('auth.errors.passwordTooShort');
+    }
+    if (!phone.trim()) next.phone = t('auth.errors.required');
+    else if (!e164) next.phone = t('auth.errors.invalidPhone');
+    if (Object.keys(next).length > 0 || !e164) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setErrors(next);
       return;
     }
-    setError(null);
+    setErrors({});
     setSaving(true);
     const result = await auth.completeProfile({
       firstName: firstName.trim(),
@@ -57,15 +58,15 @@ export default function AuthCompleteScreen() {
     setSaving(false);
     if (result.error !== null) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setError({ field: 'form', message: result.error });
+      setErrors({ form: result.error });
       return;
     }
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     finish();
   };
 
-  const clearError = () => {
-    if (error) setError(null);
+  const clearError = (field: Field) => {
+    if (errors[field] || errors.form) setErrors(({ [field]: _removed, form: _form, ...rest }) => rest);
   };
 
   return (
@@ -73,7 +74,11 @@ export default function AuthCompleteScreen() {
       <AuthField
         label={t('auth.firstName')}
         value={firstName}
-        onChangeText={setFirstName}
+        onChangeText={(value) => {
+          setFirstName(value);
+          clearError('firstName');
+        }}
+        invalid={Boolean(errors.firstName)}
         autoCapitalize="words"
         textContentType="givenName"
         autoComplete="given-name"
@@ -81,11 +86,16 @@ export default function AuthCompleteScreen() {
         submitBehavior="submit"
         onSubmitEditing={() => lastNameRef.current?.focus()}
       />
+      <FieldError message={errors.firstName} />
       <AuthField
         ref={lastNameRef}
         label={t('auth.lastName')}
         value={lastName}
-        onChangeText={setLastName}
+        onChangeText={(value) => {
+          setLastName(value);
+          clearError('lastName');
+        }}
+        invalid={Boolean(errors.lastName)}
         autoCapitalize="words"
         textContentType="familyName"
         autoComplete="family-name"
@@ -93,6 +103,7 @@ export default function AuthCompleteScreen() {
         submitBehavior="submit"
         onSubmitEditing={() => passwordRef.current?.focus()}
       />
+      <FieldError message={errors.lastName} />
       {needsPassword ? (
         <>
           <AuthField
@@ -101,16 +112,16 @@ export default function AuthCompleteScreen() {
             value={password}
             onChangeText={(value) => {
               setPassword(value);
-              clearError();
+              clearError('password');
             }}
             secure
             autoCapitalize="none"
             textContentType="newPassword"
             autoComplete="new-password"
             passwordRules={`minlength: ${PASSWORD_MIN};`}
-            invalid={error?.field === 'password'}
+            invalid={Boolean(errors.password)}
           />
-          <FieldError message={error?.field === 'password' ? error.message : null} />
+          <FieldError message={errors.password} />
         </>
       ) : null}
       <PhoneField
@@ -120,16 +131,15 @@ export default function AuthCompleteScreen() {
         value={phone}
         onChangeText={(value) => {
           setPhone(value);
-          clearError();
+          clearError('phone');
         }}
-        invalid={error?.field === 'phone'}
+        invalid={Boolean(errors.phone)}
       />
-      <FieldError message={error?.field === 'phone' ? error.message : null} />
+      <FieldError message={errors.phone} />
       <AuthField label={t('auth.email')} value={auth.user?.email ?? ''} disabled />
-      <FieldError message={error?.field === 'form' ? error.message : null} />
+      <FieldError message={errors.form} />
       <PrimaryButton
         label={t('auth.continue')}
-        disabled={!filled}
         loading={saving}
         onPress={() => {
           void submit();

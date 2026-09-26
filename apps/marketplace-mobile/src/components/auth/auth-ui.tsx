@@ -31,7 +31,6 @@ export const authColors = {
   muted: brandColors.muted,
   focus: brandColors.lavender,
   border: '#E1E4EC',
-  disabled: '#A9ADB6',
   field: '#F4F5F8',
   danger: '#D64545',
 };
@@ -200,25 +199,19 @@ export function FieldError({ message }: { message: string | null | undefined }) 
 
 type PrimaryButtonProps = {
   label: string;
+  /** Always pressable: validate in the handler and show a FieldError instead of disabling. */
   onPress: () => void;
-  disabled?: boolean;
   loading?: boolean;
 };
 
-export function PrimaryButton({ label, onPress, disabled, loading }: PrimaryButtonProps) {
-  const inactive = disabled || loading;
+export function PrimaryButton({ label, onPress, loading }: PrimaryButtonProps) {
   return (
     <Pressable
-      onPress={onPress}
-      disabled={inactive}
+      onPress={loading ? undefined : onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ disabled: inactive, busy: loading }}
-      style={({ pressed }) => [
-        styles.primary,
-        { backgroundColor: disabled ? authColors.disabled : authColors.ink },
-        pressed && styles.pressed,
-      ]}>
+      accessibilityState={{ busy: loading }}
+      style={({ pressed }) => [styles.primary, { backgroundColor: authColors.ink }, pressed && styles.pressed]}>
       {loading ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.primaryLabel}>{label}</Text>}
     </Pressable>
   );
@@ -228,40 +221,41 @@ export function SocialButton({
   provider,
   onPress,
   loading,
-  disabled,
 }: {
   provider: SocialProvider;
   onPress: () => void;
   loading?: boolean;
-  disabled?: boolean;
 }) {
   const label = provider === 'apple' ? t('auth.continueWithApple') : t('auth.continueWithGoogle');
   return (
     <Pressable
-      onPress={onPress}
-      disabled={disabled || loading}
+      onPress={loading ? undefined : onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ busy: loading }}
-      style={({ pressed }) => [styles.social, pressed && styles.pressed, disabled && !loading && { opacity: 0.5 }]}>
-      <View style={styles.socialIcon}>
-        {provider === 'apple' ? (
-          <Ionicons name="logo-apple" size={21} color="#000000" />
-        ) : (
-          <Image source={require('@/assets/google-g.svg')} style={{ width: 19, height: 19 }} contentFit="contain" />
-        )}
-      </View>
-      {loading ? <ActivityIndicator color={authColors.ink} /> : <Text style={styles.socialLabel}>{label}</Text>}
+      style={({ pressed }) => [styles.social, pressed && styles.pressed]}>
+      {loading ? (
+        <ActivityIndicator color={authColors.ink} />
+      ) : (
+        <>
+          <View style={styles.socialIcon}>
+            {provider === 'apple' ? (
+              <Ionicons name="logo-apple" size={21} color="#000000" style={{ marginTop: -2 }} />
+            ) : (
+              <Image source={require('@/assets/google-g.svg')} style={{ width: 19, height: 19 }} contentFit="contain" />
+            )}
+          </View>
+          <Text style={styles.socialLabel}>{label}</Text>
+        </>
+      )}
     </Pressable>
   );
 }
 
-export function TextLink({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) {
+export function TextLink({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} disabled={disabled} hitSlop={8} accessibilityRole="link" accessibilityLabel={label}>
-      {({ pressed }) => (
-        <Text style={[styles.link, (pressed || disabled) && { opacity: disabled ? 0.45 : 0.6 }]}>{label}</Text>
-      )}
+    <Pressable onPress={onPress} hitSlop={8} accessibilityRole="link" accessibilityLabel={label}>
+      {({ pressed }) => <Text style={[styles.link, pressed && { opacity: 0.6 }]}>{label}</Text>}
     </Pressable>
   );
 }
@@ -397,15 +391,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: authColors.border,
     backgroundColor: '#ffffff',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
   },
-  socialIcon: { position: 'absolute', left: 20, top: 0, bottom: 0, justifyContent: 'center' },
+  socialIcon: { width: 22, alignItems: 'center', justifyContent: 'center' },
   socialLabel: { fontSize: 15, fontWeight: '600', color: authColors.ink },
   link: { fontSize: 14, fontWeight: '500', color: authColors.focus },
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: '#D5D9E2' },
-  dividerLabel: { fontSize: 13.5, color: authColors.muted },
+  dividerLabel: { fontSize: 12, letterSpacing: 0.6, textTransform: 'uppercase', color: authColors.muted },
   codeRow: { flexDirection: 'row', justifyContent: 'center', gap: 7, paddingVertical: 4 },
   codeBox: {
     width: 36,

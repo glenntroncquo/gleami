@@ -168,6 +168,10 @@ async function writeDocument(sql: MarketplaceSql, locationId: string, document: 
 
     if (!document) return;
 
+    // Bind treatments as the JS array. postgres.js JSON.stringifies a
+    // `::jsonb` parameter once (oid 3802). JSON.stringify first stores a
+    // jsonb string and fails marketplace_search_location_treatments_array
+    // (jsonb_typeof(treatments) = 'array').
     await tx`
       insert into public.marketplace_search_location (
         location_id,
@@ -197,7 +201,7 @@ async function writeDocument(sql: MarketplaceSql, locationId: string, document: 
         l.geo_location,
         ${document.categoryIds}::uuid[],
         ${document.searchText},
-        ${JSON.stringify(document.treatments)}::jsonb,
+        ${document.treatments}::jsonb,
         ${document.likeCount},
         null,
         0,

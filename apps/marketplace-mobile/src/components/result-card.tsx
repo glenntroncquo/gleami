@@ -1,3 +1,4 @@
+import { brandColors } from '@/src/theme/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
@@ -17,9 +18,10 @@ type ResultCardProps = {
   item: SearchItem;
   availability?: AvailabilityBucket;
   availabilityLoading: boolean;
+  compact?: boolean;
 };
 
-export function ResultCard({ item, availability, availabilityLoading }: ResultCardProps) {
+export function ResultCard({ item, availability, availabilityLoading, compact = false }: ResultCardProps) {
   const { user } = useAuth();
   const likes = useToggleLike();
   const liked = likes.likedIds.has(item.locationId);
@@ -41,14 +43,24 @@ export function ResultCard({ item, availability, availabilityLoading }: ResultCa
   };
 
   return (
-    <View className="mb-8">
+    <View className={compact ? "mb-2" : "mb-7"}>
       <View className="overflow-hidden rounded-card bg-surface">
-        <MediaCarousel images={images} label={item.name} onPress={open} />
+        <MediaCarousel images={images} label={item.name} height={compact ? 148 : 205} onPress={open} />
+        <Pressable
+          onPress={onHeart}
+          accessibilityRole="button"
+          accessibilityLabel={liked ? t('favorites.unlike') : t('favorites.like')}
+          accessibilityState={{ selected: liked }}
+          hitSlop={8}
+          className="absolute right-2 top-2 h-10 w-10 items-center justify-center rounded-full bg-white/90">
+          <Ionicons name={liked ? 'heart' : 'heart-outline'} size={20} color={liked ? brandColors.navy : '#071D43'} />
+        </Pressable>
       </View>
       <Pressable onPress={open} accessibilityRole="button" accessibilityLabel={item.name}>
         <View className="mt-3 flex-row items-start justify-between">
           <View className="flex-1 pr-3">
-            <Text className="text-base font-semibold text-ink">{item.name}</Text>
+            <Text numberOfLines={1} className="text-base font-semibold text-ink">{item.name}</Text>
+            {item.rating != null && item.reviewCount > 0 ? <View className="mt-1 flex-row items-center gap-1"><Ionicons name="star" size={12} color="#FF934F" /><Text className="text-xs font-semibold text-ink">{item.rating.toFixed(1)}</Text><Text className="text-xs text-muted">({formatCount(item.reviewCount)})</Text></View> : null}
             {place ? <Text className="mt-0.5 text-sm text-muted">{place}</Text> : null}
             {treatment ? <Text className="mt-0.5 text-sm text-ink">{treatment}</Text> : null}
           </View>
@@ -56,16 +68,7 @@ export function ResultCard({ item, availability, availabilityLoading }: ResultCa
       </Pressable>
       <View className="mt-2 flex-row items-center justify-between">
         <AvailabilityBadge status={availability} loading={availabilityLoading && Boolean(item.treatments[0])} />
-        <Pressable
-          onPress={onHeart}
-          accessibilityRole="button"
-          accessibilityLabel={liked ? t('favorites.unlike') : t('favorites.like')}
-          accessibilityState={{ selected: liked }}
-          hitSlop={8}
-          className="flex-row items-center gap-1 px-1 py-1">
-          <Ionicons name={liked ? 'heart' : 'heart-outline'} size={20} color={liked ? '#9f1239' : '#1c1917'} />
-          <Text className="text-sm font-medium text-ink">{formatCount(item.likeCount)}</Text>
-        </Pressable>
+
       </View>
     </View>
   );

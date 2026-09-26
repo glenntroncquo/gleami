@@ -19,7 +19,7 @@ export function ScreenState({ icon, title, body, actionLabel, onAction }: Screen
       accessibilityRole="summary"
       accessibilityLabel={body ? `${title}. ${body}` : title}>
       <View className="mb-3 h-14 w-14 items-center justify-center rounded-full bg-surface">
-        <Ionicons name={icon} size={26} color="#78716c" />
+        <Ionicons name={icon} size={26} color="#737989" />
       </View>
       <Text className="text-center text-lg font-semibold text-ink">{title}</Text>
       {body ? <Text className="mt-2 text-center text-sm leading-5 text-muted">{body}</Text> : null}

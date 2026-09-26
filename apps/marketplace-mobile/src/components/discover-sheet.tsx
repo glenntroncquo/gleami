@@ -51,7 +51,7 @@ export function DiscoverSheet() {
   const availability = useNextAvailable(pairs);
   const renderedIds = new Set(rendered.map((item) => item.locationId));
 
-  const snapPoints = useMemo(() => ['28%', '58%', '92%'], []);
+  const snapPoints = useMemo(() => ['28%', '58%', '82%'], []);
 
   const body = () => {
     if (!online && items.length === 0) {
@@ -76,6 +76,7 @@ export function DiscoverSheet() {
   return (
     <BottomSheet
       index={1}
+      enableDynamicSizing={false}
       snapPoints={snapPoints}
       bottomInset={insets.bottom + 74}
       enablePanDownToClose={false}
@@ -122,7 +123,7 @@ export function DiscoverSheet() {
           }
           ListFooterComponent={
             search.isFetchingNextPage ? (
-              <ActivityIndicator color="#1c1917" style={{ marginVertical: 16 }} />
+              <ActivityIndicator color="#071D43" style={{ marginVertical: 16 }} />
             ) : null
           }
           renderItem={({ item }) => {

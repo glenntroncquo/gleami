@@ -1,3 +1,4 @@
+import { brandColors } from '@/src/theme/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as WebBrowser from 'expo-web-browser';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -6,8 +7,6 @@ import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/src/auth/auth-context';
-import { ExampleBanner } from '@/src/components/example-banner';
-import { GlassPill } from '@/src/components/glass';
 import { MediaCarousel } from '@/src/components/media-carousel';
 import { ErrorState, OfflineState } from '@/src/components/screen-state';
 import { SkeletonBlock } from '@/src/components/skeleton';
@@ -79,13 +78,12 @@ export default function SalonScreen() {
         <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 28 }}>
           <MediaCarousel
             images={data.location.images.length > 0 ? data.location.images : [data.location.imageUrl]}
-            height={280}
+            height={350}
             label={data.location.name}
           />
-          <View className="px-5 pt-5">
-            <ExampleBanner />
-            <Text className="text-3xl font-semibold tracking-tight text-ink">{data.location.name}</Text>
-            <Text className="mt-2 text-base text-muted">
+          <View className="rounded-t-3xl bg-canvas px-5 pt-5" style={{ marginTop: -22 }}>
+            <Text className="text-2xl font-bold tracking-tight text-ink">{data.location.name}</Text>
+            <Text className="mt-3 rounded-xl bg-surface px-3 py-3 text-sm text-muted">
               {data.location.street}, {data.location.postalCode} {data.location.city}
             </Text>
             <Text className="mt-1 text-sm text-muted">{t('salon.likes', { count: formatCount(data.location.likeCount) })}</Text>
@@ -95,7 +93,7 @@ export default function SalonScreen() {
                   key={category.id}
                   onPress={() => {
                     setCategory(category.id);
-                    router.navigate('/(tabs)');
+                    router.navigate('/discover');
                   }}
                   accessibilityRole="button"
                   accessibilityLabel={category.name}
@@ -111,7 +109,7 @@ export default function SalonScreen() {
               <Text className="mt-3 text-sm text-muted">{t('salon.emptyServices')}</Text>
             ) : (
               data.services.map((service) => (
-                <View key={service.serviceId} className="mt-4 rounded-card border border-line p-4">
+                <View key={service.serviceId} className="mt-4 rounded-2xl border border-line bg-surface p-4">
                   <Text className="text-base font-semibold text-ink">{service.name}</Text>
                   {service.description ? (
                     <Text className="mt-1 text-sm leading-5 text-muted">{service.description}</Text>
@@ -135,7 +133,7 @@ export default function SalonScreen() {
                     }}
                     accessibilityRole="button"
                     accessibilityLabel={`${t('salon.book')} ${service.name}`}
-                    className="mt-4 items-center rounded-2xl bg-accent py-3">
+                    className="mt-4 items-center rounded-full bg-ink py-3">
                     <Text className="text-base font-semibold text-white">{t('salon.book')}</Text>
                   </Pressable>
                 </View>
@@ -146,11 +144,11 @@ export default function SalonScreen() {
       )}
       <View className="absolute left-4" style={{ top: insets.top + 8 }}>
         <Pressable onPress={goBack} accessibilityRole="button" accessibilityLabel={t('common.back')}>
-          <GlassPill style={{ paddingHorizontal: 0, paddingVertical: 0 }}>
+          <View className="rounded-full bg-white/90 p-1">
             <View className="h-10 w-10 items-center justify-center">
-              <Ionicons name="chevron-back" size={22} color="#1c1917" />
+              <Ionicons name="chevron-back" size={22} color="#071D43" />
             </View>
-          </GlassPill>
+          </View>
         </Pressable>
       </View>
       {data ? (
@@ -160,12 +158,12 @@ export default function SalonScreen() {
             accessibilityRole="button"
             accessibilityLabel={liked ? t('favorites.unlike') : t('favorites.like')}
             accessibilityState={{ selected: liked }}>
-            <GlassPill style={{ paddingHorizontal: 0, paddingVertical: 0 }}>
+            <View className="rounded-full bg-white/90 p-1">
               <View className="h-10 flex-row items-center gap-1 px-3">
-                <Ionicons name={liked ? 'heart' : 'heart-outline'} size={18} color={liked ? '#9f1239' : '#1c1917'} />
+                <Ionicons name={liked ? 'heart' : 'heart-outline'} size={18} color={liked ? brandColors.navy : '#071D43'} />
                 <Text className="text-sm font-semibold text-ink">{formatCount(data.location.likeCount)}</Text>
               </View>
-            </GlassPill>
+            </View>
           </Pressable>
         </View>
       ) : null}

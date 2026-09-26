@@ -13,6 +13,7 @@ type DiscoveryState = {
   areaSearchVisible: boolean;
   userLocation: LatLng | null;
   setQuery: (q: string) => void;
+  setSearch: (q: string, categoryId: string | null) => void;
   setCategory: (id: string | null) => void;
   setUserLocation: (coords: LatLng) => void;
   showAreaSearch: (bbox: BBox) => void;
@@ -29,6 +30,7 @@ export const useDiscovery = create<DiscoveryState>((set, get) => ({
   areaSearchVisible: false,
   userLocation: null,
   setQuery: (q) => set({ q }),
+  setSearch: (q, categoryId) => set({ q, categoryIds: categoryId ? [categoryId] : [] }),
   setCategory: (id) => set({ categoryIds: id ? [id] : [] }),
   setUserLocation: (coords) =>
     set((state) => {

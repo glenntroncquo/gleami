@@ -63,7 +63,7 @@ export default function ProfileScreen() {
           <Text className="mt-4 text-sm leading-5 text-muted">{t('profile.mockHint')}</Text>
         ) : null}
         {auth.loading ? (
-          <ActivityIndicator color="#1c1917" style={{ marginTop: 32 }} />
+          <ActivityIndicator color="#071D43" style={{ marginTop: 32 }} />
         ) : auth.user ? (
           <View className="mt-8">
             <Text className="text-sm text-muted">{t('profile.signedInAs')}</Text>

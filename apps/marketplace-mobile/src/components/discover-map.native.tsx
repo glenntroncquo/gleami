@@ -1,3 +1,4 @@
+import { brandColors } from '@/src/theme/colors';
 import Mapbox from '@rnmapbox/maps';
 import { router } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
@@ -8,7 +9,7 @@ import { mapboxToken } from '@/src/config';
 import { MapPlaceholder } from '@/src/components/map-placeholder';
 import { useDiscovery } from '@/src/store/discovery';
 
-const ACCENT = '#9f1239';
+const ACCENT = brandColors.navy;
 
 if (mapboxToken) {
   void Mapbox.setAccessToken(mapboxToken);
@@ -102,7 +103,7 @@ export function DiscoverMap({ items }: { items: SearchItem[] }) {
           id="salon-pins"
           filter={['!', ['has', 'point_count']]}
           style={{
-            circleColor: '#1c1917',
+            circleColor: '#071D43',
             circleRadius: 7,
             circleStrokeWidth: 2,
             circleStrokeColor: '#ffffff',

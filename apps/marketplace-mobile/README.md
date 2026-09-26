@@ -12,7 +12,7 @@ This package is `apps/marketplace-mobile`. It does not import the Expo 54 protot
 - `@supabase/supabase-js` for auth, category reads, and likes
 - `@rnmapbox/maps` 10.3.x (native SDK 11.20.1 via the config plugin). Mapbox needs a development build. It does not run in Expo Go.
 
-Design tokens live in `global.css` (`--color-accent` and the canvas / ink / surface colors). One accent: `#9f1239`.
+Design tokens live in `global.css` (`--color-accent` and the canvas / ink / surface colors). Gleami palette: navy `#071D43`, soft UI blue `#6488E8` (balanced from the logo’s periwinkle `#6E86FF`), lavender `#817BFA`, orange `#FF934F`; navy interactive accent `#071D43`. Shared native colors live in `src/theme/colors.ts`; iOS native tabs use the UI blue with navy labels; the fallback selection uses a translucent blue pill and orange indicator. Home offers a two-row category grid and horizontal salon shelves; Zoeken retains map and sheet discovery.
 
 ## Environment
 
@@ -39,7 +39,7 @@ npm install
 npx expo start
 ```
 
-The banner **Voorbeelddata — deze salons zijn fictief** means the salons are example data. Any email with a password of at least 6 characters signs in. Nothing is emailed. Likes stay on this device for the session.
+In mock mode, the salons are fictional example data. Any email with a password of at least 6 characters signs in. Nothing is emailed. Likes stay on this device for the session.
 
 Without `EXPO_PUBLIC_MAPBOX_TOKEN`, Discover shows a draggable placeholder instead of Mapbox. Drag it, then tap **Zoek in dit gebied** to refetch the list for that area.
 
@@ -86,3 +86,11 @@ npx tsc --noEmit
 npm run lint
 npx expo export --platform ios
 ```
+
+## Native tab material
+
+Home and discovery share an expandable search pill. Editing opens a rounded card above the current page (at most 55% of the screen, capped at 420 points, shrinking above the keyboard). Suggestions fill the draft; only Zoek or the keyboard search action applies it. The card remains mounted through tab navigation and collapses into the measured results pill. Close, outside tap, and Android back dismiss the draft. Reduce Motion disables the morph animation. Existing `/search` links open this same card over discovery.
+
+iOS uses Expo Router NativeTabs (`app/(tabs)/_layout.ios.tsx`), which supplies system Liquid Glass on iOS 26 and the system tab material on older versions. Android and web keep the custom blur tab bar. Native tabs own accessibility material adaptations such as Reduce Transparency. Search and map results share a tab with animation-free navigation. Validate native material on an iOS 26 development build; a browser preview cannot show Apple Liquid Glass.
+
+Palette roles: navy for text and primary buttons; soft blue for selected navigation and small accents; `#F0F3FC` for selection backgrounds; `#F7F8FC` for quiet surfaces; `#E5E9F2` for borders. Logo lavender remains part of the artwork, and orange stays a small highlight rather than a large filled surface.

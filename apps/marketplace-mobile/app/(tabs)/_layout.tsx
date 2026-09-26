@@ -6,15 +6,17 @@ import { t } from '@/src/i18n';
 export default function TabLayout() {
   return (
     <Tabs
+      backBehavior="history"
       tabBar={(props) => <GlassTabBar {...props} />}
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: '#ffffff' } }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: t('tabs.discover'),
-          tabBarIcon: ({ color, size }) => <TabIcon name="compass-outline" color={color} size={size} />,
+          title: 'Home',
+          tabBarIcon: ({ color, size }) => <TabIcon name="home-outline" color={color} size={size} />,
         }}
       />
+      <Tabs.Screen name="(discovery)" options={{ title: 'Zoeken', tabBarIcon: ({ color, size }) => <TabIcon name="search-outline" color={color} size={size} /> }} />
       <Tabs.Screen
         name="bookings"
         options={{

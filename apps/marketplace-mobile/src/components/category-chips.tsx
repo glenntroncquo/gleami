@@ -52,7 +52,7 @@ function Chip({ label, selected, onPress }: { label: string; selected: boolean; 
       accessibilityState={{ selected }}
       className={
         selected
-          ? 'rounded-full bg-ink px-4 py-2'
+          ? 'rounded-full bg-accent px-4 py-2'
           : 'rounded-full border border-line bg-white/95 px-4 py-2'
       }>
       <Text className={selected ? 'text-sm font-semibold text-white' : 'text-sm font-medium text-ink'}>{label}</Text>

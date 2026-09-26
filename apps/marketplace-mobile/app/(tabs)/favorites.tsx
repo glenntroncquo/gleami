@@ -1,3 +1,4 @@
+import { brandColors } from '@/src/theme/colors';
 import { Image } from 'expo-image';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
@@ -8,7 +9,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { galleryFromItem } from '@/src/api/gallery';
 import type { FavoriteSalon } from '@/src/api/types';
 import { useAuth } from '@/src/auth/auth-context';
-import { ExampleBanner } from '@/src/components/example-banner';
 import { ErrorState, OfflineState, ScreenState } from '@/src/components/screen-state';
 import { SkeletonBlock } from '@/src/components/skeleton';
 import { formatCount } from '@/src/format';
@@ -27,7 +27,6 @@ export default function FavoritesScreen() {
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 88 }}>
       <Text className="px-5 text-3xl font-semibold tracking-tight text-ink">{t('favorites.title')}</Text>
       <View className="mt-3">
-        <ExampleBanner />
       </View>
       {!user ? (
         <View className="flex-1 justify-center">
@@ -112,7 +111,7 @@ function FavoriteRow({
         accessibilityLabel={t('favorites.unlike')}
         accessibilityState={{ selected: liked }}
         className="flex-row items-center gap-1 px-2 py-2">
-        <Ionicons name="heart" size={18} color="#9f1239" />
+        <Ionicons name="heart" size={18} color={brandColors.navy} />
         <Text className="text-sm text-ink">{formatCount(item.likeCount)}</Text>
       </Pressable>
     </View>

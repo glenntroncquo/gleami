@@ -1,4 +1,5 @@
-import { GlassContainer, GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
+import { brandColors } from '@/src/theme/colors';
+import { GlassContainer, GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { BlurView } from 'expo-blur';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs';
@@ -17,9 +18,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const ACCENT = '#9f1239';
-const INK = '#1c1917';
-const MUTED = '#78716c';
+const ACCENT = brandColors.navy;
+const INK = brandColors.navy;
+const MUTED = brandColors.muted;
 
 let reduceTransparencyValue = false;
 const listeners = new Set<(value: boolean) => void>();
@@ -57,7 +58,7 @@ function useReduceTransparency(): boolean {
 
 function liquidGlass(): boolean {
   try {
-    return Platform.OS === 'ios' && isLiquidGlassAvailable();
+    return Platform.OS === 'ios' && isGlassEffectAPIAvailable() && isLiquidGlassAvailable();
   } catch {
     return false;
   }
@@ -67,9 +68,10 @@ type SurfaceProps = ViewProps & {
   radius: number;
   style?: StyleProp<ViewStyle>;
   children: React.ReactNode;
+  interactive?: boolean;
 };
 
-function GlassSurface({ radius, style, children, ...props }: SurfaceProps) {
+function GlassSurface({ radius, style, children, interactive = false, ...props }: SurfaceProps) {
   const reduceTransparency = useReduceTransparency();
   const native = liquidGlass() && !reduceTransparency;
   const shape = { borderRadius: radius, overflow: 'hidden' as const };
@@ -77,7 +79,7 @@ function GlassSurface({ radius, style, children, ...props }: SurfaceProps) {
   if (native) {
     return (
       <GlassContainer spacing={12} style={style}>
-        <GlassView {...props} glassEffectStyle="regular" colorScheme="light" style={shape}>
+        <GlassView {...props} isInteractive={interactive} glassEffectStyle="regular" colorScheme="light" style={shape}>
           {children}
         </GlassView>
       </GlassContainer>
@@ -94,7 +96,7 @@ function GlassSurface({ radius, style, children, ...props }: SurfaceProps) {
         style,
       ]}>
       {reduceTransparency ? null : (
-        <BlurView pointerEvents="none" intensity={55} tint="light" style={StyleSheet.absoluteFill} />
+        <BlurView pointerEvents="none" intensity={45} tint="light" style={StyleSheet.absoluteFill} />
       )}
       {children}
     </View>
@@ -123,20 +125,21 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
     <View
       pointerEvents="box-none"
       style={[styles.tabWrap, { bottom: Math.max(insets.bottom, 10) }]}>
-      <GlassSurface radius={28}>
+      <GlassSurface radius={32} interactive>
         <View style={styles.tabRow}>
-          {state.routes.map((route, index) => {
-            const focused = state.index === index;
+          {state.routes.map((route) => {
+            const activeRoute = state.routes[state.index].name;
+            const focused = activeRoute === route.name;
             const { options } = descriptors[route.key];
             const label = options.title ?? route.name;
-            const color = focused ? ACCENT : MUTED;
+            const color = INK;
             const onPress = () => {
               const event = navigation.emit({
                 type: 'tabPress',
                 target: route.key,
                 canPreventDefault: true,
               });
-              if (!focused && !event.defaultPrevented) {
+              if (activeRoute !== route.name && !event.defaultPrevented) {
                 navigation.navigate(route.name);
               }
             };
@@ -147,8 +150,9 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
                 accessibilityState={{ selected: focused }}
                 accessibilityLabel={label}
                 onPress={onPress}
-                style={styles.tab}>
+                style={[styles.tab, focused && styles.selectedTab]}>
                 {options.tabBarIcon?.({ focused, color, size: 22 })}
+                {focused ? <View accessible={false} style={{ position: 'absolute', top: 5, right: 10, width: 5, height: 5, borderRadius: 3, backgroundColor: brandColors.orange }} /> : null}
                 <Text style={[styles.tabLabel, { color }]} numberOfLines={1}>
                   {label}
                 </Text>
@@ -167,7 +171,7 @@ export function TabIcon({ name, color, size }: { name: keyof typeof Ionicons.gly
 
 const styles = StyleSheet.create({
   fallback: {
-    backgroundColor: 'rgba(255,255,255,0.78)',
+    backgroundColor: 'rgba(255,255,255,0.22)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.95)',
   },
@@ -185,6 +189,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 16,
     right: 16,
+    boxShadow: '0 4px 24px rgba(7,29,67,0.12)',
+    borderRadius: 32,
+  },
+  selectedTab: {
+    backgroundColor: `${brandColors.blue}26`,
+    borderRadius: 26,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: `${brandColors.blue}40`,
   },
   tabRow: {
     flexDirection: 'row',

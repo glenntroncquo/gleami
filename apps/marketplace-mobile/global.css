@@ -6,11 +6,14 @@
 
 @theme {
   --color-canvas: #ffffff;
-  --color-ink: #1c1917;
-  --color-muted: #78716c;
-  --color-line: #e7e5e4;
-  --color-accent: #9f1239;
-  --color-accent-soft: #fff1f2;
-  --color-surface: #fafaf9;
+  --color-ink: #071D43;
+  --color-muted: #737989;
+  --color-line: #E5E9F2;
+  --color-accent: #071D43;
+  --color-brand-blue: #6488E8;
+  --color-brand-lavender: #817BFA;
+  --color-brand-orange: #FF934F;
+  --color-accent-soft: #F0F3FC;
+  --color-surface: #F7F8FC;
   --radius-card: 1.25rem;
 }

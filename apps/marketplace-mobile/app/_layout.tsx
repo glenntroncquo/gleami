@@ -9,6 +9,7 @@ import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider, useAuth } from '@/src/auth/auth-context';
+import { SearchProvider } from '@/src/components/expandable-search';
 import { queryClient } from '@/src/lib/query-client';
 
 export const unstable_settings = {
@@ -35,15 +36,16 @@ export default function RootLayout() {
           <AuthProvider>
             <SplashGate />
             <StatusBar style="dark" />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: '#ffffff' },
-              }}>
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="search" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
-              <Stack.Screen name="salon/[slug]" />
-            </Stack>
+            <SearchProvider>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: '#ffffff' },
+                }}>
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="salon/[slug]" />
+              </Stack>
+            </SearchProvider>
           </AuthProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

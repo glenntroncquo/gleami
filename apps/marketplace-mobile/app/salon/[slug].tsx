@@ -51,7 +51,7 @@ export default function SalonScreen() {
   const onHeart = () => {
     if (!data) return;
     if (!user) {
-      router.push('/(tabs)/profile');
+      router.push('/auth');
       return;
     }
     likes.toggle({ locationId: data.location.locationId, liked });

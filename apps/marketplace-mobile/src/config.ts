@@ -14,7 +14,9 @@ export const useMocks = process.env.EXPO_PUBLIC_USE_MOCKS === '1';
 
 export const mapboxToken = process.env.EXPO_PUBLIC_MAPBOX_TOKEN?.trim() || '';
 
-export const appleSignInEnabled = process.env.EXPO_PUBLIC_ENABLE_APPLE_SIGN_IN === '1';
+export const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID?.trim() || '';
+
+export const googleIosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?.trim() || '';
 
 export const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim() || '';
 

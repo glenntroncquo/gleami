@@ -35,7 +35,7 @@ export function ResultCard({ item, availability, availabilityLoading, compact = 
 
   const onHeart = () => {
     if (!user) {
-      router.push('/(tabs)/profile');
+      router.push('/auth');
       return;
     }
     void Haptics.selectionAsync().catch(() => undefined);

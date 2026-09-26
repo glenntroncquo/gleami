@@ -35,7 +35,7 @@ export default function FavoritesScreen() {
             title={t('favorites.signInTitle')}
             body={t('favorites.signInBody')}
             actionLabel={t('favorites.signIn')}
-            onAction={() => router.push('/(tabs)/profile')}
+            onAction={() => router.push('/auth')}
           />
         </View>
       ) : !online && !favorites.data ? (

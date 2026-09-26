@@ -1,171 +1,214 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
+import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useAuth } from '@/src/auth/auth-context';
-import { appleSignInEnabled, useMocks } from '@/src/config';
+import { useAuth, type AuthUser } from '@/src/auth/auth-context';
+import { authColors, PrimaryButton } from '@/src/components/auth/auth-ui';
 import { t } from '@/src/i18n';
+import { brandColors } from '@/src/theme/colors';
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const auth = useAuth();
-  const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  const submit = async () => {
-    setError(null);
-    setNotice(null);
-    setSubmitting(true);
-    const result =
-      mode === 'signIn'
-        ? await auth.signIn(email, password)
-        : await auth.signUp(email, password);
-    setSubmitting(false);
-    if (result.error) setError(result.error);
-    else if (result.confirmEmail) setNotice(t('profile.confirmEmail'));
-  };
-
-  const magic = async () => {
-    setError(null);
-    setNotice(null);
-    setSubmitting(true);
-    const result = await auth.sendMagicLink(email);
-    setSubmitting(false);
-    if (result.error) setError(result.error);
-    else setNotice(t('profile.magicSent', { email: email.trim() }));
-  };
 
   return (
-    <KeyboardAvoidingView
+    <ScrollView
       className="flex-1 bg-canvas"
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 88 }}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
-        <Text className="text-3xl font-semibold tracking-tight text-ink">{t('profile.title')}</Text>
-        {!auth.configured ? (
-          <Text className="mt-4 text-sm leading-5 text-muted">{t('profile.missingConfig')}</Text>
-        ) : null}
-        {useMocks && !auth.user ? (
-          <Text className="mt-4 text-sm leading-5 text-muted">{t('profile.mockHint')}</Text>
-        ) : null}
-        {auth.loading ? (
-          <ActivityIndicator color="#071D43" style={{ marginTop: 32 }} />
-        ) : auth.user ? (
-          <View className="mt-8">
-            <Text className="text-sm text-muted">{t('profile.signedInAs')}</Text>
-            <Text className="mt-1 text-lg font-semibold text-ink">{auth.user.email}</Text>
-            <Pressable
-              onPress={() => {
-                void auth.signOut();
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={t('profile.signOut')}
-              className="mt-8 items-center rounded-2xl bg-ink py-3.5">
-              <Text className="text-base font-semibold text-white">{t('profile.signOut')}</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <View className="mt-8 gap-3">
-            <Field
-              label={t('profile.email')}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              textContentType="emailAddress"
-            />
-            <Field
-              label={t('profile.password')}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              textContentType={mode === 'signUp' ? 'newPassword' : 'password'}
-            />
-            {error ? <Text className="text-sm text-accent">{error}</Text> : null}
-            {notice ? <Text className="text-sm text-ink">{notice}</Text> : null}
-            <Pressable
-              onPress={() => {
-                void submit();
-              }}
-              disabled={submitting || !auth.configured}
-              accessibilityRole="button"
-              accessibilityLabel={mode === 'signIn' ? t('profile.signIn') : t('profile.signUp')}
-              className="mt-2 items-center rounded-2xl bg-accent py-3.5">
-              {submitting ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <Text className="text-base font-semibold text-white">
-                  {mode === 'signIn' ? t('profile.signIn') : t('profile.signUp')}
-                </Text>
-              )}
-            </Pressable>
-            <Pressable
-              onPress={() => {
-                void magic();
-              }}
-              disabled={submitting || !auth.configured}
-              accessibilityRole="button"
-              accessibilityLabel={t('profile.magicLink')}
-              className="items-center rounded-2xl border border-line py-3.5">
-              <Text className="text-base font-semibold text-ink">{t('profile.magicLink')}</Text>
-            </Pressable>
-            {appleSignInEnabled ? (
-              <Pressable
-                onPress={() => Alert.alert(t('profile.apple'), t('profile.appleSoon'))}
-                accessibilityRole="button"
-                accessibilityLabel={t('profile.apple')}
-                className="items-center rounded-2xl bg-ink py-3.5">
-                <Text className="text-base font-semibold text-white">{t('profile.apple')}</Text>
-              </Pressable>
-            ) : null}
-            <Pressable
-              onPress={() => {
-                setMode((current) => (current === 'signIn' ? 'signUp' : 'signIn'));
-                setError(null);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={mode === 'signIn' ? t('profile.switchToSignUp') : t('profile.switchToSignIn')}
-              className="items-center py-2">
-              <Text className="text-sm font-medium text-muted">
-                {mode === 'signIn' ? t('profile.switchToSignUp') : t('profile.switchToSignIn')}
-              </Text>
-            </Pressable>
-          </View>
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+      contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 104, paddingHorizontal: 20 }}>
+      <Text className="text-3xl font-semibold tracking-tight text-ink">{t('profile.title')}</Text>
+      {!auth.configured ? (
+        <Text className="mt-4 text-sm leading-5 text-muted">{t('profile.missingConfig')}</Text>
+      ) : auth.loading ? (
+        <ActivityIndicator color={brandColors.navy} style={{ marginTop: 32 }} />
+      ) : auth.user ? (
+        <SignedIn user={auth.user} />
+      ) : (
+        <SignedOut />
+      )}
+    </ScrollView>
   );
 }
 
-function Field({
-  label,
-  ...props
-}: React.ComponentProps<typeof TextInput> & { label: string }) {
+function SignedOut() {
   return (
-    <View>
-      <Text className="mb-1.5 text-sm font-medium text-ink">{label}</Text>
-      <TextInput
-        {...props}
-        accessibilityLabel={label}
-        placeholder={label}
-        placeholderTextColor="#a8a29e"
-        autoCorrect={false}
-        className="rounded-2xl border border-line bg-surface px-4 py-3 text-base text-ink"
-      />
+    <View style={styles.hero}>
+      <View style={styles.heroIcon}>
+        <Ionicons name="person-outline" size={26} color={brandColors.navy} />
+      </View>
+      <Text style={styles.heroTitle}>{t('profile.signedOutTitle')}</Text>
+      <Text style={styles.heroBody}>{t('profile.signedOutBody')}</Text>
+      <View style={{ alignSelf: 'stretch', marginTop: 22 }}>
+        <PrimaryButton label={t('profile.signIn')} onPress={() => router.push('/auth')} />
+      </View>
     </View>
   );
 }
+
+function initials(user: AuthUser): string {
+  const letters = `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.trim();
+  return (letters || user.email.charAt(0)).toUpperCase();
+}
+
+function SignedIn({ user }: { user: AuthUser }) {
+  const auth = useAuth();
+  const [deleting, setDeleting] = useState(false);
+  const name = `${user.firstName} ${user.lastName}`.trim();
+
+  const confirmDelete = () => {
+    Alert.alert(t('profile.deleteTitle'), t('profile.deleteBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('profile.deleteConfirm'),
+        style: 'destructive',
+        onPress: () => {
+          void (async () => {
+            setDeleting(true);
+            const result = await auth.deleteAccount();
+            setDeleting(false);
+            if (result.error !== null) Alert.alert(t('profile.deleteAccount'), result.error);
+            else void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          })();
+        },
+      },
+    ]);
+  };
+
+  return (
+    <View style={{ marginTop: 24, gap: 16 }}>
+      <View style={styles.identity}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{initials(user)}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          {name ? <Text style={styles.name} numberOfLines={1}>{name}</Text> : null}
+          <Text style={name ? styles.email : styles.name} numberOfLines={1}>
+            {user.email}
+          </Text>
+        </View>
+      </View>
+
+      {!user.profileComplete ? (
+        <Pressable
+          onPress={() => router.push({ pathname: '/auth/complete', params: { method: 'social' } })}
+          accessibilityRole="button"
+          accessibilityLabel={t('profile.finishTitle')}
+          style={({ pressed }) => [styles.finish, pressed && { opacity: 0.85 }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.finishTitle}>{t('profile.finishTitle')}</Text>
+            <Text style={styles.finishBody}>{t('profile.finishBody')}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={brandColors.navy} />
+        </Pressable>
+      ) : null}
+
+      <View style={styles.group}>
+        <Row
+          icon="link-outline"
+          label={t('profile.linkedAccounts')}
+          chevron
+          onPress={() => router.push('/account/linked-accounts')}
+        />
+        <View style={styles.separator} />
+        <Row
+          icon="log-out-outline"
+          label={t('profile.signOut')}
+          onPress={() => {
+            void auth.signOut();
+          }}
+        />
+      </View>
+
+      <View style={styles.group}>
+        <Row
+          icon="trash-outline"
+          label={t('profile.deleteAccount')}
+          destructive
+          busy={deleting}
+          onPress={confirmDelete}
+        />
+      </View>
+    </View>
+  );
+}
+
+function Row({
+  icon,
+  label,
+  onPress,
+  destructive,
+  busy,
+  chevron,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+  destructive?: boolean;
+  busy?: boolean;
+  chevron?: boolean;
+}) {
+  const color = destructive ? authColors.danger : brandColors.navy;
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={busy}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: '#EEF0F6' }]}>
+      <Ionicons name={icon} size={20} color={color} />
+      <Text style={[styles.rowLabel, { color }]}>{label}</Text>
+      {busy ? (
+        <ActivityIndicator color={color} />
+      ) : !chevron ? null : (
+        <Ionicons name="chevron-forward" size={17} color={brandColors.muted} />
+      )}
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  hero: { marginTop: 40, alignItems: 'center', paddingHorizontal: 8 },
+  heroIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: brandColors.blueTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroTitle: { marginTop: 16, fontSize: 20, fontWeight: '700', letterSpacing: -0.3, color: brandColors.navy, textAlign: 'center' },
+  heroBody: { marginTop: 8, fontSize: 14, lineHeight: 20, color: brandColors.muted, textAlign: 'center' },
+  identity: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  avatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: brandColors.blueTint,
+    borderWidth: 1,
+    borderColor: `${brandColors.blue}40`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: { fontSize: 20, fontWeight: '700', color: brandColors.navy },
+  name: { fontSize: 18, fontWeight: '700', color: brandColors.navy, letterSpacing: -0.2 },
+  email: { marginTop: 2, fontSize: 14, color: brandColors.muted },
+  finish: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 16,
+    borderRadius: 20,
+    borderCurve: 'continuous',
+    backgroundColor: brandColors.blueTint,
+    borderWidth: 1,
+    borderColor: `${brandColors.lavender}40`,
+  },
+  finishTitle: { fontSize: 15, fontWeight: '700', color: brandColors.navy },
+  finishBody: { marginTop: 2, fontSize: 13.5, color: brandColors.muted },
+  group: { borderRadius: 20, borderCurve: 'continuous', backgroundColor: brandColors.surface, overflow: 'hidden' },
+  row: { minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16 },
+  rowLabel: { flex: 1, fontSize: 15.5, fontWeight: '500' },
+  separator: { height: StyleSheet.hairlineWidth, marginLeft: 48, backgroundColor: brandColors.line },
+});

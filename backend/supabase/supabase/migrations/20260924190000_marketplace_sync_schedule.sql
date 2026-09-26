@@ -8,8 +8,9 @@
 -- BEFORE APPLY, replace every __MARKETPLACE_WEBHOOK_SECRET__ in this file
 -- with the same random string you set as the edge secret
 -- MARKETPLACE_WEBHOOK_SECRET. Do not commit the real value.
--- Also set edge secret SUPABASE_DB_URL to the session connection string
--- (direct :5432 or the session pooler). Not the transaction pooler.
+-- Also set edge secret MARKETPLACE_DATABASE_URL to the session pooler URL
+-- (preferred). getMarketplaceDb falls back to SUPABASE_DB_URL. The direct
+-- database host is IPv6-only. Not the transaction pooler.
 --
 -- Project ref is the SalonFlow project already named in backend/supabase/README.md.
 

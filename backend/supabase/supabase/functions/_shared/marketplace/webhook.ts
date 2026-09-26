@@ -19,6 +19,10 @@ function readUuid(source: Record<string, unknown> | null, key: string): string |
 /**
  * Pulls only the ids the sync needs. Name, flags, and coordinates on the
  * payload are ignored; rebuildMarketplaceSearchLocation reads the database.
+ *
+ * Database triggers POST a static `{}` body, which returns kind "ignore".
+ * marketplace-sync treats that as a full listed rebuild. Location and
+ * service payloads still return the targeted ids.
  */
 export function targetsFromWebhook(body: unknown): WebhookTarget {
   const payload = asRecord(body);

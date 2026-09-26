@@ -1,4 +1,9 @@
-import { DEFAULT_SUGGEST_LIMIT, MAX_SUGGEST_LIMIT } from "./ranking.ts";
+import {
+  DEFAULT_SUGGEST_LIMIT,
+  MAX_SUGGEST_LIMIT,
+  MIN_SUGGEST_SIMILARITY,
+  SUGGEST_CANDIDATE_FACTOR,
+} from "./ranking.ts";
 import type { MarketplaceSql } from "./sql.ts";
 import { likeContainsPattern, normalizeQuery } from "./text-query.ts";
 
@@ -54,16 +59,21 @@ export function suggestItemFromRow(row: {
  * active location, then deduped by lower(name). Unlisted salons cannot leak
  * a service name through this query.
  *
- * Location hits are the nearest names by trigram distance
+ * Location candidates are the nearest names by trigram distance
  * (`OPERATOR(extensions.<->)`), which the GiST index can satisfy with
  * `ORDER BY ... LIMIT`. The `%` / ILIKE form sequentially scanned the
  * projection once a few percent of names matched. PostGIS also defines
  * `<->`, so the operator is schema-qualified.
+ *
+ * That ordering admits any name, so the candidate window is filtered at
+ * MIN_SUGGEST_SIMILARITY afterwards — outside the LIMIT subquery, which is an
+ * optimisation barrier, so the KNN index scan survives the added predicate.
  */
 export async function suggestMarketplace(sql: MarketplaceSql, input: SuggestInput): Promise<{ items: SuggestItem[] }> {
   const q = normalizeQuery(input.q);
   const pattern = likeContainsPattern(q);
   const limit = Math.min(input.limit ?? DEFAULT_SUGGEST_LIMIT, MAX_SUGGEST_LIMIT);
+  const candidates = limit * SUGGEST_CANDIDATE_FACTOR;
 
   const rows = await sql<{
     id: string;
@@ -128,15 +138,25 @@ export async function suggestMarketplace(sql: MarketplaceSql, input: SuggestInpu
       )
       union all
       (
-        select
-          m.location_id::text as id,
-          m.name,
-          'location'::text as type,
-          m.slug,
-          m.location_id,
-          (1 - (lower(m.name) operator(extensions.<->) ${q})) as sim
-        from public.marketplace_search_location m
-        order by lower(m.name) operator(extensions.<->) ${q}
+        select id, name, type, slug, location_id, sim
+        from (
+          select
+            m.location_id::text as id,
+            m.name,
+            'location'::text as type,
+            m.slug,
+            m.location_id,
+            greatest(
+              extensions.similarity(lower(m.name), ${q}),
+              extensions.word_similarity(${q}, lower(m.name))
+            ) as sim
+          from public.marketplace_search_location m
+          order by lower(m.name) operator(extensions.<->) ${q}
+          limit ${candidates}
+        ) near
+        where near.sim >= ${MIN_SUGGEST_SIMILARITY}
+          or lower(near.name) ilike ${pattern} escape '\\'
+        order by sim desc
         limit ${limit}
       )
     ) hits

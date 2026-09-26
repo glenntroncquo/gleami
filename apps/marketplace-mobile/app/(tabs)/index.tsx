@@ -8,7 +8,7 @@ import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import Animated, { Easing, FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { galleryFromItem } from '@/src/api/gallery';
-import type { SearchItem } from '@/src/api/types';
+import type { FavoriteSalon, SearchItem } from '@/src/api/types';
 import { useImagesReady } from '@/src/hooks/use-images-ready';
 import { CarouselParentScrollContext } from '@/src/components/media-carousel';
 import { ResultCard } from '@/src/components/result-card';
@@ -16,7 +16,7 @@ import { SearchBar } from '@/src/components/expandable-search';
 import { ErrorState, OfflineState } from '@/src/components/screen-state';
 import { CategoryGridSkeleton, CompactCardSkeleton } from '@/src/components/skeleton';
 import { TopFade } from '@/src/components/top-fade';
-import { useCategories, useSearchResults } from '@/src/hooks/use-marketplace';
+import { useCategories, useFavorites, useSearchResults } from '@/src/hooks/use-marketplace';
 import { useOnline } from '@/src/lib/online';
 import { useDiscovery } from '@/src/store/discovery';
 
@@ -33,10 +33,11 @@ function categoryIcon(name: string): keyof typeof Ionicons.glyphMap {
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const categories = useCategories();
+  const favorites = useFavorites();
   const search = useSearchResults();
   const online = useOnline();
-  const setCategory = useDiscovery((s) => s.setCategory);
-  const setQuery = useDiscovery((s) => s.setQuery);
+  const toggleCategory = useDiscovery((s) => s.toggleCategory);
+  const selectedCategoryIds = useDiscovery((s) => s.categoryIds);
   const userLocation = useDiscovery((s) => s.userLocation);
   const items = search.data?.pages.flatMap((page) => page.items) ?? [];
   const discoverItems = items.slice(0, 10);
@@ -47,7 +48,7 @@ export default function HomeScreen() {
   const coversReady = useImagesReady(firstCovers);
   const choices = [{ id: null, name: 'Alle', icon: 'grid-outline' as const }, ...(categories.data ?? []).map((c) => ({ ...c, icon: categoryIcon(c.name) }))];
   const columns = Array.from({ length: Math.ceil(choices.length / 2) }, (_, i) => choices.slice(i * 2, i * 2 + 2));
-  const browse = (id: string | null) => { setQuery(''); setCategory(id); router.navigate('/discover'); };
+  const isSelected = (id: string | null) => (id ? selectedCategoryIds.includes(id) : selectedCategoryIds.length === 0);
   const ios = Platform.OS === 'ios';
   return <View className="flex-1 bg-canvas">
     <ScrollView
@@ -66,29 +67,56 @@ export default function HomeScreen() {
       </View>
       <SearchBar variant="home" />
       {categories.data ? <Animated.View entering={FADE_IN}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 26, gap: 8 }}>
-        {columns.map((column, i) => <View key={i} style={{ gap: 18 }}>{column.map((c) => <Pressable key={c.id ?? 'all'} accessibilityRole="button" accessibilityLabel={c.name} onPress={() => browse(c.id)} style={{ width: 70, alignItems: 'center', gap: 7 }}>
-          <View style={{ width: 56, height: 56, borderRadius: 17, borderWidth: 1, borderColor: c.id ? brandColors.line : `${brandColors.blue}40`, backgroundColor: c.id ? brandColors.surface : brandColors.blueTint, alignItems: 'center', justifyContent: 'center' }}><Ionicons name={c.icon} size={25} color={c.id ? '#071D43' : brandColors.navy} /></View>
-          <Text numberOfLines={2} style={{ height: 30, fontSize: 10, lineHeight: 14, textAlign: 'center', color: '#071D43' }}>{c.name}</Text>
-        </Pressable>)}</View>)}
+        {columns.map((column, i) => <View key={i} style={{ gap: 18 }}>{column.map((c) => {
+          const selected = isSelected(c.id);
+          return <Pressable key={c.id ?? 'all'} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} accessibilityLabel={c.name} onPress={() => toggleCategory(c.id)} style={{ width: 70, alignItems: 'center', gap: 7 }}>
+            <View style={{ width: 56, height: 56, borderRadius: 17, borderWidth: selected ? 1.5 : 1, borderColor: selected ? brandColors.blue : brandColors.line, backgroundColor: selected ? brandColors.blueTint : brandColors.surface, alignItems: 'center', justifyContent: 'center' }}><Ionicons name={c.icon} size={25} color={selected ? brandColors.blue : '#071D43'} /></View>
+            <Text numberOfLines={2} style={{ height: 30, fontSize: 10, lineHeight: 14, textAlign: 'center', fontWeight: selected ? '600' : '400', color: '#071D43' }}>{c.name}</Text>
+          </Pressable>;
+        })}</View>)}
       </ScrollView></Animated.View> : categories.isError ? <Pressable accessibilityRole="button" onPress={() => categories.refetch()} className="px-5 py-3"><Text className="text-accent">Categorieën opnieuw laden</Text></Pressable> : <CategoryGridSkeleton />}
+      <FavoritesRow items={favorites.data ?? []} />
       {!online && !items.length ? <OfflineState onRetry={() => search.refetch()} /> : search.isLoading || (items.length > 0 && !coversReady) ? <>
         <SalonRowSkeleton title={DISCOVER_TITLE} />
         <SalonRowSkeleton title={NEARBY_TITLE} />
       </> : search.isError && !items.length ? <ErrorState onRetry={() => search.refetch()} /> : items.length ? <Animated.View entering={FADE_IN}>
         <SalonRow title={DISCOVER_TITLE} items={discoverItems} />
         <SalonRow title={NEARBY_TITLE} items={nearbyItems} />
-      </Animated.View> : <View className="p-6"><Text className="text-xl font-semibold text-ink">Geen salons gevonden</Text><Pressable accessibilityRole="button" onPress={() => browse(null)} className="py-4"><Text className="text-accent">Bekijk alle behandelingen</Text></Pressable></View>}
+      </Animated.View> : <View className="p-6"><Text className="text-xl font-semibold text-ink">Geen salons gevonden</Text>
+        {selectedCategoryIds.length
+          ? <Pressable accessibilityRole="button" onPress={() => toggleCategory(null)} className="py-4"><Text className="text-accent">Bekijk alle behandelingen</Text></Pressable>
+          : <Pressable accessibilityRole="button" onPress={() => router.navigate('/discover')} className="py-4"><Text className="text-accent">Zoek op de kaart</Text></Pressable>}
+      </View>}
     </ScrollView>
     <TopFade />
   </View>;
 }
 
+const FAVORITES_TITLE = 'Favorieten';
 const DISCOVER_TITLE = 'Ontdek jouw volgende salon';
 const NEARBY_TITLE = 'Dicht bij jou';
 const FADE_IN = FadeIn.duration(320).easing(Easing.out(Easing.cubic));
 
-function RowHeader({ title }: { title: string }) {
-  return <View className="mb-3 flex-row items-center justify-between gap-2 px-5"><Text className="flex-1 text-xl font-bold tracking-tight text-ink">{title}</Text><Pressable onPress={() => router.navigate('/discover')} accessibilityRole="button" accessibilityLabel={`Bekijk alle salons: ${title}`} className="h-11 w-11 items-center justify-center rounded-full border border-line"><Ionicons name="arrow-forward" size={19} color="#071D43" /></Pressable></View>;
+function RowHeader({ title, onMore = () => router.navigate('/discover') }: { title: string; onMore?: () => void }) {
+  return <View className="mb-3 flex-row items-center justify-between gap-2 px-5"><Text className="flex-1 text-xl font-bold tracking-tight text-ink">{title}</Text><Pressable onPress={onMore} accessibilityRole="button" accessibilityLabel={`Bekijk alle salons: ${title}`} className="h-11 w-11 items-center justify-center rounded-full border border-line"><Ionicons name="arrow-forward" size={19} color="#071D43" /></Pressable></View>;
+}
+
+/** Only shown to signed-in users with at least one saved salon. */
+function FavoritesRow({ items }: { items: FavoriteSalon[] }) {
+  if (!items.length) return null;
+  return <View className="mb-4 mt-4">
+    <RowHeader title={FAVORITES_TITLE} onMore={() => router.push('/favorites')} />
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}>
+      {items.map((item) => {
+        const cover = galleryFromItem(item.images, item.imageUrl)[0] ?? null;
+        return <Pressable key={item.locationId} accessibilityRole="button" accessibilityLabel={item.name} onPress={() => router.push({ pathname: '/salon/[slug]', params: { slug: item.slug } })} style={{ width: 246 }}>
+          {cover ? <Image source={{ uri: cover }} style={{ height: 148, borderRadius: 20 }} contentFit="cover" /> : <View style={{ height: 148, borderRadius: 20, backgroundColor: brandColors.line }} />}
+          <Text numberOfLines={1} className="mt-3 text-base font-semibold text-ink">{item.name}</Text>
+          {item.city ? <Text numberOfLines={1} className="mt-0.5 text-sm text-muted">{item.city}</Text> : null}
+        </Pressable>;
+      })}
+    </ScrollView>
+  </View>;
 }
 
 /** Same header and card geometry as SalonRow, so the swap to real cards doesn't move anything. */

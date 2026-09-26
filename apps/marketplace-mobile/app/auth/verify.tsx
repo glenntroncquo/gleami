@@ -24,6 +24,8 @@ export default function AuthVerifyScreen() {
   const afterSignIn = useAfterSignIn();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  /** Red boxes without a message, for a code that is simply not finished yet. */
+  const [invalid, setInvalid] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
   const [verifying, setVerifying] = useState(false);
   const [cooldown, setCooldown] = useState(RESEND_SECONDS);
@@ -42,7 +44,7 @@ export default function AuthVerifyScreen() {
       submitted.current = value;
       setError(null);
       setVerifying(true);
-      const result = await auth.verifyEmailCode(email, value);
+      const result = await auth.verifyEmailCode(email, value, intent === 'reset' ? 'recovery' : 'signin');
       setVerifying(false);
       if (result.error !== null) {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -68,7 +70,10 @@ export default function AuthVerifyScreen() {
     }
     setError(null);
     setNotice(null);
-    const sent = await auth.sendEmailCode(email, { createUser: intent !== 'reset' });
+    const sent =
+      intent === 'reset'
+        ? await auth.sendPasswordResetCode(email)
+        : await auth.sendEmailCode(email, { createUser: true });
     if (sent.error !== null) {
       setError(sent.error);
       return;
@@ -85,11 +90,12 @@ export default function AuthVerifyScreen() {
         onChange={(value) => {
           setCode(value);
           if (error) setError(null);
+          if (invalid) setInvalid(false);
           if (notice) setNotice(null);
           if (value.length === CODE_LENGTH) void verify(value);
         }}
         length={CODE_LENGTH}
-        invalid={Boolean(error)}
+        invalid={invalid || Boolean(error)}
         shakeKey={shakeKey}
         disabled={verifying}
       />
@@ -99,8 +105,9 @@ export default function AuthVerifyScreen() {
         loading={verifying}
         onPress={() => {
           if (code.length !== CODE_LENGTH) {
+            // Red boxes and a shake, no message: an incomplete code is self-evident.
             void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            setError(code ? t('auth.errors.incompleteCode') : t('auth.errors.required'));
+            setInvalid(true);
             setShakeKey((key) => key + 1);
             return;
           }

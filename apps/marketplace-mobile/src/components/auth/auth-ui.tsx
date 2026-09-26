@@ -3,7 +3,6 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
@@ -23,6 +22,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { SocialProvider } from '@/src/auth/social';
+import { LoadingDots } from '@/src/components/loading-dots';
 import { t } from '@/src/i18n';
 import { brandColors } from '@/src/theme/colors';
 
@@ -212,7 +212,7 @@ export function PrimaryButton({ label, onPress, loading }: PrimaryButtonProps) {
       accessibilityLabel={label}
       accessibilityState={{ busy: loading }}
       style={({ pressed }) => [styles.primary, { backgroundColor: authColors.ink }, pressed && styles.pressed]}>
-      {loading ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.primaryLabel}>{label}</Text>}
+      {loading ? <LoadingDots color="#ffffff" /> : <Text style={styles.primaryLabel}>{label}</Text>}
     </Pressable>
   );
 }
@@ -235,7 +235,7 @@ export function SocialButton({
       accessibilityState={{ busy: loading }}
       style={({ pressed }) => [styles.social, pressed && styles.pressed]}>
       {loading ? (
-        <ActivityIndicator color={authColors.ink} />
+        <LoadingDots color={authColors.ink} />
       ) : (
         <>
           <View style={styles.socialIcon}>

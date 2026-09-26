@@ -24,10 +24,6 @@ export default function TabLayout() {
         <NativeTabs.Trigger.Icon sf="calendar" />
         <NativeTabs.Trigger.Label>{t('tabs.bookings')}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="favorites" disableAutomaticContentInsets>
-        <NativeTabs.Trigger.Icon sf={{ default: 'heart', selected: 'heart.fill' }} />
-        <NativeTabs.Trigger.Label>{t('tabs.favorites')}</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile" disableAutomaticContentInsets>
         <NativeTabs.Trigger.Icon sf={{ default: 'person.crop.circle', selected: 'person.crop.circle.fill' }} />
         <NativeTabs.Trigger.Label>{t('tabs.profile')}</NativeTabs.Trigger.Label>

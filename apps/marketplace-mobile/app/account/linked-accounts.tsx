@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/auth/auth-context';
 import { isSocialAvailable, providerLabel, type SocialProvider } from '@/src/auth/social';
 import { authColors } from '@/src/components/auth/auth-ui';
+import { LoadingDots } from '@/src/components/loading-dots';
 import { t } from '@/src/i18n';
 import { brandColors } from '@/src/theme/colors';
 
@@ -202,7 +203,7 @@ function ProviderRow({
             pressed && { opacity: 0.6 },
           ]}>
           {busy ? (
-            <ActivityIndicator size="small" color={linked ? brandColors.navy : '#ffffff'} />
+            <LoadingDots size={6} color={linked ? brandColors.navy : '#ffffff'} />
           ) : (
             <Text style={[styles.actionLabel, { color: linked ? brandColors.navy : '#ffffff' }]}>{action}</Text>
           )}

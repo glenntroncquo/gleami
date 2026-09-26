@@ -24,10 +24,21 @@ export default function FavoritesScreen() {
   const likes = useToggleLike();
 
   return (
-    <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 88 }}>
-      <Text className="px-5 text-3xl font-semibold tracking-tight text-ink">{t('favorites.title')}</Text>
-      <View className="mt-3">
+    <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top, paddingBottom: insets.bottom + 16 }}>
+      <View style={{ height: 52, justifyContent: 'center', paddingHorizontal: 12 }}>
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel={t('common.back')}
+          style={({ pressed }) => [
+            { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+            pressed && { opacity: 0.5 },
+          ]}>
+          <Ionicons name="arrow-back" size={26} color={brandColors.navy} />
+        </Pressable>
       </View>
+      <Text className="px-5 pb-3 text-3xl font-semibold tracking-tight text-ink">{t('favorites.title')}</Text>
       {!user ? (
         <View className="flex-1 justify-center">
           <ScreenState

@@ -15,6 +15,9 @@ type DiscoveryState = {
   setQuery: (q: string) => void;
   setSearch: (q: string, categoryId: string | null) => void;
   setCategory: (id: string | null) => void;
+  /** `null` clears the selection. */
+  toggleCategory: (id: string | null) => void;
+  setFilters: (categoryIds: string[], radiusKm: number | null) => void;
   setUserLocation: (coords: LatLng) => void;
   showAreaSearch: (bbox: BBox) => void;
   applyAreaSearch: () => void;
@@ -32,6 +35,23 @@ export const useDiscovery = create<DiscoveryState>((set, get) => ({
   setQuery: (q) => set({ q }),
   setSearch: (q, categoryId) => set({ q, categoryIds: categoryId ? [categoryId] : [] }),
   setCategory: (id) => set({ categoryIds: id ? [id] : [] }),
+  // Browsing by category replaces a typed query, the same way picking a suggestion does.
+  toggleCategory: (id) =>
+    set((state) => ({
+      q: '',
+      categoryIds:
+        id === null
+          ? []
+          : state.categoryIds.includes(id)
+            ? state.categoryIds.filter((current) => current !== id)
+            : [...state.categoryIds, id],
+    })),
+  setFilters: (categoryIds, radiusKm) => set((state) => ({
+    categoryIds,
+    radiusKm,
+    // A chosen distance replaces map bounds; category-only changes keep the map area.
+    ...(radiusKm !== state.radiusKm ? { bbox: null, pendingBbox: null, areaSearchVisible: false } : {}),
+  })),
   setUserLocation: (coords) =>
     set((state) => {
       if (state.bbox || state.areaSearchVisible) {

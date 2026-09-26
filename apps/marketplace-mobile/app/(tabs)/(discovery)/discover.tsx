@@ -1,10 +1,9 @@
 import * as Location from 'expo-location';
 import { useLocalSearchParams } from 'expo-router';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CategoryChips } from '@/src/components/category-chips';
 import { SearchBar } from '@/src/components/expandable-search';
 import { DiscoverMap } from '@/src/components/discover-map';
 import { DiscoverSheet } from '@/src/components/discover-sheet';
@@ -16,8 +15,11 @@ import { useDiscovery } from '@/src/store/discovery';
 export default function DiscoverScreen() {
   const { expandSearch } = useLocalSearchParams<{ expandSearch?: string }>();
   const insets = useSafeAreaInsets();
+  const [searchBarHeight, setSearchBarHeight] = useState(58);
+  const sheetTopInset = insets.top + 8 + searchBarHeight + 8;
   const q = useDiscovery((state) => state.q);
   const categoryId = useDiscovery((state) => state.categoryIds[0] ?? null);
+  const categoryCount = useDiscovery((state) => state.categoryIds.length);
   const setUserLocation = useDiscovery((state) => state.setUserLocation);
   const areaSearchVisible = useDiscovery((state) => state.areaSearchVisible);
   const applyAreaSearch = useDiscovery((state) => state.applyAreaSearch);
@@ -25,7 +27,7 @@ export default function DiscoverScreen() {
   const search = useSearchResults();
   const items = search.data?.pages.flatMap((page) => page.items) ?? [];
   const categoryName = categories.data?.find((category) => category.id === categoryId)?.name;
-  const summary = q || categoryName || 'Alle behandelingen';
+  const summary = q || (categoryCount > 1 ? `${categoryCount} behandelingen` : categoryName) || 'Alle behandelingen';
 
   useEffect(() => {
     let cancelled = false;
@@ -52,8 +54,9 @@ export default function DiscoverScreen() {
       <DiscoverMap items={items} />
       <View pointerEvents="box-none" className="absolute inset-0">
         <View pointerEvents="box-none" style={{ paddingTop: insets.top + 8 }} className="gap-3">
-          <SearchBar variant="results" summary={summary} autoExpand={expandSearch === '1'} />
-          <CategoryChips />
+          <View onLayout={(event) => setSearchBarHeight(event.nativeEvent.layout.height)}>
+            <SearchBar variant="results" summary={summary} autoExpand={expandSearch === '1'} />
+          </View>
         </View>
         {areaSearchVisible ? (
           <View pointerEvents="box-none" className="absolute left-0 right-0 items-center" style={{ top: '36%' }}>
@@ -68,7 +71,7 @@ export default function DiscoverScreen() {
           </View>
         ) : null}
       </View>
-      <DiscoverSheet />
+      <DiscoverSheet topInset={sheetTopInset} />
     </View>
   );
 }

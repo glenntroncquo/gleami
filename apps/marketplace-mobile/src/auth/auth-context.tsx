@@ -42,13 +42,18 @@ export type AuthResult<T = void> = { error: string; data?: undefined } | { error
 
 export type SocialSignIn = { user: AuthUser; firstName?: string; lastName?: string };
 
+/** 'signin' verifies a magic-link code, 'recovery' a password-reset code. */
+export type EmailCodeKind = 'signin' | 'recovery';
+
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
   configured: boolean;
   lookupEmail: (email: string) => Promise<AuthResult<EmailStatus>>;
   sendEmailCode: (email: string, options: { createUser: boolean }) => Promise<AuthResult>;
-  verifyEmailCode: (email: string, code: string) => Promise<AuthResult<AuthUser>>;
+  /** Password recovery code. Uses the "Reset Password" email template. */
+  sendPasswordResetCode: (email: string) => Promise<AuthResult>;
+  verifyEmailCode: (email: string, code: string, kind?: EmailCodeKind) => Promise<AuthResult<AuthUser>>;
   signInWithPassword: (email: string, password: string) => Promise<AuthResult<AuthUser>>;
   /** `data` is null when the user dismissed the native sheet. */
   signInWithSocial: (provider: SocialProvider) => Promise<AuthResult<SocialSignIn | null>>;
@@ -84,6 +89,9 @@ function friendlyError(error: unknown): string {
     if (code === 'otp_expired' || message.includes('expired or is invalid')) return t('auth.errors.invalidCode');
     if (code.startsWith('over_') || error.status === 429) return t('auth.errors.rateLimited');
     if (code === 'weak_password') return t('auth.errors.weakPassword');
+    if (code === 'same_password' || message.includes('should be different')) {
+      return t('auth.errors.samePassword');
+    }
     if (code === 'identity_already_exists') return t('auth.errors.identityInUse');
     if (code === 'manual_linking_disabled') return t('auth.errors.linkingDisabled');
     if (code === 'single_identity_not_deletable') return t('account.lastMethod');
@@ -235,7 +243,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return error ? { error: friendlyError(error) } : { error: null, data: undefined };
       },
 
-      verifyEmailCode: async (email, code) => {
+      sendPasswordResetCode: async (email) => {
+        if (useMocks) return { error: null, data: undefined };
+        const { error } = await getSupabase().auth.resetPasswordForEmail(email.trim());
+        return error ? { error: friendlyError(error) } : { error: null, data: undefined };
+      },
+
+      verifyEmailCode: async (email, code, kind = 'signin') => {
         if (useMocks) {
           if (code === '000000') return { error: t('auth.errors.invalidCode') };
           const existing = await readMock<MockAccount>(MOCK_ACCOUNT_KEY);
@@ -246,7 +260,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data, error } = await getSupabase().auth.verifyOtp({
           email: email.trim(),
           token: code,
-          type: 'email',
+          type: kind === 'recovery' ? 'recovery' : 'email',
         });
         const next = userFromSession(data.session);
         if (error || !next) return { error: friendlyError(error) };

@@ -39,7 +39,7 @@ export default function AuthPasswordScreen() {
     if (busy) return;
     setError(null);
     setBusy('forgot');
-    const sent = await auth.sendEmailCode(email, { createUser: false });
+    const sent = await auth.sendPasswordResetCode(email);
     setBusy(null);
     if (sent.error !== null) {
       setError(sent.error);

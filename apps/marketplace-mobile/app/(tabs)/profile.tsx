@@ -6,7 +6,8 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth, type AuthUser } from '@/src/auth/auth-context';
-import { authColors, PrimaryButton } from '@/src/components/auth/auth-ui';
+import { PrimaryButton } from '@/src/components/auth/auth-ui';
+import { SettingsGroup, SettingsRow } from '@/src/components/settings-list';
 import { t } from '@/src/i18n';
 import { brandColors } from '@/src/theme/colors';
 
@@ -34,16 +35,34 @@ export default function ProfileScreen() {
 
 function SignedOut() {
   return (
-    <View style={styles.hero}>
-      <View style={styles.heroIcon}>
-        <Ionicons name="person-outline" size={26} color={brandColors.navy} />
-      </View>
-      <Text style={styles.heroTitle}>{t('profile.signedOutTitle')}</Text>
-      <Text style={styles.heroBody}>{t('profile.signedOutBody')}</Text>
-      <View style={{ alignSelf: 'stretch', marginTop: 22 }}>
+    <View>
+      <Text style={styles.lead}>{t('profile.signedOutBody')}</Text>
+      <View style={{ marginTop: 20 }}>
         <PrimaryButton label={t('profile.signIn')} onPress={() => router.push('/auth')} />
       </View>
+      <View style={styles.rule} />
+      <HelpAndLegal />
     </View>
+  );
+}
+
+/** Support and legal, reachable whether or not someone is signed in. */
+function HelpAndLegal() {
+  return (
+    <SettingsGroup>
+      <SettingsRow
+        icon="help-circle-outline"
+        label={t('profile.help')}
+        chevron
+        onPress={() => router.push('/support')}
+      />
+      <SettingsRow
+        icon="reader-outline"
+        label={t('profile.legal')}
+        chevron
+        onPress={() => router.push('/legal')}
+      />
+    </SettingsGroup>
   );
 }
 
@@ -104,82 +123,49 @@ function SignedIn({ user }: { user: AuthUser }) {
         </Pressable>
       ) : null}
 
-      <View style={styles.group}>
-        <Row
+      <SettingsGroup>
+        <SettingsRow
+          icon="heart-outline"
+          label={t('favorites.title')}
+          chevron
+          onPress={() => router.push('/favorites')}
+        />
+      </SettingsGroup>
+
+      <HelpAndLegal />
+
+      <SettingsGroup>
+        <SettingsRow
           icon="link-outline"
           label={t('profile.linkedAccounts')}
           chevron
           onPress={() => router.push('/account/linked-accounts')}
         />
-        <View style={styles.separator} />
-        <Row
+        <SettingsRow
           icon="log-out-outline"
           label={t('profile.signOut')}
           onPress={() => {
             void auth.signOut();
           }}
         />
-      </View>
+      </SettingsGroup>
 
-      <View style={styles.group}>
-        <Row
+      <SettingsGroup>
+        <SettingsRow
           icon="trash-outline"
           label={t('profile.deleteAccount')}
           destructive
           busy={deleting}
           onPress={confirmDelete}
         />
-      </View>
+      </SettingsGroup>
     </View>
   );
 }
 
-function Row({
-  icon,
-  label,
-  onPress,
-  destructive,
-  busy,
-  chevron,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  onPress: () => void;
-  destructive?: boolean;
-  busy?: boolean;
-  chevron?: boolean;
-}) {
-  const color = destructive ? authColors.danger : brandColors.navy;
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={busy}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={({ pressed }) => [styles.row, pressed && { backgroundColor: '#EEF0F6' }]}>
-      <Ionicons name={icon} size={20} color={color} />
-      <Text style={[styles.rowLabel, { color }]}>{label}</Text>
-      {busy ? (
-        <ActivityIndicator color={color} />
-      ) : !chevron ? null : (
-        <Ionicons name="chevron-forward" size={17} color={brandColors.muted} />
-      )}
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  hero: { marginTop: 40, alignItems: 'center', paddingHorizontal: 8 },
-  heroIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: brandColors.blueTint,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroTitle: { marginTop: 16, fontSize: 20, fontWeight: '700', letterSpacing: -0.3, color: brandColors.navy, textAlign: 'center' },
-  heroBody: { marginTop: 8, fontSize: 14, lineHeight: 20, color: brandColors.muted, textAlign: 'center' },
+  lead: { marginTop: 6, fontSize: 15, lineHeight: 22, color: brandColors.muted },
+  rule: { height: StyleSheet.hairlineWidth, backgroundColor: brandColors.line, marginVertical: 28 },
   identity: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   avatar: {
     width: 58,
@@ -207,8 +193,4 @@ const styles = StyleSheet.create({
   },
   finishTitle: { fontSize: 15, fontWeight: '700', color: brandColors.navy },
   finishBody: { marginTop: 2, fontSize: 13.5, color: brandColors.muted },
-  group: { borderRadius: 20, borderCurve: 'continuous', backgroundColor: brandColors.surface, overflow: 'hidden' },
-  row: { minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16 },
-  rowLabel: { flex: 1, fontSize: 15.5, fontWeight: '500' },
-  separator: { height: StyleSheet.hairlineWidth, marginLeft: 48, backgroundColor: brandColors.line },
 });

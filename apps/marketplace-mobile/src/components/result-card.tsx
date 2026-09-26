@@ -21,7 +21,7 @@ type ResultCardProps = {
   compact?: boolean;
 };
 
-export function ResultCard({
+export const ResultCard = React.memo(function ResultCard({
   item,
   availability,
   availabilityLoading,
@@ -114,4 +114,4 @@ export function ResultCard({
       </View>
     </View>
   );
-}
+});

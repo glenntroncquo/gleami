@@ -46,6 +46,10 @@ export default function RootLayout() {
                 <Stack.Screen name="salon/[slug]" />
                 <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="account/linked-accounts" />
+                <Stack.Screen name="favorites" />
+                <Stack.Screen name="support" />
+                <Stack.Screen name="legal/index" />
+                <Stack.Screen name="legal/[doc]" />
               </Stack>
             </SearchProvider>
           </AuthProvider>

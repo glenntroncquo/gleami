@@ -1,3 +1,4 @@
+import { usePullRefresh } from '@/src/hooks/use-pull-refresh';
 import { brandColors } from '@/src/theme/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
@@ -5,7 +6,7 @@ import { Image } from 'expo-image';
 import React, { useRef } from 'react';
 import { Platform, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
-import Animated, { Easing, FadeIn } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, LinearTransition, ReduceMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { galleryFromItem } from '@/src/api/gallery';
 import type { FavoriteSalon, SearchItem } from '@/src/api/types';
@@ -35,6 +36,7 @@ export default function HomeScreen() {
   const categories = useCategories();
   const favorites = useFavorites();
   const search = useSearchResults();
+  const pullRefresh = usePullRefresh(search.refetch);
   const online = useOnline();
   const toggleCategory = useDiscovery((s) => s.toggleCategory);
   const selectedCategoryIds = useDiscovery((s) => s.categoryIds);
@@ -58,7 +60,7 @@ export default function HomeScreen() {
       contentOffset={ios ? { x: 0, y: -insets.top } : undefined}
       scrollIndicatorInsets={ios ? { top: insets.top } : undefined}
       contentContainerStyle={{ paddingTop: ios ? 0 : insets.top, paddingBottom: insets.bottom + 104 }}
-      refreshControl={<RefreshControl refreshing={search.isRefetching} onRefresh={() => { void search.refetch(); }} tintColor={brandColors.navy} progressViewOffset={insets.top} />}>
+      refreshControl={<RefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} tintColor={brandColors.navy} progressViewOffset={insets.top} />}>
       <View className="flex-row items-center justify-between px-5 pb-4 pt-3">
         <Pressable accessibilityRole="button" accessibilityLabel="Zoekgebied wijzigen op de kaart" onPress={() => router.navigate('/discover')} className="min-h-11 flex-row items-center gap-1">
           <Ionicons name="location" size={15} color={brandColors.blue} /><Text className="text-xs font-semibold text-ink">{userLocation ? 'Huidige locatie' : 'Brussel'}</Text><Ionicons name="chevron-down" size={12} color="#071D43" />
@@ -75,11 +77,11 @@ export default function HomeScreen() {
           </Pressable>;
         })}</View>)}
       </ScrollView></Animated.View> : categories.isError ? <Pressable accessibilityRole="button" onPress={() => categories.refetch()} className="px-5 py-3"><Text className="text-accent">Categorieën opnieuw laden</Text></Pressable> : <CategoryGridSkeleton />}
-      <FavoritesRow items={favorites.data ?? []} />
+      <Animated.View layout={ROW_LAYOUT}><FavoritesRow items={favorites.data ?? []} /></Animated.View>
       {!online && !items.length ? <OfflineState onRetry={() => search.refetch()} /> : search.isLoading || (items.length > 0 && !coversReady) ? <>
         <SalonRowSkeleton title={DISCOVER_TITLE} />
         <SalonRowSkeleton title={NEARBY_TITLE} />
-      </> : search.isError && !items.length ? <ErrorState onRetry={() => search.refetch()} /> : items.length ? <Animated.View entering={FADE_IN}>
+      </> : search.isError && !items.length ? <ErrorState onRetry={() => search.refetch()} /> : items.length ? <Animated.View entering={FADE_IN} layout={ROW_LAYOUT}>
         <SalonRow title={DISCOVER_TITLE} items={discoverItems} />
         <SalonRow title={NEARBY_TITLE} items={nearbyItems} />
       </Animated.View> : <View className="p-6"><Text className="text-xl font-semibold text-ink">Geen salons gevonden</Text>
@@ -91,6 +93,8 @@ export default function HomeScreen() {
     <TopFade />
   </View>;
 }
+
+const ROW_LAYOUT = LinearTransition.duration(280).easing(Easing.out(Easing.cubic)).reduceMotion(ReduceMotion.System);
 
 const FAVORITES_TITLE = 'Favorieten';
 const DISCOVER_TITLE = 'Ontdek jouw volgende salon';

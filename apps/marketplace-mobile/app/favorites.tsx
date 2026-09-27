@@ -1,3 +1,5 @@
+import { AnimatedHeart } from '@/src/components/animated-heart';
+import { usePullRefresh } from '@/src/hooks/use-pull-refresh';
 import { brandColors } from '@/src/theme/colors';
 import { Image } from 'expo-image';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -21,6 +23,7 @@ export default function FavoritesScreen() {
   const { user } = useAuth();
   const online = useOnline();
   const favorites = useFavorites();
+  const pullRefresh = usePullRefresh(favorites.refetch);
   const likes = useToggleLike();
 
   return (
@@ -63,10 +66,8 @@ export default function FavoritesScreen() {
           data={favorites.data ?? []}
           keyExtractor={(item) => item.locationId}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24, flexGrow: 1 }}
-          refreshing={favorites.isRefetching}
-          onRefresh={() => {
-            void favorites.refetch();
-          }}
+          refreshing={pullRefresh.refreshing}
+          onRefresh={pullRefresh.onRefresh}
           ListEmptyComponent={
             <ScreenState
               icon="heart-outline"
@@ -80,7 +81,7 @@ export default function FavoritesScreen() {
             <FavoriteRow
               item={item}
               liked={likes.likedIds.has(item.locationId)}
-              onUnlike={() => likes.toggle({ locationId: item.locationId, liked: true })}
+              onUnlike={() => likes.toggle({ locationId: item.locationId, liked: likes.likedIds.has(item.locationId) })}
             />
           )}
         />
@@ -122,7 +123,7 @@ function FavoriteRow({
         accessibilityLabel={t('favorites.unlike')}
         accessibilityState={{ selected: liked }}
         className="flex-row items-center gap-1 px-2 py-2">
-        <Ionicons name="heart" size={18} color={brandColors.navy} />
+        <AnimatedHeart liked={liked} size={18} />
         <Text className="text-sm text-ink">{formatCount(item.likeCount)}</Text>
       </Pressable>
     </View>

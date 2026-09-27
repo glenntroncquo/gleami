@@ -1,3 +1,4 @@
+import { usePullRefresh } from '@/src/hooks/use-pull-refresh';
 import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
@@ -31,6 +32,7 @@ export function DiscoverSheet({ topInset }: { topInset: number }) {
   const filterCount = categoryCount + (radius != null && radius !== DEFAULT_RADIUS_KM ? 1 : 0);
   const online = useOnline();
   const search = useSearchResults();
+  const pullRefresh = usePullRefresh(search.refetch);
   const items = useMemo(
     () => search.data?.pages.flatMap((page) => page.items) ?? [],
     [search.data],
@@ -152,10 +154,8 @@ export function DiscoverSheet({ topInset }: { topInset: number }) {
           }}
           refreshControl={
             <RefreshControl
-              refreshing={search.isRefetching && !search.isFetchingNextPage}
-              onRefresh={() => {
-                void search.refetch();
-              }}
+              refreshing={pullRefresh.refreshing}
+              onRefresh={pullRefresh.onRefresh}
             />
           }
           // The count lives in the handle ("Salons · 2").

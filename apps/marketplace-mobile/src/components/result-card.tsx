@@ -1,6 +1,5 @@
-import { brandColors } from "@/src/theme/colors";
+import { AnimatedHeart } from '@/src/components/animated-heart';
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
@@ -43,7 +42,6 @@ export const ResultCard = React.memo(function ResultCard({
       router.push("/auth");
       return;
     }
-    void Haptics.selectionAsync().catch(() => undefined);
     likes.toggle({ locationId: item.locationId, liked });
   };
 
@@ -66,11 +64,7 @@ export const ResultCard = React.memo(function ResultCard({
           hitSlop={8}
           className="absolute right-2 top-2 h-10 w-10 items-center justify-center rounded-full bg-white/90"
         >
-          <Ionicons
-            name={liked ? "heart" : "heart-outline"}
-            size={20}
-            color={liked ? brandColors.navy : "#071D43"}
-          />
+          <AnimatedHeart liked={liked} />
         </Pressable>
       </View>
       <Pressable

@@ -1,11 +1,11 @@
+import { AnimatedHeart } from '@/src/components/animated-heart';
 import { brandColors } from '@/src/theme/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
-import * as WebBrowser from 'expo-web-browser';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
-import { Alert, Linking, Platform, Pressable, ScrollView, Share, Text, useWindowDimensions, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, Share, Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
   Extrapolation,
@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { LocationGetResponse, LocationService, ServiceVariant } from '@/src/api/types';
 import { useAuth } from '@/src/auth/auth-context';
+import { openBooking } from '@/src/booking/navigation';
 import { GlassButton } from '@/src/components/glass';
 import { MediaCarousel } from '@/src/components/media-carousel';
 import { ErrorState, OfflineState } from '@/src/components/screen-state';
@@ -145,19 +146,10 @@ export default function SalonScreen() {
     else router.replace('/(tabs)');
   };
 
-  const book = async (service?: LocationService, variant?: ServiceVariant) => {
+  /** Opens the native booking flow, with the tapped option already in the cart. */
+  const book = (variant?: ServiceVariant) => {
     if (!data) return;
-    const url = buildServiceBookingUrl({
-      companyId: data.location.companyId,
-      locationId: data.location.locationId,
-      serviceId: service?.serviceId,
-      variantIds: variant ? [variant.serviceVariantId] : undefined,
-    });
-    try {
-      await WebBrowser.openBrowserAsync(url);
-    } catch {
-      Alert.alert(t('booking.failedTitle'), t('booking.failedBody'));
-    }
+    openBooking(data.location.slug, variant?.serviceVariantId);
   };
 
   const onHeart = () => {
@@ -283,7 +275,7 @@ export default function SalonScreen() {
                   })}
             </Text>
             <Pressable
-              onPress={() => void book()}
+              onPress={() => book()}
               accessibilityRole="button"
               accessibilityLabel={t('salon.bookNow')}
               className="h-12 items-center justify-center rounded-full bg-ink px-6 active:opacity-80">
@@ -311,7 +303,7 @@ export default function SalonScreen() {
             accessibilityRole="button"
             accessibilityLabel={liked ? t('favorites.unlike') : t('favorites.like')}
             accessibilityState={{ selected: liked }}>
-            <Ionicons name={liked ? 'heart' : 'heart-outline'} size={21} color={brandColors.navy} />
+            <AnimatedHeart liked={liked} size={21} />
           </GlassButton>
         </Animated.View>
       ) : null}
@@ -563,7 +555,7 @@ function SalonBody({
   headerHeight,
 }: {
   data: LocationGetResponse;
-  onBook: (service: LocationService, variant: ServiceVariant) => void;
+  onBook: (variant: ServiceVariant) => void;
   onSectionLayout: SectionLayout;
   /** Called after a chip is picked, so the parent can bring the list into view. */
   onFilterChange: () => void;
@@ -747,7 +739,7 @@ function SalonBody({
                 variant={variant}
                 showService={!filter && variant.name.trim() !== service.name.trim()}
                 first={index === 0}
-                onBook={() => onBook(service, variant)}
+                onBook={() => onBook(variant)}
               />
             ))}
           </Animated.View>

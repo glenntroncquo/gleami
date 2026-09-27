@@ -44,6 +44,7 @@ export default function RootLayout() {
                 }}>
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="salon/[slug]" />
+                <Stack.Screen name="book/[slug]" options={{ presentation: 'fullScreenModal' }} />
                 <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="account/linked-accounts" />
                 <Stack.Screen name="favorites" />

@@ -1,3 +1,5 @@
+import * as Haptics from 'expo-haptics';
+import { Alert } from 'react-native';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 
 import {
@@ -102,6 +104,8 @@ export function useNextAvailable(pairs: { locationId: string; serviceId: string;
   });
 }
 
+const pendingLikes = new Set<string>();
+
 export function useToggleLike() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -138,17 +142,45 @@ export function useToggleLike() {
         };
       });
     },
-    onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['liked-ids'] });
-      await queryClient.invalidateQueries({ queryKey: ['favorites'] });
-      await queryClient.invalidateQueries({ queryKey: ['search'] });
-      await queryClient.invalidateQueries({ queryKey: ['location'] });
+    onError: (_error, input) => {
+      queryClient.setQueryData<Set<string>>(['liked-ids', user?.id], (current) => {
+        const next = new Set(current ?? []);
+        if (input.liked) next.add(input.locationId);
+        else next.delete(input.locationId);
+        return next;
+      });
+      queryClient.setQueriesData<InfiniteData<SearchResponse>>({ queryKey: ['search'] }, (current) => current && ({
+        ...current,
+        pages: current.pages.map((page) => ({ ...page, items: page.items.map((item) =>
+          item.locationId === input.locationId ? { ...item, likeCount: Math.max(0, item.likeCount + (input.liked ? 1 : -1)) } : item,
+        ) })),
+      }));
+      Alert.alert('Favoriet niet opgeslagen', 'Je wijziging is teruggedraaid. Probeer het opnieuw.');
+    },
+    onSettled: async (_data, _error, input) => {
+      try {
+        // Background reconciliation must not reorder/remount the visible results.
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['favorites', user?.id] }),
+          queryClient.invalidateQueries({ queryKey: ['search'], refetchType: 'none' }),
+          queryClient.invalidateQueries({ queryKey: ['location'], refetchType: 'none' }),
+        ]);
+      } finally {
+        pendingLikes.delete(`${user?.id}:${input.locationId}`);
+      }
     },
   });
 
   return {
     likedIds: likedQuery.data ?? new Set<string>(),
-    toggle: mutation.mutate,
+    toggle: (input: { locationId: string; liked: boolean }) => {
+      if (!user) return;
+      const key = `${user.id}:${input.locationId}`;
+      if (pendingLikes.has(key)) return;
+      pendingLikes.add(key);
+      void Haptics.selectionAsync().catch(() => undefined);
+      mutation.mutate(input);
+    },
     pendingId: mutation.isPending ? mutation.variables?.locationId : undefined,
   };
 }

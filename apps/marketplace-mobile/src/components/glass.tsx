@@ -187,7 +187,6 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
                 onPress={onPress}
                 style={[styles.tab, focused && styles.selectedTab]}>
                 {options.tabBarIcon?.({ focused, color, size: 22 })}
-                {focused ? <View accessible={false} style={{ position: 'absolute', top: 5, right: 10, width: 5, height: 5, borderRadius: 3, backgroundColor: brandColors.orange }} /> : null}
                 <Text style={[styles.tabLabel, { color }]} numberOfLines={1}>
                   {label}
                 </Text>

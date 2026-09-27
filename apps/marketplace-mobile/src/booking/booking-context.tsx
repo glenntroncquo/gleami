@@ -11,18 +11,10 @@ export type ConfirmedBooking = {
   price: number;
 };
 
-/** Null means "not edited yet", so the signed-in profile still shows through. */
-export type CustomerDraft = {
-  firstName: string | null;
-  lastName: string | null;
-  phone: string | null;
-};
-
 type BookingDraft = {
   items: CatalogItem[];
   dayKey: string | null;
   slot: AvailabilitySlot | null;
-  customer: CustomerDraft;
   notes: string;
   confirmed: ConfirmedBooking | null;
 };
@@ -33,7 +25,6 @@ type BookingContextValue = BookingDraft & {
   toggleItem: (item: CatalogItem) => void;
   /** Day and slot are stored together: a slot is meaningless without its day. */
   chooseSlot: (dayKey: string, slot: AvailabilitySlot) => void;
-  setCustomer: (patch: Partial<CustomerDraft>) => void;
   setNotes: (notes: string) => void;
   confirm: (booking: ConfirmedBooking) => void;
 };
@@ -58,7 +49,6 @@ export function BookingProvider({
     items: initialItems,
     dayKey: null,
     slot: null,
-    customer: { firstName: null, lastName: null, phone: null },
     notes: '',
     confirmed: null,
   });
@@ -77,9 +67,6 @@ export function BookingProvider({
   const chooseSlot = useCallback((dayKey: string, slot: AvailabilitySlot) => {
     setDraft((current) => ({ ...current, dayKey, slot }));
   }, []);
-  const setCustomer = useCallback((patch: Partial<CustomerDraft>) => {
-    setDraft((current) => ({ ...current, customer: { ...current.customer, ...patch } }));
-  }, []);
   const setNotes = useCallback((notes: string) => {
     setDraft((current) => ({ ...current, notes }));
   }, []);
@@ -93,11 +80,10 @@ export function BookingProvider({
       selectedKeys: new Set(draft.items.map(itemKey)),
       toggleItem,
       chooseSlot,
-      setCustomer,
       setNotes,
       confirm,
     }),
-    [draft, toggleItem, chooseSlot, setCustomer, setNotes, confirm],
+    [draft, toggleItem, chooseSlot, setNotes, confirm],
   );
 
   return <BookingContext.Provider value={value}>{children}</BookingContext.Provider>;

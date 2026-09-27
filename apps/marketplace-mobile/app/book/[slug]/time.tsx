@@ -1,8 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import Animated, { FadeIn, ReduceMotion } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { AvailabilityDays } from '@/src/api/booking-types';
 import { useBooking } from '@/src/booking/booking-context';
@@ -20,7 +22,7 @@ import { formatPrice } from '@/src/format';
 import { AVAILABILITY_WINDOW_DAYS, useAvailability } from '@/src/hooks/use-availability';
 import { useLocation } from '@/src/hooks/use-marketplace';
 import { t } from '@/src/i18n';
-import { addDays, dayKeysFrom, dayOfMonth, monthLabel, today, weekdayLabel } from '@/src/lib/booking-date';
+import { addDays, dayKeysFrom, dayOfMonth, longDateLabel, monthLabel, today, weekdayLabel } from '@/src/lib/booking-date';
 import { useOnline } from '@/src/lib/online';
 import { brandColors } from '@/src/theme/colors';
 
@@ -30,7 +32,7 @@ const WEEKS_PER_WINDOW = AVAILABILITY_WINDOW_DAYS / 7;
 
 function firstOpenDay(days: AvailabilityDays | undefined): string | undefined {
   if (!days) return undefined;
-  return Object.keys(days).sort()[0];
+  return Object.keys(days).sort().find((key) => mergeDaySlots(days[key]).length > 0);
 }
 
 function weekOf(allKeys: string[], key: string | undefined): number {
@@ -43,12 +45,14 @@ export default function SelectTimeScreen() {
   const online = useOnline();
   const location = useLocation(slug ?? '');
   const booking = useBooking();
+  const insets = useSafeAreaInsets();
+  const listRef = useRef<ScrollView>(null);
 
   const base = useMemo(() => today(), []);
   const allKeys = useMemo(() => dayKeysFrom(base, MAX_WEEKS * 7), [base]);
   /** Null until the user pages: the strip then follows the first open day itself. */
-  const [pagedWeek, setPagedWeek] = useState<number | null>(null);
-  const [pickedDay, setPickedDay] = useState<string | null>(null);
+  const [pagedWeek, setPagedWeek] = useState<number | null>(booking.dayKey ? weekOf(allKeys, booking.dayKey) : null);
+  const [pickedDay, setPickedDay] = useState<string | null>(booking.dayKey);
 
   /**
    * One 28-day window at a time. Only explicit paging can leave it, so the
@@ -72,10 +76,13 @@ export default function SelectTimeScreen() {
    * another week, or emptying a day by changing the cart, moves it along.
    */
   const selectedDay =
-    pickedDay && weekKeys.includes(pickedDay) && days?.[pickedDay]
+    pickedDay && weekKeys.includes(pickedDay) && mergeDaySlots(days?.[pickedDay]).length > 0
       ? pickedDay
-      : (weekKeys.find((key) => days?.[key]) ?? null);
+      : (weekKeys.find((key) => mergeDaySlots(days?.[key]).length > 0) ?? null);
   const slots = mergeDaySlots(selectedDay ? days?.[selectedDay] : undefined);
+
+  const validSelection = !availability.isError && !availability.isPending && booking.dayKey === selectedDay &&
+    slots.some((entry) => entry.options.some((slot) => slot.available_start === booking.slot?.available_start && slot.staff_id === booking.slot?.staff_id));
 
   if (booking.items.length === 0) {
     return <Redirect href={{ pathname: '/book/[slug]', params: { slug: slug ?? '' } }} />;
@@ -84,8 +91,10 @@ export default function SelectTimeScreen() {
   const monthKey = weekKeys[0] ?? allKeys[0]!;
   const atStart = weekOffset === 0;
   const atEnd = weekOffset >= MAX_WEEKS - 1;
-  const page = (delta: number) =>
+  const page = (delta: number) => {
     setPagedWeek(Math.min(MAX_WEEKS - 1, Math.max(0, weekOffset + delta)));
+    listRef.current?.scrollTo({ y: 0, animated: false });
+  };
 
   return (
     <View className="flex-1 bg-canvas">
@@ -95,7 +104,7 @@ export default function SelectTimeScreen() {
         onClose={() => closeBooking(slug ?? '')}
       />
 
-      <View className="flex-row items-center justify-between px-5 pb-1 pt-2">
+      <View className="flex-row items-center justify-between px-5 pb-3 pt-1">
         <Text className="text-lg font-bold capitalize tracking-tight text-ink">{monthLabel(monthKey)}</Text>
         <View className="flex-row gap-1">
           <StepButton
@@ -113,47 +122,42 @@ export default function SelectTimeScreen() {
         </View>
       </View>
 
-      <View className="flex-row px-3 pb-3 pt-1">
-        {weekKeys.map((key) => {
-          const open = Boolean(days?.[key]);
-          const selected = selectedDay === key;
-          return (
-            <Pressable
-              key={key}
-              disabled={!open}
-              onPress={() => {
+      <Animated.View key={weekOffset} entering={FadeIn.duration(180).reduceMotion(ReduceMotion.System)}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 22, gap: 8 }}>
+          {weekKeys.map((key) => {
+            const open = mergeDaySlots(days?.[key]).length > 0;
+            const selected = selectedDay === key;
+            return availability.isPending ? (
+              <SkeletonBlock key={key} style={{ width: 62, height: 92, borderRadius: 16 }} />
+            ) : (
+              <Pressable key={key} disabled={!open} onPress={() => {
                 void Haptics.selectionAsync().catch(() => undefined);
                 setPickedDay(key);
-              }}
-              accessibilityRole="button"
-              accessibilityState={{ selected, disabled: !open }}
-              className="flex-1 items-center py-1 active:opacity-60">
-              <Text className="text-xs text-muted">{weekdayLabel(key)}</Text>
-              <View
-                className="mt-1 h-9 w-9 items-center justify-center rounded-full"
-                style={selected ? { backgroundColor: brandColors.navy } : undefined}>
-                <Text
-                  className={
-                    selected
-                      ? 'text-[15px] font-semibold text-white'
-                      : open
-                        ? 'text-[15px] font-semibold text-ink'
-                        : 'text-[15px] text-muted'
-                  }
-                  style={open ? undefined : { opacity: 0.4 }}>
-                  {dayOfMonth(key)}
-                </Text>
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
+                listRef.current?.scrollTo({ y: 0, animated: false });
+              }} accessibilityRole="button" accessibilityLabel={longDateLabel(key)}
+                accessibilityState={{ selected, disabled: !open }}
+                style={({ pressed }) => ({ width: 62, height: 92, borderRadius: 16, borderWidth: 1,
+                  borderColor: selected ? brandColors.lavender : brandColors.line,
+                  backgroundColor: selected ? brandColors.lavender : '#ffffff',
+                  alignItems: 'center', justifyContent: 'center', gap: 6,
+                  opacity: pressed ? 0.7 : open ? 1 : 0.35, transform: [{ scale: pressed ? 0.96 : 1 }] })}>
+                <Text style={{ color: selected ? '#ffffff' : brandColors.muted, fontSize: 12 }}>{weekdayLabel(key)}</Text>
+                <Text style={{ color: selected ? '#ffffff' : brandColors.navy, fontSize: 22, fontWeight: '600' }}>{dayOfMonth(key)}</Text>
+                <Text style={{ color: selected ? '#ffffff' : brandColors.muted, fontSize: 12 }}>{monthLabel(key).split(' ')[0].slice(0, 3)}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </Animated.View>
 
       <ScrollView
-        className="flex-1 bg-surface"
+        ref={listRef}
+        className="flex-1 bg-canvas"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 20, paddingBottom: BOOKING_BAR_HEIGHT + 40 }}>
-        {availability.isLoading ? (
+        contentContainerStyle={{ padding: 20, paddingBottom: BOOKING_BAR_HEIGHT + insets.bottom + 24 }}>
+        {!online && !days ? (
+          <OfflineState onRetry={() => availability.refetch()} />
+        ) : availability.isPending ? (
           <SlotSkeleton />
         ) : availability.isError ? (
           online ? (
@@ -164,9 +168,10 @@ export default function SelectTimeScreen() {
         ) : slots.length === 0 ? (
           <Text className="pt-6 text-center text-sm text-muted">{t('booking.noTimes')}</Text>
         ) : (
-          <View className="flex-row flex-wrap" style={{ gap: 10 }}>
+          <Animated.View key={selectedDay} entering={FadeIn.duration(200).reduceMotion(ReduceMotion.System)} style={{ gap: 10 }}>
+            <Text accessibilityRole="header" className="mb-2 text-base font-semibold capitalize text-ink">{selectedDay ? longDateLabel(selectedDay) : ''}</Text>
             {slots.map((slot) => {
-              const selected = booking.slot?.available_start === slot.options[0]!.available_start;
+              const selected = validSelection && booking.slot?.available_start === slot.options[0]!.available_start;
               return (
                 <Pressable
                   key={slot.time}
@@ -176,32 +181,33 @@ export default function SelectTimeScreen() {
                     booking.chooseSlot(selectedDay, slot.options[0]!);
                   }}
                   accessibilityRole="radio"
-                  accessibilityState={{ selected }}
-                  className="items-center justify-center rounded-xl bg-canvas active:opacity-80"
+                  accessibilityState={{ selected, checked: selected }}
+                  className="flex-row items-center justify-between rounded-xl px-4 active:opacity-70"
                   style={{
-                    width: '31%',
-                    height: 46,
-                    borderWidth: 2,
+                    width: '100%',
+                    height: 56,
+                    backgroundColor: selected ? '#F5F3FF' : '#ffffff',
+                    borderWidth: selected ? 1.5 : 1,
                     borderColor: selected ? brandColors.lavender : brandColors.line,
                   }}>
                   <Text className="text-[15px] font-semibold text-ink">{slot.time}</Text>
+                  {selected ? <Ionicons name="checkmark-circle" size={21} color={brandColors.lavender} /> : null}
                 </Pressable>
               );
             })}
-          </View>
+          </Animated.View>
         )}
       </ScrollView>
 
       <BookingFooter
         price={formatPrice(totalPrice(booking.items))}
-        meta={t('booking.cartMany', {
+        meta={t(booking.items.length === 1 ? 'booking.cartOne' : 'booking.cartMany', {
           count: booking.items.length,
           minutes: totalMinutes(booking.items),
         })}
-        hint={booking.slot ? undefined : t('booking.pickTime')}
         label={t('booking.continue')}
-        disabled={!booking.slot}
-        onPress={() => router.push({ pathname: '/book/[slug]/details', params: { slug: slug ?? '' } })}
+        disabled={!validSelection}
+        onPress={() => validSelection && router.push({ pathname: '/book/[slug]/details', params: { slug: slug ?? '' } })}
       />
     </View>
   );
@@ -226,7 +232,7 @@ function StepButton({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled }}
-      className="h-9 w-9 items-center justify-center rounded-full active:opacity-60"
+      className="h-11 w-11 items-center justify-center rounded-full active:opacity-60"
       style={disabled ? { opacity: 0.3 } : undefined}>
       <Ionicons name={icon} size={20} color={brandColors.navy} />
     </Pressable>
@@ -235,9 +241,10 @@ function StepButton({
 
 function SlotSkeleton() {
   return (
-    <View className="flex-row flex-wrap" style={{ gap: 10 }} accessibilityElementsHidden>
+    <View style={{ gap: 10 }} accessibilityRole="progressbar" accessibilityLabel={t('states.loading')}>
+      <SkeletonBlock style={{ width: 170, height: 20, borderRadius: 8, marginBottom: 8 }} />
       {Array.from({ length: 9 }, (_, index) => (
-        <SkeletonBlock key={index} style={{ width: '31%', height: 46, borderRadius: 12 }} />
+        <SkeletonBlock key={index} style={{ width: '100%', height: 56, borderRadius: 12 }} />
       ))}
     </View>
   );

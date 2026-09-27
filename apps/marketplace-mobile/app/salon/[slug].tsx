@@ -460,7 +460,7 @@ function SectionTabs({
   );
 }
 
-type Chip = { id: string | null; name: string };
+type Chip = { id: string; name: string };
 
 /** Service filter chips; the navy pill slides to the selected chip. */
 function ServiceChips({
@@ -469,8 +469,8 @@ function ServiceChips({
   onSelect,
 }: {
   chips: Chip[];
-  selected: string | null;
-  onSelect: (id: string | null) => void;
+  selected: string;
+  onSelect: (id: string) => void;
 }) {
   const listRef = useRef<ScrollView>(null);
   const viewport = useRef(0);
@@ -478,7 +478,7 @@ function ServiceChips({
   const x = useSharedValue(0);
   const width = useSharedValue(0);
   const placed = useRef(false);
-  const frame = frames[selected ?? ''];
+  const frame = frames[selected];
 
   useEffect(() => {
     if (!frame) return;
@@ -514,18 +514,17 @@ function ServiceChips({
         style={[{ opacity: frame ? 1 : 0 }, pillStyle]}
       />
       {chips.map((chip) => {
-        const key = chip.id ?? '';
         const active = chip.id === selected;
         return (
           <Pressable
-            key={key || 'all'}
+            key={chip.id}
             onPress={() => onSelect(chip.id)}
             onLayout={(event) => {
               const { x: left, width: w } = event.nativeEvent.layout;
               setFrames((current) =>
-                current[key]?.x === left && current[key]?.width === w
+                current[chip.id]?.x === left && current[chip.id]?.width === w
                   ? current
-                  : { ...current, [key]: { x: left, width: w } },
+                  : { ...current, [chip.id]: { x: left, width: w } },
               );
             }}
             accessibilityRole="button"
@@ -582,21 +581,14 @@ function SalonBody({
   });
   const [expanded, setExpanded] = useState(false);
   const [truncates, setTruncates] = useState(false);
-  const [filter, setFilter] = useState<string | null>(null);
   const { location, services, categories } = data;
   const team = data.team ?? [];
 
   const bookable = useMemo(() => services.filter((service) => service.variants.length > 0), [services]);
-  const chips = [
-    { id: null, name: t('salon.allServices') },
-    ...bookable.map((service) => ({
-      id: service.serviceId,
-      name: service.name,
-    })),
-  ];
-  const options = bookable
-    .filter((service) => !filter || service.serviceId === filter)
-    .flatMap((service) => service.variants.map((variant) => ({ service, variant })));
+  const chips = bookable.map((service) => ({ id: service.serviceId, name: service.name }));
+  const [filter, setFilter] = useState(chips[0]?.id ?? '');
+  const active = bookable.find((service) => service.serviceId === filter) ?? bookable[0];
+  const options = active?.variants.map((variant) => ({ service: active, variant })) ?? [];
 
   const distance =
     userLocation && location.lat != null && location.lng != null
@@ -687,7 +679,7 @@ function SalonBody({
           servicesHeight.value = height;
         }}>
         <Text className="text-xl font-bold tracking-tight text-ink">{t('salon.services')}</Text>
-        {bookable.length > 0 ? (
+        {bookable.length > 1 ? (
           <Animated.View
             onLayout={(event) => {
               chipsY.value = event.nativeEvent.layout.y;
@@ -728,7 +720,7 @@ function SalonBody({
           <Text className="mt-4 text-sm text-muted">{t('salon.emptyServices')}</Text>
         ) : (
           <Animated.View
-            key={filter ?? 'all'}
+            key={filter}
             entering={FadeIn.duration(220).easing(Easing.out(Easing.cubic))}
             className="mt-2"
             style={{ minHeight: listMinHeight }}>
@@ -737,7 +729,6 @@ function SalonBody({
                 key={variant.serviceVariantId}
                 service={service}
                 variant={variant}
-                showService={!filter && variant.name.trim() !== service.name.trim()}
                 first={index === 0}
                 onBook={() => onBook(variant)}
               />
@@ -798,24 +789,16 @@ function initials(name: string): string {
 function OptionRow({
   service,
   variant,
-  showService,
   first,
   onBook,
 }: {
   service: LocationService;
   variant: ServiceVariant;
-  /** In "Alle", name the parent service so options like "Kort haar" stay clear. */
-  showService: boolean;
   first: boolean;
   onBook: () => void;
 }) {
   const name = variant.name.trim() || service.name;
-  const meta = [
-    showService ? service.name : null,
-    variant.durationMinutes > 0 ? t('salon.minutes', { count: variant.durationMinutes }) : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const meta = variant.durationMinutes > 0 ? t('salon.minutes', { count: variant.durationMinutes }) : '';
 
   return (
     <View

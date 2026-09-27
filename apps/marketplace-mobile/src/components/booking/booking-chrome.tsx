@@ -1,7 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { LoadingDots } from '@/src/components/loading-dots';
 
 import { brandColors } from '@/src/theme/colors';
 import { t } from '@/src/i18n';
@@ -21,8 +23,9 @@ export function BookingHeader({
   const insets = useSafeAreaInsets();
   return (
     <View
-      className="flex-row items-center bg-canvas px-4"
-      style={{ paddingTop: insets.top, height: insets.top + BAR }}>
+      className="bg-canvas px-5"
+      style={{ paddingTop: insets.top }}>
+      <View className="flex-row items-center justify-between" style={{ height: BAR }}>
       {onBack ? (
         <Pressable
           onPress={onBack}
@@ -35,9 +38,7 @@ export function BookingHeader({
       ) : (
         <View className="w-3" />
       )}
-      <Text numberOfLines={1} className="flex-1 text-[17px] font-semibold text-ink">
-        {title}
-      </Text>
+
       <Pressable
         onPress={onClose}
         hitSlop={10}
@@ -46,6 +47,8 @@ export function BookingHeader({
         className="h-11 w-11 items-center justify-center active:opacity-60">
         <Ionicons name="close" size={24} color={brandColors.navy} />
       </Pressable>
+      </View>
+      <Text accessibilityRole="header" className="pb-5 pt-2 text-[28px] font-bold tracking-tight text-ink">{title}</Text>
     </View>
   );
 }
@@ -101,12 +104,14 @@ export function BookingFooter({
         disabled={blocked}
         accessibilityRole="button"
         accessibilityLabel={label}
-        accessibilityState={{ disabled: Boolean(blocked) }}
+        accessibilityState={{ disabled: Boolean(blocked), busy: Boolean(busy) }}
         className="h-12 flex-row items-center justify-center gap-2 rounded-full bg-ink px-6 active:opacity-80"
-        style={blocked ? { opacity: 0.35 } : undefined}>
-        {busy ? <ActivityIndicator size="small" color="#ffffff" /> : null}
-        <Text className="text-base font-semibold text-white">{label}</Text>
-        {busy ? null : <Ionicons name="arrow-forward" size={17} color="#ffffff" />}
+        style={disabled && !busy ? { opacity: 0.35 } : undefined}>
+        <View className="flex-row items-center gap-2" style={{ opacity: busy ? 0 : 1 }} accessibilityElementsHidden={busy}>
+          <Text className="text-base font-semibold text-white">{label}</Text>
+          <Ionicons name="arrow-forward" size={17} color="#ffffff" />
+        </View>
+        {busy ? <View className="absolute inset-0 items-center justify-center"><LoadingDots /></View> : null}
       </Pressable>
     </View>
   );

@@ -15,8 +15,8 @@ export function BookingSkeleton() {
       className="flex-1 bg-canvas"
       accessibilityLabel={t('states.loading')}
       accessibilityRole="progressbar">
-      <View style={{ paddingTop: insets.top + 8 }} className="px-5">
-        <SkeletonText lineHeight={44} size={18} width="52%" />
+      <View style={{ paddingTop: insets.top + 60 }} className="px-5">
+        <SkeletonText lineHeight={54} size={26} width="72%" />
       </View>
       <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingVertical: 8, overflow: 'hidden' }}>
         {chipWidths.map((width) => (

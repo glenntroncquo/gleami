@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useMemo, useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import Animated, { Easing, FadeIn } from 'react-native-reanimated';
@@ -22,6 +23,7 @@ export default function SelectServicesScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const location = useLocation(slug ?? '');
   const booking = useBooking();
+  const insets = useSafeAreaInsets();
   const listRef = useRef<ScrollView>(null);
   const [overviewOpen, setOverviewOpen] = useState(false);
 
@@ -58,7 +60,7 @@ export default function SelectServicesScreen() {
         ref={listRef}
         className="flex-1 bg-surface"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 20, paddingBottom: BOOKING_BAR_HEIGHT + 40 }}>
+        contentContainerStyle={{ padding: 20, paddingBottom: BOOKING_BAR_HEIGHT + insets.bottom + 24 }}>
         {active ? (
           <Animated.View key={active.id} entering={FadeIn.duration(200).easing(Easing.out(Easing.cubic))}>
             <Text accessibilityRole="header" className="mb-3 text-xl font-bold tracking-tight text-ink">

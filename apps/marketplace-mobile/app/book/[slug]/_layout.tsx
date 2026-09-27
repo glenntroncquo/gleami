@@ -1,5 +1,6 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import React from 'react';
+import { useReducedMotion } from 'react-native-reanimated';
 import { Text, View } from 'react-native';
 
 import { BookingProvider } from '@/src/booking/booking-context';
@@ -22,6 +23,7 @@ import { useOnline } from '@/src/lib/online';
 export default function BookingLayout() {
   const { slug, variantId } = useLocalSearchParams<{ slug: string; variantId?: string }>();
   const online = useOnline();
+  const reduceMotion = useReducedMotion();
   const location = useLocation(slug ?? '');
 
   if (location.isLoading) return <BookingSkeleton />;
@@ -46,7 +48,7 @@ export default function BookingLayout() {
 
   return (
     <BookingProvider initialItems={preselected ? [preselected] : []}>
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#ffffff' } }}>
+      <Stack screenOptions={{ headerShown: false, animation: reduceMotion ? 'none' : 'slide_from_right', animationDuration: 280, contentStyle: { backgroundColor: '#ffffff' } }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="time" />
         <Stack.Screen name="details" />

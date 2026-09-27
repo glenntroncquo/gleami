@@ -3,6 +3,7 @@ import { router, useNavigation } from 'expo-router';
 import { useCallback } from 'react';
 
 import type { AuthUser } from '@/src/auth/auth-context';
+import { isProfileReady } from '@/src/auth/profile-ready';
 
 /** How the user got a session. Only email-code sign-ups still need a password. */
 export type AuthMethod = 'code' | 'password' | 'social';
@@ -22,7 +23,7 @@ export function useAfterSignIn() {
   const finish = useFinishAuth();
   return useCallback(
     (user: AuthUser, method: AuthMethod, prefill?: { firstName?: string; lastName?: string }) => {
-      if (user.profileComplete) {
+      if (isProfileReady(user)) {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         finish();
         return;

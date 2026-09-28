@@ -3,6 +3,9 @@ import { corsHeaders } from "@/shared/cors";
 import { BadResponse, OkResponse } from "@/shared/responses";
 import { createSupabaseClient } from "@/shared/supabase";
 import { validateInput } from "@/shared/validation";
+import { getAuthContext } from "@/shared/auth-context";
+import { requireCompanyAccess } from "@/shared/auth-guard";
+import { ForbiddenError, UnauthenticatedError } from "@/shared/errors";
 import { scradaSyncDagontvangstenSchema } from "./schema.ts";
 import { scradaSyncDagontvangstenInFunction } from "./logic.ts";
 
@@ -25,6 +28,8 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const authContext = await getAuthContext(req);
+
     const body = await req.json();
     console.log("[scrada-sync-dagontvangsten] POST body", {
       company_id: body?.company_id,
@@ -36,6 +41,11 @@ Deno.serve(async (req) => {
       console.log("[scrada-sync-dagontvangsten] validation failed → BadResponse");
       return validationResult;
     }
+
+    // The handler runs service-role and reads this company's Scrada API
+    // credentials, so the caller must be proven to belong to the company named
+    // in the body before any of that happens.
+    requireCompanyAccess(authContext, validationResult.company_id);
 
     console.log("[scrada-sync-dagontvangsten] calling scradaSyncDagontvangstenInFunction");
     const supabase = createSupabaseClient();
@@ -51,6 +61,12 @@ Deno.serve(async (req) => {
       data: result,
     });
   } catch (error: unknown) {
+    if (error instanceof UnauthenticatedError) {
+      return new BadResponse("Unauthorized", 401);
+    }
+    if (error instanceof ForbiddenError) {
+      return new BadResponse("Forbidden", 403);
+    }
     const message = error instanceof Error ? error.message : "An unexpected error occurred";
     console.log("[scrada-sync-dagontvangsten] error", message);
     return new BadResponse(

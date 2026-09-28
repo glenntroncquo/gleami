@@ -10,7 +10,7 @@ const clientRepo = readFileSync(
   "utf8",
 );
 const optiosImport = readFileSync(
-  "supabase/functions/optios-client-import/index.ts",
+  "scripts/optios/import-clients.ts",
   "utf8",
 );
 const orderCreate = readFileSync(
@@ -37,7 +37,7 @@ describe("client_company cutover (shared TS + snapshots)", () => {
     expect(orderCreate).toContain("isLinkedToCompany(requestClientId, company_id)");
   });
 
-  it("optios-client-import upserts client_location and stops writing client_company", () => {
+  it("optios import script upserts client_location and stops writing client_company", () => {
     expect(optiosImport).toContain('from("client_location")');
     expect(optiosImport).toContain("is_primary");
     expect(optiosImport).not.toContain('from("client_company")');

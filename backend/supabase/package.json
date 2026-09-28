@@ -6,6 +6,7 @@
   "scripts": {
     "test": "npx vitest run",
     "test:integration": "npx vitest run",
+    "optios:import-clients": "npx ts-node scripts/optios/import-clients.ts",
     "codegen": "npx supabase gen types typescript --project-id kvhinnhnwgvdpzggdnxs --schema public > types/supabase-types.ts"
   },
   "dependencies": {

@@ -4,6 +4,8 @@ import { formatDate, formatTime } from "@/shared/format-date";
 import { sendEmail } from "@/shared/resend";
 import { fetchAppointmentServicesForEmail } from "@/shared/appointment-services-for-email";
 import { fetchNotificationPlace, placeToEmailAddress } from "@/shared/notification-place-fetch";
+import { assertInternalSecret } from "@/shared/internal-secret";
+import { UnauthenticatedError } from "@/shared/errors";
 
 // Format treatments list for display
 function formatTreatmentsList(treatments: Array<{ treatment: string; priceOption: string | null }>) {
@@ -397,6 +399,8 @@ ${cancelReason ? `<h3>Reden van annulering:</h3><p>${cancelReason.replace(/\n/g,
 
 serve(async (req) => {
   try {
+    assertInternalSecret(req);
+
     console.log("Processing appointment update/cancellation email request");
 
     // Get the appointment data from the request
@@ -698,6 +702,14 @@ serve(async (req) => {
       throw new Error(`Failed to send emails: ${emailError.message}`);
     }
   } catch (error: any) {
+    if (error instanceof UnauthenticatedError) {
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
+        status: 401,
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+    }
     console.error("Error processing appointment emails:", error);
     return new Response(JSON.stringify({
       success: false,

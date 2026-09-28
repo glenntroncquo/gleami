@@ -7,11 +7,14 @@ import {
   jsonResponse,
   timetreeRequest,
 } from "@/shared/timetree";
+import { assertInternalSecret } from "@/shared/internal-secret";
 
 const LOG_SCOPE = "sync-update";
 
 Deno.serve(async (req) => {
   try {
+    assertInternalSecret(req);
+
     const payload = await req.json();
     const record = payload.record ?? payload;
 

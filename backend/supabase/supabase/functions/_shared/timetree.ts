@@ -1,4 +1,5 @@
 import { createSupabaseClient } from "@/shared/supabase";
+import { UnauthenticatedError } from "@/shared/errors";
 
 export const SALON_TIMEZONE = "Europe/Brussels";
 export const TIMETREE_INTEGRATION_TYPE = "timetree";
@@ -334,6 +335,11 @@ export function errorResponse(err: unknown, logScope: string): Response {
     message: err instanceof Error ? err.message : String(err),
     stack: err instanceof Error ? err.stack : undefined,
   });
+
+  if (err instanceof UnauthenticatedError) {
+    return jsonResponse({ error: "Unauthorized" }, 401);
+  }
+
   return jsonResponse({
     error: "Unhandled exception",
     details: err instanceof Error ? err.message : String(err),

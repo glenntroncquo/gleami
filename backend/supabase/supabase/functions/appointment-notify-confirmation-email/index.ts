@@ -4,6 +4,8 @@ import { formatDate, formatTime } from "@/shared/format-date";
 import { sendEmail } from "@/shared/resend";
 import { fetchAppointmentServicesForEmail } from "@/shared/appointment-services-for-email";
 import { fetchNotificationPlace, placeToEmailAddress } from "@/shared/notification-place-fetch";
+import { assertInternalSecret } from "@/shared/internal-secret";
+import { UnauthenticatedError } from "@/shared/errors";
 
 // Format services list for display
 function formatTreatmentsList(treatments) {
@@ -157,6 +159,8 @@ ${appointmentNotes ? `<h3>Notities:</h3><p>${appointmentNotes.replace(/\n/g, '<b
 }
 serve(async (req)=>{
   try {
+    assertInternalSecret(req);
+
     console.log("Processing appointment email request");
     // Get the appointment data from the request
     const webhookPayload = await req.json();
@@ -336,6 +340,14 @@ serve(async (req)=>{
       throw new Error(`Failed to send emails: ${emailError.message}`);
     }
   } catch (error) {
+    if (error instanceof UnauthenticatedError) {
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
+        status: 401,
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+    }
     console.error("Error processing appointment emails:", error);
     return new Response(JSON.stringify({
       success: false,

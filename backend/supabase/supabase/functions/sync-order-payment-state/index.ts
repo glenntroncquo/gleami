@@ -5,7 +5,7 @@ import { createSupabaseClient } from "@/shared/supabase";
 import { validateInput } from "@/shared/validation";
 import { syncOrderPaymentStateSchema } from "./schema.ts";
 import { syncOrderPaymentStateInFunction } from "./logic.ts";
-import { requireServiceRole } from "@/shared/require-service-role";
+import { assertInternalSecret } from "@/shared/internal-secret";
 import { UnauthenticatedError, ForbiddenError } from "@/shared/errors";
 
 type WebhookPayload = {
@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    requireServiceRole(req);
+    assertInternalSecret(req);
 
     const body = await req.json();
     const supabase = createSupabaseClient();

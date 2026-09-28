@@ -9,6 +9,8 @@ import {
   localReminderWindowUtc,
   reminderCandidateFetchWindow,
 } from "@/shared/reminder-window";
+import { assertInternalSecret } from "@/shared/internal-secret";
+import { UnauthenticatedError } from "@/shared/errors";
 
 // Format services and prices for display
 function formatTreatmentsWithPrices(treatments) {
@@ -118,6 +120,8 @@ function createReminderEmail(data) {
 }
 serve(async (req)=>{
   try {
+    assertInternalSecret(req);
+
     console.log("Processing appointment reminders");
     const now = new Date();
     const fetchWindow = reminderCandidateFetchWindow(now);
@@ -278,6 +282,14 @@ serve(async (req)=>{
       }
     });
   } catch (error) {
+    if (error instanceof UnauthenticatedError) {
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
+        status: 401,
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+    }
     console.error("Error processing appointment reminders:", error);
     return new Response(JSON.stringify({
       success: false,

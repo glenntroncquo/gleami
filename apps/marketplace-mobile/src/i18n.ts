@@ -222,8 +222,6 @@ const nl = {
     pickOne: 'Kies minstens één service',
     pickTime: 'Kies een tijdstip',
     noTimes: 'Geen vrije tijden op deze dag. Probeer een andere dag.',
-    previousWeek: 'Vorige week',
-    nextWeek: 'Volgende week',
     withStaff: 'Bij {{name}}',
     firstName: 'Voornaam',
     lastName: 'Achternaam',

@@ -15,10 +15,12 @@
 -- only proves the caller holds the public anon key, so every one of these
 -- endpoints was effectively open.
 --
--- Now: Authorization carries the public anon key (satisfies the gateway's
--- verify_jwt) and a dedicated `x-internal-secret` header carries a rotatable
--- secret that only our own triggers and cron know. Edge functions verify it
--- with a constant-time comparison (assertInternalSecret).
+-- Now: these functions run with verify_jwt = false (same pattern as the
+-- marketplace-* functions) and a dedicated `x-internal-secret` header carries
+-- a rotatable secret that only our own triggers and cron know. Edge functions
+-- verify it with a constant-time comparison (assertInternalSecret). No JWT of
+-- any kind is embedded, so rotating the anon or service_role keys can never
+-- break these callers.
 --
 -- The internal-secret placeholder below is substituted at apply time, matching
 -- the convention already used by 20260924190000_marketplace_sync_schedule.sql.
@@ -35,7 +37,7 @@ create trigger appointment_insert_email
   execute function supabase_functions.http_request(
     'https://kvhinnhnwgvdpzggdnxs.supabase.co/functions/v1/appointment-notify-confirmation-email',
     'POST',
-    '{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2aGlubmhud2d2ZHB6Z2dkbnhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE2MjcwNjAsImV4cCI6MjA1NzIwMzA2MH0.0sWCffCfBL9k7QtWXJgR3RDe7Mw_MssJPSkarIL3gS4","x-internal-secret":"__INTERNAL_WEBHOOK_SECRET__"}',
+    '{"Content-Type":"application/json","x-internal-secret":"__INTERNAL_WEBHOOK_SECRET__"}',
     '{}',
     '5000'
   );
@@ -47,7 +49,7 @@ create trigger appointment_update_email
   execute function supabase_functions.http_request(
     'https://kvhinnhnwgvdpzggdnxs.supabase.co/functions/v1/appointment-notify-update-email',
     'POST',
-    '{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2aGlubmhud2d2ZHB6Z2dkbnhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE2MjcwNjAsImV4cCI6MjA1NzIwMzA2MH0.0sWCffCfBL9k7QtWXJgR3RDe7Mw_MssJPSkarIL3gS4","x-internal-secret":"__INTERNAL_WEBHOOK_SECRET__"}',
+    '{"Content-Type":"application/json","x-internal-secret":"__INTERNAL_WEBHOOK_SECRET__"}',
     '{}',
     '5000'
   );
@@ -62,7 +64,7 @@ create trigger appointment_insert_sync_timetree_create
   execute function supabase_functions.http_request(
     'https://kvhinnhnwgvdpzggdnxs.supabase.co/functions/v1/timetree-sync-create',
     'POST',
-    '{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2aGlubmhud2d2ZHB6Z2dkbnhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE2MjcwNjAsImV4cCI6MjA1NzIwMzA2MH0.0sWCffCfBL9k7QtWXJgR3RDe7Mw_MssJPSkarIL3gS4","x-internal-secret":"__INTERNAL_WEBHOOK_SECRET__"}',
+    '{"Content-Type":"application/json","x-internal-secret":"__INTERNAL_WEBHOOK_SECRET__"}',
     '{}',
     '5000'
   );
@@ -74,7 +76,7 @@ create trigger appointment_update_sync_timetree_update
   execute function supabase_functions.http_request(
     'https://kvhinnhnwgvdpzggdnxs.supabase.co/functions/v1/timetree-sync-update',
     'POST',
-    '{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2aGlubmhud2d2ZHB6Z2dkbnhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE2MjcwNjAsImV4cCI6MjA1NzIwMzA2MH0.0sWCffCfBL9k7QtWXJgR3RDe7Mw_MssJPSkarIL3gS4","x-internal-secret":"__INTERNAL_WEBHOOK_SECRET__"}',
+    '{"Content-Type":"application/json","x-internal-secret":"__INTERNAL_WEBHOOK_SECRET__"}',
     '{}',
     '5000'
   );
@@ -86,7 +88,7 @@ create trigger appointment_update_sync_timetree_cancel
   execute function supabase_functions.http_request(
     'https://kvhinnhnwgvdpzggdnxs.supabase.co/functions/v1/timetree-sync-delete',
     'POST',
-    '{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2aGlubmhud2d2ZHB6Z2dkbnhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE2MjcwNjAsImV4cCI6MjA1NzIwMzA2MH0.0sWCffCfBL9k7QtWXJgR3RDe7Mw_MssJPSkarIL3gS4","x-internal-secret":"__INTERNAL_WEBHOOK_SECRET__"}',
+    '{"Content-Type":"application/json","x-internal-secret":"__INTERNAL_WEBHOOK_SECRET__"}',
     '{}',
     '5000'
   );
@@ -103,7 +105,7 @@ create trigger "order-item-handler"
   execute function supabase_functions.http_request(
     'https://kvhinnhnwgvdpzggdnxs.supabase.co/functions/v1/sync-order-items-stock',
     'POST',
-    '{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2aGlubmhud2d2ZHB6Z2dkbnhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE2MjcwNjAsImV4cCI6MjA1NzIwMzA2MH0.0sWCffCfBL9k7QtWXJgR3RDe7Mw_MssJPSkarIL3gS4","x-internal-secret":"__INTERNAL_WEBHOOK_SECRET__"}',
+    '{"Content-Type":"application/json","x-internal-secret":"__INTERNAL_WEBHOOK_SECRET__"}',
     '{}',
     '5000'
   );
@@ -115,7 +117,7 @@ create trigger "payment-handler"
   execute function supabase_functions.http_request(
     'https://kvhinnhnwgvdpzggdnxs.supabase.co/functions/v1/sync-order-payment-state',
     'POST',
-    '{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2aGlubmhud2d2ZHB6Z2dkbnhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE2MjcwNjAsImV4cCI6MjA1NzIwMzA2MH0.0sWCffCfBL9k7QtWXJgR3RDe7Mw_MssJPSkarIL3gS4","x-internal-secret":"__INTERNAL_WEBHOOK_SECRET__"}',
+    '{"Content-Type":"application/json","x-internal-secret":"__INTERNAL_WEBHOOK_SECRET__"}',
     '{}',
     '5000'
   );
@@ -143,7 +145,7 @@ select cron.schedule(
   $cron$
   select net.http_post(
     url := 'https://kvhinnhnwgvdpzggdnxs.supabase.co/functions/v1/appointment-notify-reminder-email',
-    headers := '{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2aGlubmhud2d2ZHB6Z2dkbnhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE2MjcwNjAsImV4cCI6MjA1NzIwMzA2MH0.0sWCffCfBL9k7QtWXJgR3RDe7Mw_MssJPSkarIL3gS4","x-internal-secret":"__INTERNAL_WEBHOOK_SECRET__"}'::jsonb,
+    headers := '{"Content-Type":"application/json","x-internal-secret":"__INTERNAL_WEBHOOK_SECRET__"}'::jsonb,
     body := '{"source":"cron"}'::jsonb,
     timeout_milliseconds := 30000
   );

@@ -324,3 +324,36 @@ verify_jwt = false
 
 [functions.marketplace-drift-check]
 verify_jwt = false
+
+# Marketplace customer self-cancel. verify_jwt stays on explicitly: the user
+# JWT is the only identity source, and the function re-verifies it via
+# auth.getUser before touching data. Listed so dashboard drift is visible.
+[functions.marketplace-appointment-cancel]
+verify_jwt = true
+
+# Internal trigger/cron-called functions. No JWT is embedded in pg_trigger or
+# cron.job; callers authenticate with INTERNAL_WEBHOOK_SECRET in the
+# x-internal-secret header (see 20260928120000_internal_webhook_secret_cutover.sql).
+[functions.appointment-notify-confirmation-email]
+verify_jwt = false
+
+[functions.appointment-notify-update-email]
+verify_jwt = false
+
+[functions.appointment-notify-reminder-email]
+verify_jwt = false
+
+[functions.timetree-sync-create]
+verify_jwt = false
+
+[functions.timetree-sync-update]
+verify_jwt = false
+
+[functions.timetree-sync-delete]
+verify_jwt = false
+
+[functions.sync-order-items-stock]
+verify_jwt = false
+
+[functions.sync-order-payment-state]
+verify_jwt = false

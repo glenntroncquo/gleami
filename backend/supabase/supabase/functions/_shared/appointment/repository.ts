@@ -27,6 +27,13 @@ export interface CancelAppointmentParams {
   canceledBy?: string;
 }
 
+export interface CancelOwnedByUserParams {
+  appointmentId: string;
+  /** Verified auth user id (JWT), never a caller-supplied client id. */
+  userId: string;
+  cancelReason: string | null;
+}
+
 export interface AvailabilityWindowQueryParams {
   companyId: string;
   staffIds: string[];
@@ -99,6 +106,37 @@ function toRpcSegments(segments: BookingSegmentInput[]) {
  * Copy naive start/end (and client-facing duration) into those args — occupancy is appointment_segment_phase, not actual_*.
  */
 
+/**
+ * Canceling frees the stylist's calendar: the appointment's busy/buffer
+ * phases become overbookable again. Shared by the staff and customer cancels.
+ */
+async function releaseBusyPhases(appointmentId: string): Promise<void> {
+  const { data: segments, error: segmentError } = await supabaseAdmin
+    .from("appointment_segment")
+    .select("id")
+    .eq("appointment_id", appointmentId);
+
+  if (segmentError) {
+    throw new RepositoryError("Failed to load segments for canceled appointment", {
+      cause: segmentError,
+    });
+  }
+
+  const segmentIds = (segments ?? []).map((segment) => segment.id);
+  if (segmentIds.length === 0) return;
+
+  const { error: phaseError } = await supabaseAdmin
+    .from("appointment_segment_phase")
+    .update({ allow_overlap: true })
+    .in("appointment_segment_id", segmentIds);
+
+  if (phaseError) {
+    throw new RepositoryError("Failed to release busy/buffer phases for canceled appointment", {
+      cause: phaseError,
+    });
+  }
+}
+
 export const appointmentRepository = {
   async findById(id: string): Promise<Appointment | null> {
     const { data, error } = await supabaseAdmin
@@ -152,30 +190,58 @@ export const appointmentRepository = {
 
     if (!data) return null;
 
-    const { data: segments, error: segmentError } = await supabaseAdmin
-      .from("appointment_segment")
-      .select("id")
-      .eq("appointment_id", params.appointmentId);
+    await releaseBusyPhases(params.appointmentId);
 
-    if (segmentError) {
-      throw new RepositoryError("Failed to load segments for canceled appointment", {
-        cause: segmentError,
+    return toCanceledAppointment(data);
+  },
+
+  /**
+   * Marketplace customer self-cancel. Ownership comes from client.user_id,
+   * resolved here from the verified auth user — never from caller-supplied
+   * client/company ids. One conditional UPDATE: unknown id, someone else's
+   * appointment, already canceled, and already started all collapse to null,
+   * so the endpoint is neither an existence oracle nor a way to cancel past
+   * appointments.
+   */
+  async cancelOwnedByUser(params: CancelOwnedByUserParams): Promise<CanceledAppointment | null> {
+    const { data: clients, error: clientError } = await supabaseAdmin
+      .from("client")
+      .select("id")
+      .eq("user_id", params.userId);
+
+    if (clientError) {
+      throw new RepositoryError("Failed to resolve the customer's client records", {
+        cause: clientError,
       });
     }
 
-    const segmentIds = (segments ?? []).map((segment) => segment.id);
-    if (segmentIds.length > 0) {
-      const { error: phaseError } = await supabaseAdmin
-        .from("appointment_segment_phase")
-        .update({ allow_overlap: true })
-        .in("appointment_segment_id", segmentIds);
+    const clientIds = (clients ?? []).map((client) => client.id);
+    if (clientIds.length === 0) return null;
 
-      if (phaseError) {
-        throw new RepositoryError("Failed to release busy/buffer phases for canceled appointment", {
-          cause: phaseError,
-        });
-      }
+    const { data, error } = await supabaseAdmin
+      .from("appointment")
+      .update({
+        is_canceled: true,
+        canceled_by: "client",
+        ...(params.cancelReason ? { cancel_reason: params.cancelReason } : {}),
+      })
+      .eq("id", params.appointmentId)
+      .in("client_id", clientIds)
+      .eq("is_canceled", false)
+      // appointment.start is naive UTC wall time. PostgREST drops the 'Z'
+      // casting the literal to timestamp, so toISOString() compares inside
+      // that same UTC frame — the convention findUpcomingByClientAndCompany
+      // already uses.
+      .gt("start", new Date().toISOString())
+      .select("id, start, end, is_canceled")
+      .maybeSingle();
+
+    if (error) {
+      throw new RepositoryError("Failed to cancel customer appointment", { cause: error });
     }
+    if (!data) return null;
+
+    await releaseBusyPhases(params.appointmentId);
 
     return toCanceledAppointment(data);
   },

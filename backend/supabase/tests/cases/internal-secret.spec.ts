@@ -35,9 +35,10 @@ describe("internal webhook secret", () => {
     expect(internalSecretMatches(INTERNAL_SECRET_PLACEHOLDER, INTERNAL_SECRET_PLACEHOLDER)).toBe(false);
   });
 
-  it("does not accept the service_role key it replaced", () => {
-    const serviceRoleShaped = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.signature";
-    expect(internalSecretMatches(serviceRoleShaped, SECRET)).toBe(false);
+  it("does not accept a JWT-shaped bearer token", () => {
+    // Placeholder shaped like the credential class this secret replaced.
+    const jwtShaped = "HEADER.PAYLOAD.SIGNATURE";
+    expect(internalSecretMatches(jwtShaped, SECRET)).toBe(false);
   });
 });
 

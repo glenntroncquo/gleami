@@ -8,6 +8,8 @@ export const registerSalonOwnerSchema = z.object({
   phone: z.string().optional(),
   locale: z.enum(["en", "nl", "fr", "pt"]).default("en"),
   emailRedirectTo: z.string().url("Invalid redirect URL"),
+  // Required at runtime when TURNSTILE_SECRET_KEY is configured.
+  captchaToken: z.string().optional(),
   company: z.object({
     name: z.string().min(1, "Company name is required"),
     email: z.string().email("Invalid company email").optional(),

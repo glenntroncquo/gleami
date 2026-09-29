@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createCorsResponse, OkResponse, BadResponse } from "@/shared/responses";
+import { rejectDisallowedOrigin } from "@/shared/cors";
 import { validateInput } from "@/shared/validation";
 import { RepositoryError, UnauthenticatedError, ForbiddenError } from "@/shared/errors";
 import { getAuthContext } from "@/shared/auth-context";
@@ -8,6 +9,10 @@ import { searchClientsQuerySchema } from "../_shared/client/queries/search/schem
 import { searchClientsHandler } from "../_shared/client/queries/search/handler.ts";
 
 Deno.serve(async (req) => {
+  const rejectedOrigin = rejectDisallowedOrigin(req);
+  if (rejectedOrigin) {
+    return rejectedOrigin;
+  }
   if (req.method === "OPTIONS") {
     return createCorsResponse();
   }

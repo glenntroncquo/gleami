@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsHeaders } from "@/shared/cors";
+import { corsHeaders, rejectDisallowedOrigin } from "@/shared/cors";
 import { processPaymentTerminalSchema } from "../_shared/order/commands/process-payment-terminal/schema.ts";
 import { processPaymentTerminalHandler } from "../_shared/order/commands/process-payment-terminal/handler.ts";
 import { validateInput } from "@/shared/validation";
@@ -12,6 +12,10 @@ import { companyPaymentAccountRepository } from "../_shared/company/payment-acco
 import { isCardChargesEnabled } from "../_shared/company/payment-account/flags.ts";
 
 Deno.serve(async (req) => {
+  const rejectedOrigin = rejectDisallowedOrigin(req);
+  if (rejectedOrigin) {
+    return rejectedOrigin;
+  }
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 204,

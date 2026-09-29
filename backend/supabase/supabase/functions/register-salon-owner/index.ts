@@ -2,27 +2,60 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createSupabaseClient } from "@/shared/supabase";
 import { OkResponse, BadResponse } from "@/shared/responses";
 import { validateInput } from "@/shared/validation";
+import { corsHeadersFor, rejectDisallowedOrigin } from "@/shared/cors";
+import { isAllowedRedirectUrl } from "@/shared/redirect";
 import { registerSalonOwnerSchema } from "./schema.ts";
 
 const supabase = createSupabaseClient();
 
-function getCorsHeaders(origin: string | null): Record<string, string> {
-  const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
+const getCorsHeaders = corsHeadersFor;
 
-  const isAllowed =
-    !origin ||
-    allowedOrigins.length === 0 ||
-    allowedOrigins.includes(origin);
+/**
+ * H4 abuse control. Registration creates a company + auth user + sends email;
+ * without throttling it is a free resource-exhaustion and spam vector. The
+ * shared state is the database (edge isolates are ephemeral): max signups per
+ * email per hour and a global per-hour ceiling.
+ */
+const SIGNUP_WINDOW_MINUTES = 60;
+const SIGNUP_MAX_PER_EMAIL = 3;
+const SIGNUP_MAX_GLOBAL = 50;
 
-  return {
-    "Access-Control-Allow-Origin": isAllowed && origin ? origin : allowedOrigins[0] ?? "*",
-    "Access-Control-Allow-Headers":
-      "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  };
+async function signupRateLimitExceeded(normalizedEmail: string): Promise<boolean> {
+  const since = new Date(Date.now() - SIGNUP_WINDOW_MINUTES * 60 * 1000).toISOString();
+  const [perEmail, global] = await Promise.all([
+    supabase
+      .from("company")
+      .select("id", { count: "exact", head: true })
+      .eq("email", normalizedEmail)
+      .gte("created_at", since),
+    supabase
+      .from("company")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", since),
+  ]);
+  return (perEmail.count ?? 0) >= SIGNUP_MAX_PER_EMAIL || (global.count ?? 0) >= SIGNUP_MAX_GLOBAL;
+}
+
+/**
+ * Optional CAPTCHA (Cloudflare Turnstile). When TURNSTILE_SECRET_KEY is set,
+ * requests must carry a valid captchaToken; when unset, registration relies on
+ * the rate limit above. Configure the secret and the frontend widget together.
+ */
+async function captchaAccepted(token: string | undefined, remoteIp: string | null): Promise<boolean> {
+  const secret = Deno.env.get("TURNSTILE_SECRET_KEY");
+  if (!secret) return true;
+  if (!token) return false;
+
+  const form = new URLSearchParams({ secret, response: token });
+  if (remoteIp) form.set("remoteip", remoteIp);
+
+  const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+    method: "POST",
+    body: form,
+  });
+  if (!response.ok) return false;
+  const result = await response.json();
+  return result.success === true;
 }
 
 function jsonResponse(
@@ -80,6 +113,11 @@ async function requireOwnerRoleId(): Promise<string> {
 Deno.serve(async (req) => {
   const origin = req.headers.get("Origin");
 
+  const rejected = rejectDisallowedOrigin(req);
+  if (rejected) {
+    return rejected;
+  }
+
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -108,9 +146,37 @@ Deno.serve(async (req) => {
       locale,
       company,
       emailRedirectTo,
+      captchaToken,
     } = validation;
 
     const normalizedEmail = email.trim().toLowerCase();
+
+    // H4: the confirmation email's redirect target must stay on our own
+    // origins — otherwise our signup email becomes a phishing delivery.
+    if (!isAllowedRedirectUrl(emailRedirectTo)) {
+      return jsonResponse(
+        { success: false, error: "Invalid redirect URL" },
+        400,
+        origin
+      );
+    }
+
+    const remoteIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+    if (!(await captchaAccepted(captchaToken, remoteIp))) {
+      return jsonResponse(
+        { success: false, error: "Captcha verification failed" },
+        400,
+        origin
+      );
+    }
+
+    if (await signupRateLimitExceeded(normalizedEmail)) {
+      return jsonResponse(
+        { success: false, error: "Too many signups, please try again later" },
+        429,
+        origin
+      );
+    }
     const companyEmail = (company.email ?? normalizedEmail).trim().toLowerCase();
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
 

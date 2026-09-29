@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import Stripe from "stripe";
-import { corsHeaders } from "@/shared/cors";
+import { corsHeaders, rejectDisallowedOrigin } from "@/shared/cors";
 import { simulatePaymentTerminalSchema } from "../_shared/order/commands/simulate-payment-terminal/schema.ts";
 import { simulatePaymentTerminalHandler } from "../_shared/order/commands/simulate-payment-terminal/handler.ts";
 import { validateInput } from "@/shared/validation";
@@ -12,6 +12,10 @@ import { companyPaymentAccountRepository } from "../_shared/company/payment-acco
 import { isCardChargesEnabled } from "../_shared/company/payment-account/flags.ts";
 
 Deno.serve(async (req) => {
+  const rejectedOrigin = rejectDisallowedOrigin(req);
+  if (rejectedOrigin) {
+    return rejectedOrigin;
+  }
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -55,9 +59,9 @@ Deno.serve(async (req) => {
       throw new ChargesNotEnabledError();
     }
 
+    // Never log card_number: PAN in function logs is a PCI incident (H3).
     console.log("=== Simulating Payment ===");
     console.log("Reader ID:", reader_id);
-    console.log("Card Number:", card_number);
     console.log("==========================");
 
     const reader = await simulatePaymentTerminalHandler({ reader_id, card_number });

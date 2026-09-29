@@ -352,6 +352,24 @@ export function computeDepositAmount(
   return 0;
 }
 
+// --- origin gate (H6) ---
+
+/**
+ * Staff-only endpoint: refuse browser requests from non-first-party origins
+ * before any processing. Non-browser callers (no Origin header) pass through.
+ */
+function isAllowedOrigin(origin: string | null): boolean {
+  if (!origin) return true;
+  try {
+    const url = new URL(origin);
+    const host = url.hostname.toLowerCase();
+    if (host === "localhost" || host === "127.0.0.1") return true;
+    return url.protocol === "https:" && (host === "salonify.co" || host.endsWith(".salonify.co"));
+  } catch {
+    return false;
+  }
+}
+
 // --- redirect url allowlist (M4) ---
 
 /**
@@ -403,6 +421,10 @@ export type CreateCheckoutInput = z.infer<typeof createCheckoutSchema>;
 // --- index ---
 
 Deno.serve(async (req) => {
+  if (!isAllowedOrigin(req.headers.get("Origin"))) {
+    return new BadResponse("Origin not allowed", 403);
+  }
+
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }

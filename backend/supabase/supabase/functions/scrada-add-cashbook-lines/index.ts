@@ -9,7 +9,7 @@
 // then given the caller check it never had (audit finding C9).
 // ---------------------------------------------------------------------------
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsHeaders } from "@/shared/cors";
+import { corsHeaders, rejectDisallowedOrigin } from "@/shared/cors";
 import { BadResponse, OkResponse } from "@/shared/responses";
 import { createSupabaseClient } from "@/shared/supabase";
 import { validateInput } from "@/shared/validation";
@@ -24,6 +24,11 @@ Deno.serve(async (req) => {
     method: req.method,
     url: req.url,
   });
+
+  const rejectedOrigin = rejectDisallowedOrigin(req);
+  if (rejectedOrigin) {
+    return rejectedOrigin;
+  }
 
   if (req.method === "OPTIONS") {
     console.log(

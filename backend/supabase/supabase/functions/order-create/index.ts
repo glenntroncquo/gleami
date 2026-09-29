@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsHeaders } from "@/shared/cors";
+import { corsHeaders, rejectDisallowedOrigin } from "@/shared/cors";
 import { createOrderWithPaymentSchema } from "../_shared/order/commands/create-with-payment/schema.ts";
 import { createOrderWithPaymentHandler } from "../_shared/order/commands/create-with-payment/handler.ts";
 import { orderCreateSuccessEnvelope } from "../_shared/order/commands/create-with-payment/envelope.ts";
@@ -13,6 +13,10 @@ import { requireCompanyAccess } from "@/shared/auth-guard";
 // Retry deploy after SUPABASE_PROJECT_ID was set.
 
 Deno.serve(async (req) => {
+  const rejectedOrigin = rejectDisallowedOrigin(req);
+  if (rejectedOrigin) {
+    return rejectedOrigin;
+  }
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 204,

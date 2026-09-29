@@ -310,6 +310,16 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 [functions.register-salon-owner]
 verify_jwt = false
 
+# Recovered 2026-09-29; guarded by INTERNAL_WEBHOOK_SECRET (legacy
+# x-webhook-secret accepted until all callers migrated).
+[functions.send-invitation-email]
+verify_jwt = false
+
+# Recovered 2026-09-29; public invite acceptance — the invite token itself
+# is the credential (SHA-256 hash looked up server-side).
+[functions.staff-invite-accept]
+verify_jwt = false
+
 [functions.payment-webhook]
 verify_jwt = false
 # Recovered deployed-only source; verify_jwt=true matches live and the

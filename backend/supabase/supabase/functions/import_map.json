@@ -31,6 +31,7 @@
     "@/shared/timetree": "./_shared/timetree.ts",
     "@/shared/format-date": "./_shared/notifications/format-date.ts",
     "@/shared/resend": "./_shared/infrastructure/email/resend.ts",
+    "@/shared/escape-html": "./_shared/infrastructure/http/escape-html.ts",
     "@/shared/stripe": "./_shared/infrastructure/stripe/client.ts",
     "@/shared/appointment-services-for-email": "./_shared/appointment/notifications/fetch-services.ts",
     "@/shared/notification-place": "./_shared/appointment/notifications/place.ts",

@@ -101,6 +101,10 @@ describe("promote matching treatment", () => {
       "Knippen",
       "Balayage",
     ]);
+    expect(promoteMatchingTreatment([
+      { name: "Keratinebehandeling- kroezel of afrohaar" },
+      { name: "Keratine behandeling" },
+    ], "keratine")[0]?.name).toBe("Keratine behandeling");
     expect(promoteMatchingTreatment(treatments, "")).toBe(treatments);
   });
 });

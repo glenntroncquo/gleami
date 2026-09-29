@@ -54,3 +54,21 @@ export function placeToEmailAddress(place: NotificationPlace) {
     companyCountry: place.country,
   };
 }
+
+/** Salon inbox plus the booked staff member. Same address is sent once. */
+export function staffNotificationRecipients(
+  placeEmail?: string | null,
+  staffEmail?: string | null,
+): string[] {
+  const seen = new Set<string>();
+  const recipients: string[] = [];
+  for (const raw of [placeEmail, staffEmail]) {
+    const trimmed = raw?.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(key)) continue;
+    seen.add(key);
+    recipients.push(trimmed);
+  }
+  return recipients;
+}

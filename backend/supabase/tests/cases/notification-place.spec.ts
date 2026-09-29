@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   placeToEmailAddress,
   resolveNotificationPlace,
+  staffNotificationRecipients,
 } from "../../supabase/functions/_shared/appointment/notifications/place.ts";
 import { SALON_TIMEZONE } from "../../supabase/functions/_shared/time/salon-timezone.ts";
 
@@ -57,6 +58,18 @@ describe("resolveNotificationPlace", () => {
     expect(place.country).toBe("BE");
     expect(place.email).toBe("salon@example.com");
     expect(place.timezone).toBe(SALON_TIMEZONE);
+  });
+
+  it("sends the salon inbox and the staff member, once each", () => {
+    expect(staffNotificationRecipients("salon@example.com", "ana@example.com")).toEqual([
+      "salon@example.com",
+      "ana@example.com",
+    ]);
+    expect(staffNotificationRecipients("Salon@example.com", " salon@example.com ")).toEqual([
+      "Salon@example.com",
+    ]);
+    expect(staffNotificationRecipients("", "ana@example.com")).toEqual(["ana@example.com"]);
+    expect(staffNotificationRecipients("not-an-email", null)).toEqual([]);
   });
 
   it("maps place fields onto existing email template keys", () => {

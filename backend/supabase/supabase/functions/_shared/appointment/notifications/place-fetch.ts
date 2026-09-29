@@ -8,6 +8,7 @@ import {
 export {
   placeToEmailAddress,
   resolveNotificationPlace,
+  staffNotificationRecipients,
 } from "./place.ts";
 export type { CompanyContact, LocationContact, NotificationPlace } from "./place.ts";
 

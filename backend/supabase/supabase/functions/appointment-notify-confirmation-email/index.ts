@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/shared/supabase";
 import { formatDate, formatTime } from "@/shared/format-date";
 import { sendEmail } from "@/shared/resend";
 import { fetchAppointmentServicesForEmail } from "@/shared/appointment-services-for-email";
-import { fetchNotificationPlace, placeToEmailAddress } from "@/shared/notification-place-fetch";
+import { fetchNotificationPlace, placeToEmailAddress, staffNotificationRecipients } from "@/shared/notification-place-fetch";
 import { assertInternalSecret } from "@/shared/internal-secret";
 import { appointmentCancelUrl, issueAppointmentAccessToken } from "@/shared/appointment-access-token";
 import { UnauthenticatedError } from "@/shared/errors";
@@ -301,23 +301,24 @@ serve(async (req)=>{
         html: clientHtml
       });
       console.log("Client email sent successfully:", clientEmailResult);
-      // Send staff email (best-effort - a failure here shouldn't fail the whole request)
-      if (!place.email) {
-        console.log("Location/company has no email on file, skipping staff notification");
+      // Salon inbox and the booked staff member. Same address is not sent twice.
+      const staffRecipients = staffNotificationRecipients(place.email, staff.email);
+      if (staffRecipients.length === 0) {
+        console.log("No salon or staff email on file, skipping staff notification");
       } else {
-        try {
-          const staffEmailResult = await sendEmail({
-            from: `${company.name} <afspraken@notifications.salonify.co>`,
-            to: [
-              place.email
-            ],
-            subject: staffSubject,
-            text: staffText,
-            html: staffHtml
-          });
-          console.log("Staff email sent successfully:", staffEmailResult);
-        } catch (staffEmailError) {
-          console.error("Staff email failed:", staffEmailError);
+        for (const recipient of staffRecipients) {
+          try {
+            const staffEmailResult = await sendEmail({
+              from: `${company.name} <afspraken@notifications.salonify.co>`,
+              to: [recipient],
+              subject: staffSubject,
+              text: staffText,
+              html: staffHtml
+            });
+            console.log("Staff email sent successfully:", staffEmailResult);
+          } catch (staffEmailError) {
+            console.error("Staff email failed:", staffEmailError);
+          }
         }
       }
       // Update appointment to mark confirmation as sent

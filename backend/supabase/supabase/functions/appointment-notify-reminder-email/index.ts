@@ -10,6 +10,7 @@ import {
   reminderCandidateFetchWindow,
 } from "@/shared/reminder-window";
 import { assertInternalSecret } from "@/shared/internal-secret";
+import { appointmentCancelUrl, issueAppointmentAccessToken } from "@/shared/appointment-access-token";
 import { UnauthenticatedError } from "@/shared/errors";
 
 // Format services and prices for display
@@ -211,6 +212,10 @@ serve(async (req)=>{
         const staffName = `${staff.first_name || ""} ${staff.last_name || ""}`.trim();
         // Construct customer name
         const customerName = `${client.first_name || ""} ${client.last_name || ""}`.trim();
+        // Fresh manage-booking token per email: the cancel link manages only
+        // this appointment. Also fixes the old /cancel/{id} link, which
+        // pointed at a route that never existed.
+        const manageToken = await issueAppointmentAccessToken(supabaseAdmin, appointment.id);
         // Prepare data for the reminder email
         const reminderEmailData = {
           customerName,
@@ -221,7 +226,7 @@ serve(async (req)=>{
           staffName,
           treatments: treatments,
           logoUrl: company.image_url || "https://salonify.co/logo.png",
-          cancelLink: `https://salonify.co/cancel/${appointment.id}`,
+          cancelLink: appointmentCancelUrl(appointment.id, manageToken),
           rescheduleLink: `https://salonify.co/reschedule/${appointment.id}`,
           primaryColor: "#E91E63",
           reminderType: "day_before"

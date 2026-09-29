@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createCorsResponse, OkResponse, BadResponse } from "@/shared/responses";
 import { validateInput } from "@/shared/validation";
-import { RepositoryError, ForbiddenError } from "@/shared/errors";
+import { RepositoryError, ForbiddenError, UnauthenticatedError } from "@/shared/errors";
 import { tryGetAuthContext } from "@/shared/auth-context";
 import { cancelAppointmentSchema } from "../_shared/appointment/commands/cancel/schema.ts";
 import { cancelAppointmentHandler } from "../_shared/appointment/commands/cancel/handler.ts";
@@ -35,6 +35,9 @@ Deno.serve(async (req) => {
       },
     });
   } catch (err) {
+    if (err instanceof UnauthenticatedError) {
+      return new BadResponse(err.message, 401);
+    }
     if (err instanceof ForbiddenError) {
       return new BadResponse(err.message, 403);
     }

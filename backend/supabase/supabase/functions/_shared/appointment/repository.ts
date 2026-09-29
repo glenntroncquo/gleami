@@ -137,6 +137,34 @@ async function releaseBusyPhases(appointmentId: string): Promise<void> {
   }
 }
 
+const APPOINTMENT_LIST_ITEM_SELECT = `
+  id,
+  start,
+  end,
+  notes,
+  is_canceled,
+  staff:staff_id (
+    id,
+    first_name,
+    last_name
+  ),
+  appointment_segment (
+    id,
+    staff_id,
+    sequence,
+    starts_at,
+    ends_at,
+    service:service_id (
+      id,
+      name
+    ),
+    service_variant:service_variant_id (
+      id,
+      name
+    )
+  )
+`;
+
 export const appointmentRepository = {
   async findById(id: string): Promise<Appointment | null> {
     const { data, error } = await supabaseAdmin
@@ -191,6 +219,33 @@ export const appointmentRepository = {
     if (!data) return null;
 
     await releaseBusyPhases(params.appointmentId);
+
+    return toCanceledAppointment(data);
+  },
+
+  /**
+   * Guest cancel via manage-booking token. The token itself is verified by
+   * the command handler; this update is conditional on the appointment being
+   * upcoming and not yet canceled, so stale links, replays, and
+   * already-started appointments all collapse to null (no oracle).
+   */
+  async cancelAsGuest(appointmentId: string): Promise<CanceledAppointment | null> {
+    const { data, error } = await supabaseAdmin
+      .from("appointment")
+      .update({ is_canceled: true, canceled_by: "client" })
+      .eq("id", appointmentId)
+      .eq("is_canceled", false)
+      .gt("start", new Date().toISOString())
+      .select("id, start, end, is_canceled")
+      .maybeSingle();
+
+    if (error) {
+      throw new RepositoryError("Failed to cancel appointment", { cause: error });
+    }
+
+    if (!data) return null;
+
+    await releaseBusyPhases(appointmentId);
 
     return toCanceledAppointment(data);
   },
@@ -251,35 +306,7 @@ export const appointmentRepository = {
   ): Promise<AppointmentListItem[]> {
     const { data, error } = await supabaseAdmin
       .from("appointment")
-      .select(
-        `
-        id,
-        start,
-        end,
-        notes,
-        is_canceled,
-        staff:staff_id (
-          id,
-          first_name,
-          last_name
-        ),
-        appointment_segment (
-          id,
-          staff_id,
-          sequence,
-          starts_at,
-          ends_at,
-          service:service_id (
-            id,
-            name
-          ),
-          service_variant:service_variant_id (
-            id,
-            name
-          )
-        )
-      `,
-      )
+      .select(APPOINTMENT_LIST_ITEM_SELECT)
       .eq("client_id", params.clientId)
       .eq("company_id", params.companyId)
       .eq("is_canceled", false)
@@ -291,6 +318,26 @@ export const appointmentRepository = {
     }
 
     return ((data ?? []) as unknown as AppointmentListItemRow[]).map(toAppointmentListItem);
+  },
+
+  /**
+   * Single appointment for the token-holder manage-booking view. Token
+   * verification happens in the command handler; this deliberately returns
+   * past and canceled appointments too, so a guest opening an old link sees
+   * state instead of an error.
+   */
+  async findListItemById(id: string): Promise<AppointmentListItem | null> {
+    const { data, error } = await supabaseAdmin
+      .from("appointment")
+      .select(APPOINTMENT_LIST_ITEM_SELECT)
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) {
+      throw new RepositoryError("Failed to fetch appointment", { cause: error });
+    }
+
+    return data ? toAppointmentListItem(data as unknown as AppointmentListItemRow) : null;
   },
 
   async createForStaff(params: CreateStaffAppointmentParams): Promise<CreateStaffAppointmentResult> {

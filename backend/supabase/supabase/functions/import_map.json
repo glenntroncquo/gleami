@@ -26,6 +26,7 @@
     "@/shared/auth-permission": "./_shared/infrastructure/auth/permission.ts",
     "@/shared/require-service-role": "./_shared/infrastructure/auth/service-role.ts",
     "@/shared/internal-secret": "./_shared/infrastructure/auth/internal-secret.ts",
+    "@/shared/appointment-access-token": "./_shared/appointment/access-token.ts",
     "@/shared/timetree": "./_shared/timetree.ts",
     "@/shared/format-date": "./_shared/notifications/format-date.ts",
     "@/shared/resend": "./_shared/infrastructure/email/resend.ts",

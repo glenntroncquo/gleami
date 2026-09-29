@@ -5,6 +5,7 @@ import { sendEmail } from "@/shared/resend";
 import { fetchAppointmentServicesForEmail } from "@/shared/appointment-services-for-email";
 import { fetchNotificationPlace, placeToEmailAddress } from "@/shared/notification-place-fetch";
 import { assertInternalSecret } from "@/shared/internal-secret";
+import { appointmentCancelUrl, issueAppointmentAccessToken } from "@/shared/appointment-access-token";
 import { UnauthenticatedError } from "@/shared/errors";
 
 // Format treatments list for display
@@ -584,6 +585,10 @@ serve(async (req) => {
     // Format treatments list
     const treatmentsList = formatTreatmentsList(treatments);
 
+    // Fresh manage-booking token per email: the cancel link manages only this
+    // appointment and stops working once it starts.
+    const manageToken = await issueAppointmentAccessToken(supabaseAdmin, appointment.id);
+
     // Prepare email data
     const emailData = {
       customerName,
@@ -597,7 +602,7 @@ serve(async (req) => {
       treatmentsList,
       cancelReason: appointment.cancel_reason || "",
       canceledBy: appointment.canceled_by || "",
-      cancelLink: `https://salonify.co/nl/cancel-appointment/${company.id}/${client.id}`,
+      cancelLink: appointmentCancelUrl(appointment.id, manageToken),
       appointmentNotes: appointment.notes
     };
 

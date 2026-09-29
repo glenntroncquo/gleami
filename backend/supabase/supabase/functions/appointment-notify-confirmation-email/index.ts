@@ -5,6 +5,7 @@ import { sendEmail } from "@/shared/resend";
 import { fetchAppointmentServicesForEmail } from "@/shared/appointment-services-for-email";
 import { fetchNotificationPlace, placeToEmailAddress } from "@/shared/notification-place-fetch";
 import { assertInternalSecret } from "@/shared/internal-secret";
+import { appointmentCancelUrl, issueAppointmentAccessToken } from "@/shared/appointment-access-token";
 import { UnauthenticatedError } from "@/shared/errors";
 
 // Format services list for display
@@ -254,6 +255,9 @@ serve(async (req)=>{
     }
     const isNewClient = (priorAppointmentCount ?? 0) === 0;
     console.log("Is new client:", isNewClient, "prior appointments:", priorAppointmentCount);
+    // Fresh manage-booking token per email: the cancel link manages only this
+    // appointment and stops working once it starts.
+    const manageToken = await issueAppointmentAccessToken(supabaseAdmin, appointment.id);
     // Construct names
     const staffName = `${staff.first_name || ""} ${staff.last_name || ""}`.trim();
     const customerName = `${client.first_name || ""} ${client.last_name || ""}`.trim();
@@ -271,7 +275,7 @@ serve(async (req)=>{
       staffName,
       treatmentsList,
       appointmentNotes: appointment.notes,
-      cancelLink: `https://salonify.co/nl/cancel-appointment/${company.id}/${client.id}`,
+      cancelLink: appointmentCancelUrl(appointment.id, manageToken),
       isNewClient
     };
     console.log("Email data prepared");

@@ -12,11 +12,11 @@ export function appointmentMatchesCancelKeys(
 }
 
 /**
- * Public manage-booking (no user session) is a capability token:
- * appointmentId + clientId + companyId. Do not require membership.
+ * Guest manage-booking (no user session) authorizes via an emailed random
+ * token, verified in the handler against the stored SHA-256 hash.
  *
- * When a staff JWT is present, cancel is location-scoped the same way as
- * appointment-create-staff: company membership plus appointment.location_id.
+ * Staff JWTs are location-scoped the same way as appointment-create-staff:
+ * company membership plus appointment.location_id.
  */
 export function assertStaffCancelAccess(
   auth: AuthContext | null,

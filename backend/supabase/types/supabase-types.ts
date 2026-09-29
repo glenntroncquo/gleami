@@ -10,14 +10,12 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.12 (cd3cf9e)"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
       appointment: {
         Row: {
-          actual_end: string | null
-          actual_start: string | null
           allow_overlap: boolean | null
           cancel_reason: string | null
           canceled_by: string | null
@@ -26,18 +24,19 @@ export type Database = {
           company_id: string
           confirmation_sent: boolean | null
           created_at: string
-          location_id: string
-          duration_in_minutes: number | null
+          deposit_amount: number | null
+          deposit_paid_at: string | null
           end: string
           external_reference_id: string | null
           free_duration: number | null
           free_duration_offset: number | null
+          hold_expires_at: string | null
           id: string
           image_path: string | null
           is_canceled: boolean
+          location_id: string
           notes: string | null
           price: number
-          price_option_id: string | null
           reminder_sent: boolean | null
           send_confirmation: boolean | null
           staff_id: string
@@ -45,12 +44,9 @@ export type Database = {
           staff_notes: string | null
           start: string
           status: string | null
-          treatment_id: string | null
           updated_at: string | null
         }
         Insert: {
-          actual_end?: string | null
-          actual_start?: string | null
           allow_overlap?: boolean | null
           cancel_reason?: string | null
           canceled_by?: string | null
@@ -59,18 +55,19 @@ export type Database = {
           company_id: string
           confirmation_sent?: boolean | null
           created_at?: string
-          location_id?: string
-          duration_in_minutes?: number | null
+          deposit_amount?: number | null
+          deposit_paid_at?: string | null
           end: string
           external_reference_id?: string | null
           free_duration?: number | null
           free_duration_offset?: number | null
+          hold_expires_at?: string | null
           id?: string
           image_path?: string | null
           is_canceled?: boolean
+          location_id: string
           notes?: string | null
           price: number
-          price_option_id?: string | null
           reminder_sent?: boolean | null
           send_confirmation?: boolean | null
           staff_id: string
@@ -78,12 +75,9 @@ export type Database = {
           staff_notes?: string | null
           start: string
           status?: string | null
-          treatment_id?: string | null
           updated_at?: string | null
         }
         Update: {
-          actual_end?: string | null
-          actual_start?: string | null
           allow_overlap?: boolean | null
           cancel_reason?: string | null
           canceled_by?: string | null
@@ -92,18 +86,19 @@ export type Database = {
           company_id?: string
           confirmation_sent?: boolean | null
           created_at?: string
-          location_id?: string
-          duration_in_minutes?: number | null
+          deposit_amount?: number | null
+          deposit_paid_at?: string | null
           end?: string
           external_reference_id?: string | null
           free_duration?: number | null
           free_duration_offset?: number | null
+          hold_expires_at?: string | null
           id?: string
           image_path?: string | null
           is_canceled?: boolean
+          location_id?: string
           notes?: string | null
           price?: number
-          price_option_id?: string | null
           reminder_sent?: boolean | null
           send_confirmation?: boolean | null
           staff_id?: string
@@ -111,7 +106,6 @@ export type Database = {
           staff_notes?: string | null
           start?: string
           status?: string | null
-          treatment_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -137,24 +131,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "appointment_price_option_id_fkey"
-            columns: ["price_option_id"]
-            isOneToOne: false
-            referencedRelation: "price_option"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "appointment_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "staff"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      appointment_access_token: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          id: string
+          token_hash: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          id?: string
+          token_hash: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          id?: string
+          token_hash?: string
+        }
+        Relationships: [
           {
-            foreignKeyName: "appointment_treatment_id_fkey"
-            columns: ["treatment_id"]
+            foreignKeyName: "appointment_access_token_appointment_id_fkey"
+            columns: ["appointment_id"]
             isOneToOne: false
-            referencedRelation: "treatment"
+            referencedRelation: "appointment"
             referencedColumns: ["id"]
           },
         ]
@@ -184,7 +193,7 @@ export type Database = {
           created_at?: string
           ends_at: string
           id?: string
-          location_id?: string
+          location_id: string
           price?: number | null
           price_net?: number | null
           sequence: number
@@ -278,7 +287,7 @@ export type Database = {
           created_at?: string
           ends_at: string
           id?: string
-          location_id?: string
+          location_id: string
           phase_type: string
           sequence: number
           staff_id: string
@@ -330,95 +339,107 @@ export type Database = {
           },
         ]
       }
-      appointment_treatment: {
+      booking_hold: {
         Row: {
-          appointment_id: string
+          client_email: string | null
+          client_first_name: string | null
+          client_id: string | null
+          client_last_name: string | null
+          client_phone: string | null
           company_id: string
           created_at: string
+          deposit_amount: number
+          ends_at: string
+          expires_at: string
           id: string
-          price_option_id: string
-          treatment_id: string
-          updated_at: string | null
+          location_id: string | null
+          notes: string | null
+          price: number
+          segments: Json
+          service_id: string
+          staff_id: string
+          starts_at: string
+          status: string
+          stripe_checkout_session_id: string | null
+          stripe_payment_intent_id: string | null
         }
         Insert: {
-          appointment_id: string
+          client_email?: string | null
+          client_first_name?: string | null
+          client_id?: string | null
+          client_last_name?: string | null
+          client_phone?: string | null
           company_id: string
           created_at?: string
+          deposit_amount: number
+          ends_at: string
+          expires_at: string
           id?: string
-          price_option_id: string
-          treatment_id: string
-          updated_at?: string | null
+          location_id?: string | null
+          notes?: string | null
+          price: number
+          segments?: Json
+          service_id: string
+          staff_id: string
+          starts_at: string
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
         }
         Update: {
-          appointment_id?: string
+          client_email?: string | null
+          client_first_name?: string | null
+          client_id?: string | null
+          client_last_name?: string | null
+          client_phone?: string | null
           company_id?: string
           created_at?: string
+          deposit_amount?: number
+          ends_at?: string
+          expires_at?: string
           id?: string
-          price_option_id?: string
-          treatment_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "appointment_treatment_appointment_id_fkey"
-            columns: ["appointment_id"]
-            isOneToOne: false
-            referencedRelation: "appointment"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "appointment_treatment_price_option_id_fkey"
-            columns: ["price_option_id"]
-            isOneToOne: false
-            referencedRelation: "price_option"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "appointment_treatment_treatment_id_fkey"
-            columns: ["treatment_id"]
-            isOneToOne: false
-            referencedRelation: "treatment"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      availability: {
-        Row: {
-          company_id: string
-          created_at: string
-          day_of_week: number | null
-          end: string
-          id: number
-          recurring: boolean
-          staff_id: string
-          start: string
-          updated_at: string | null
-        }
-        Insert: {
-          company_id: string
-          created_at?: string
-          day_of_week?: number | null
-          end: string
-          id?: number
-          recurring: boolean
-          staff_id: string
-          start: string
-          updated_at?: string | null
-        }
-        Update: {
-          company_id?: string
-          created_at?: string
-          day_of_week?: number | null
-          end?: string
-          id?: number
-          recurring?: boolean
+          location_id?: string | null
+          notes?: string | null
+          price?: number
+          segments?: Json
+          service_id?: string
           staff_id?: string
-          start?: string
-          updated_at?: string | null
+          starts_at?: string
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "availability_staff_id_fkey"
+            foreignKeyName: "booking_hold_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_hold_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_hold_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "location"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_hold_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_hold_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "staff"
@@ -535,6 +556,10 @@ export type Database = {
           city: string | null
           country: string | null
           created_at: string
+          deposit_enabled: boolean
+          deposit_fixed_amount: number | null
+          deposit_percent: number | null
+          deposit_type: string | null
           description: string | null
           email: string | null
           geo_location: unknown
@@ -551,6 +576,10 @@ export type Database = {
           city?: string | null
           country?: string | null
           created_at?: string
+          deposit_enabled?: boolean
+          deposit_fixed_amount?: number | null
+          deposit_percent?: number | null
+          deposit_type?: string | null
           description?: string | null
           email?: string | null
           geo_location?: unknown
@@ -567,6 +596,10 @@ export type Database = {
           city?: string | null
           country?: string | null
           created_at?: string
+          deposit_enabled?: boolean
+          deposit_fixed_amount?: number | null
+          deposit_percent?: number | null
+          deposit_type?: string | null
           description?: string | null
           email?: string | null
           geo_location?: unknown
@@ -580,45 +613,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
-      }
-      company_membership: {
-        Row: {
-          company_id: string
-          created_at: string
-          id: string
-          role_id: string
-          user_id: string
-        }
-        Insert: {
-          company_id: string
-          created_at?: string
-          id?: string
-          role_id: string
-          user_id: string
-        }
-        Update: {
-          company_id?: string
-          created_at?: string
-          id?: string
-          role_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "company_membership_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "company"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "company_membership_role_id_fkey"
-            columns: ["role_id"]
-            isOneToOne: false
-            referencedRelation: "role"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       company_integrations: {
         Row: {
@@ -667,6 +661,45 @@ export type Database = {
           },
         ]
       }
+      company_membership: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          role_id: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          role_id: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          role_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_membership_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_membership_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "role"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_payment_account: {
         Row: {
           charges_enabled: boolean
@@ -708,32 +741,119 @@ export type Database = {
           },
         ]
       }
-      invitation: {
+      deposit_policy: {
         Row: {
+          amount: number
+          amount_type: string
           company_id: string
           created_at: string
-          email: string
           id: string
-          status: string
+          is_active: boolean
+          rule_type: string
+          service_id: string | null
           updated_at: string | null
         }
         Insert: {
-          company_id?: string
+          amount: number
+          amount_type: string
+          company_id: string
           created_at?: string
-          email: string
           id?: string
-          status: string
+          is_active?: boolean
+          rule_type: string
+          service_id?: string | null
           updated_at?: string | null
         }
         Update: {
+          amount?: number
+          amount_type?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          rule_type?: string
+          service_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deposit_policy_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deposit_policy_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invitation: {
+        Row: {
+          accepted_at: string | null
+          company_id: string
+          created_at: string
+          email: string
+          email_sent_at: string | null
+          expires_at: string | null
+          id: string
+          invited_by: string | null
+          location_id: string | null
+          role_id: string | null
+          status: string
+          token_hash: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          company_id: string
+          created_at?: string
+          email: string
+          email_sent_at?: string | null
+          expires_at?: string | null
+          id?: string
+          invited_by?: string | null
+          location_id?: string | null
+          role_id?: string | null
+          status: string
+          token_hash?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
           company_id?: string
           created_at?: string
           email?: string
+          email_sent_at?: string | null
+          expires_at?: string | null
           id?: string
+          invited_by?: string | null
+          location_id?: string | null
+          role_id?: string | null
           status?: string
+          token_hash?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "invitation_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "location"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitation_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "role"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       location: {
         Row: {
@@ -748,6 +868,8 @@ export type Database = {
           is_active: boolean
           is_listed: boolean
           is_primary: boolean
+          marketplace_description: string | null
+          marketplace_published_at: string | null
           name: string
           postal_code: string | null
           slug: string | null
@@ -768,6 +890,8 @@ export type Database = {
           is_active?: boolean
           is_listed?: boolean
           is_primary?: boolean
+          marketplace_description?: string | null
+          marketplace_published_at?: string | null
           name: string
           postal_code?: string | null
           slug?: string | null
@@ -788,6 +912,8 @@ export type Database = {
           is_active?: boolean
           is_listed?: boolean
           is_primary?: boolean
+          marketplace_description?: string | null
+          marketplace_published_at?: string | null
           name?: string
           postal_code?: string | null
           slug?: string | null
@@ -814,7 +940,7 @@ export type Database = {
           location_id: string
           role_id: string
           staff_id: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -823,7 +949,7 @@ export type Database = {
           location_id: string
           role_id: string
           staff_id?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -832,7 +958,7 @@ export type Database = {
           location_id?: string
           role_id?: string
           staff_id?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -891,6 +1017,190 @@ export type Database = {
           },
         ]
       }
+      marketplace_category: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          parent_id: string | null
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          is_active?: boolean
+          name: string
+          parent_id?: string | null
+          slug: string
+          sort_order: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          parent_id?: string | null
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_category_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_category"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_location_like: {
+        Row: {
+          created_at: string
+          location_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          location_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          location_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_location_like_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "location"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_media: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          location_id: string
+          sort_order: number
+          storage_path: string
+          type: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          location_id: string
+          sort_order?: number
+          storage_path: string
+          type?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          location_id?: string
+          sort_order?: number
+          storage_path?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_media_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_media_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "location"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_search_location: {
+        Row: {
+          address: string | null
+          category_ids: string[]
+          city: string | null
+          company_id: string
+          coordinates: unknown
+          image_url: string | null
+          like_count: number
+          location_id: string
+          name: string
+          rating: number | null
+          review_count: number
+          search_text: string
+          search_vector: unknown
+          slug: string
+          treatments: Json
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          category_ids?: string[]
+          city?: string | null
+          company_id: string
+          coordinates: unknown
+          image_url?: string | null
+          like_count?: number
+          location_id: string
+          name: string
+          rating?: number | null
+          review_count?: number
+          search_text?: string
+          search_vector?: unknown
+          slug: string
+          treatments?: Json
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          category_ids?: string[]
+          city?: string | null
+          company_id?: string
+          coordinates?: unknown
+          image_url?: string | null
+          like_count?: number
+          location_id?: string
+          name?: string
+          rating?: number | null
+          review_count?: number
+          search_text?: string
+          search_vector?: unknown
+          slug?: string
+          treatments?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_search_location_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_search_location_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: true
+            referencedRelation: "location"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order: {
         Row: {
           amount_paid: number | null
@@ -920,7 +1230,7 @@ export type Database = {
           date?: string | null
           discount_amount?: number | null
           id?: string
-          location_id?: string
+          location_id: string
           notes?: string | null
           order_number?: string | null
           payment_status?: string | null
@@ -976,13 +1286,11 @@ export type Database = {
           id: string
           location_id: string
           order_id: string
-          price_option_id: string | null
           product_id: string | null
           quantity: number | null
           service_id: string | null
           service_variant_id: string | null
           total: number | null
-          treatment_id: string | null
           unit_price: number | null
           updated_at: string | null
           vat_rate: number | null
@@ -994,15 +1302,13 @@ export type Database = {
           created_at?: string
           discount_amount?: number | null
           id?: string
-          location_id?: string
+          location_id: string
           order_id: string
-          price_option_id?: string | null
           product_id?: string | null
           quantity?: number | null
           service_id?: string | null
           service_variant_id?: string | null
           total?: number | null
-          treatment_id?: string | null
           unit_price?: number | null
           updated_at?: string | null
           vat_rate?: number | null
@@ -1016,13 +1322,11 @@ export type Database = {
           id?: string
           location_id?: string
           order_id?: string
-          price_option_id?: string | null
           product_id?: string | null
           quantity?: number | null
           service_id?: string | null
           service_variant_id?: string | null
           total?: number | null
-          treatment_id?: string | null
           unit_price?: number | null
           updated_at?: string | null
           vat_rate?: number | null
@@ -1057,13 +1361,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "order_item_price_option_id_fkey"
-            columns: ["price_option_id"]
-            isOneToOne: false
-            referencedRelation: "price_option"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "order_item_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -1084,19 +1381,38 @@ export type Database = {
             referencedRelation: "service_variant"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "order_item_treatment_id_fkey"
-            columns: ["treatment_id"]
-            isOneToOne: false
-            referencedRelation: "treatment"
-            referencedColumns: ["id"]
-          },
         ]
+      }
+      order_item_webhook_event: {
+        Row: {
+          created_at: string
+          event_type: string
+          fingerprint: string
+          id: string
+          order_item_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          fingerprint: string
+          id?: string
+          order_item_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          fingerprint?: string
+          id?: string
+          order_item_id?: string
+        }
+        Relationships: []
       }
       payment: {
         Row: {
           amount: number | null
           amount_gross: number | null
+          appointment_id: string | null
+          booking_hold_id: string | null
           card_brand: string | null
           card_type: string | null
           cashbook_id: string | null
@@ -1112,16 +1428,18 @@ export type Database = {
           payment_provider: string | null
           payment_status: string | null
           processor_ref: string | null
-          status: string | null
           provider_charge_id: string | null
           provider_payment_intent_id: string | null
           provider_refund_id: string | null
+          status: string | null
           total_cash_received: number | null
           updated_at: string | null
         }
         Insert: {
           amount?: number | null
           amount_gross?: number | null
+          appointment_id?: string | null
+          booking_hold_id?: string | null
           card_brand?: string | null
           card_type?: string | null
           cashbook_id?: string | null
@@ -1129,7 +1447,7 @@ export type Database = {
           created_at?: string
           id?: string
           last_four_digits?: string | null
-          location_id?: string
+          location_id: string
           notes?: string | null
           order_id?: string | null
           paid_at?: string | null
@@ -1137,16 +1455,18 @@ export type Database = {
           payment_provider?: string | null
           payment_status?: string | null
           processor_ref?: string | null
-          status?: string | null
           provider_charge_id?: string | null
           provider_payment_intent_id?: string | null
           provider_refund_id?: string | null
+          status?: string | null
           total_cash_received?: number | null
           updated_at?: string | null
         }
         Update: {
           amount?: number | null
           amount_gross?: number | null
+          appointment_id?: string | null
+          booking_hold_id?: string | null
           card_brand?: string | null
           card_type?: string | null
           cashbook_id?: string | null
@@ -1162,14 +1482,28 @@ export type Database = {
           payment_provider?: string | null
           payment_status?: string | null
           processor_ref?: string | null
-          status?: string | null
           provider_charge_id?: string | null
           provider_payment_intent_id?: string | null
           provider_refund_id?: string | null
+          status?: string | null
           total_cash_received?: number | null
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "payment_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_booking_hold_id_fkey"
+            columns: ["booking_hold_id"]
+            isOneToOne: false
+            referencedRelation: "booking_hold"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payment_location_id_fkey"
             columns: ["location_id"]
@@ -1197,68 +1531,6 @@ export type Database = {
           key?: string
         }
         Relationships: []
-      }
-      price_option: {
-        Row: {
-          actual_duration_in_minutes: number | null
-          company_id: string
-          created_at: string
-          duration_in_minutes: number
-          id: string
-          image_path: string | null
-          interval: number | null
-          max_price: number | null
-          name: string
-          order: number | null
-          price: number
-          price_net: number | null
-          treatment_id: string | null
-          updated_at: string | null
-          vat_rate: number | null
-        }
-        Insert: {
-          actual_duration_in_minutes?: number | null
-          company_id: string
-          created_at?: string
-          duration_in_minutes: number
-          id?: string
-          image_path?: string | null
-          interval?: number | null
-          max_price?: number | null
-          name: string
-          order?: number | null
-          price: number
-          price_net?: number | null
-          treatment_id?: string | null
-          updated_at?: string | null
-          vat_rate?: number | null
-        }
-        Update: {
-          actual_duration_in_minutes?: number | null
-          company_id?: string
-          created_at?: string
-          duration_in_minutes?: number
-          id?: string
-          image_path?: string | null
-          interval?: number | null
-          max_price?: number | null
-          name?: string
-          order?: number | null
-          price?: number
-          price_net?: number | null
-          treatment_id?: string | null
-          updated_at?: string | null
-          vat_rate?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "price_option_treatment_id_fkey"
-            columns: ["treatment_id"]
-            isOneToOne: false
-            referencedRelation: "treatment"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       product: {
         Row: {
@@ -1569,6 +1841,7 @@ export type Database = {
           image_path: string | null
           is_active: boolean | null
           is_deleted: boolean | null
+          is_marketplace_visible: boolean
           name: string
           updated_at: string | null
         }
@@ -1583,6 +1856,7 @@ export type Database = {
           image_path?: string | null
           is_active?: boolean | null
           is_deleted?: boolean | null
+          is_marketplace_visible?: boolean
           name: string
           updated_at?: string | null
         }
@@ -1597,6 +1871,7 @@ export type Database = {
           image_path?: string | null
           is_active?: boolean | null
           is_deleted?: boolean | null
+          is_marketplace_visible?: boolean
           name?: string
           updated_at?: string | null
         }
@@ -1606,6 +1881,39 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_marketplace_category: {
+        Row: {
+          created_at: string
+          marketplace_category_id: string
+          service_id: string
+        }
+        Insert: {
+          created_at?: string
+          marketplace_category_id: string
+          service_id: string
+        }
+        Update: {
+          created_at?: string
+          marketplace_category_id?: string
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_marketplace_category_marketplace_category_id_fkey"
+            columns: ["marketplace_category_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_category"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_marketplace_category_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service"
             referencedColumns: ["id"]
           },
         ]
@@ -1819,45 +2127,6 @@ export type Database = {
           },
         ]
       }
-      staff_price_option: {
-        Row: {
-          company_id: string
-          created_at: string
-          price_option_id: string | null
-          staff_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          company_id: string
-          created_at?: string
-          price_option_id?: string | null
-          staff_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          company_id?: string
-          created_at?: string
-          price_option_id?: string | null
-          staff_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "staff_price_option_price_option_id_fkey"
-            columns: ["price_option_id"]
-            isOneToOne: false
-            referencedRelation: "price_option"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "staff_price_option_staff_id_fkey"
-            columns: ["staff_id"]
-            isOneToOne: false
-            referencedRelation: "staff"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       staff_schedule_exception: {
         Row: {
           company_id: string
@@ -1876,7 +2145,7 @@ export type Database = {
           ends_at: string
           id?: string
           kind: string
-          location_id?: string
+          location_id: string
           staff_id: string
           starts_at: string
           updated_at?: string | null
@@ -1940,7 +2209,7 @@ export type Database = {
           end_time: string
           id?: string
           is_active?: boolean
-          location_id?: string
+          location_id: string
           staff_id: string
           start_time: string
           updated_at?: string | null
@@ -1997,7 +2266,7 @@ export type Database = {
           company_id: string
           created_at?: string
           id?: string
-          location_id?: string
+          location_id: string
           service_id: string
           staff_id: string
           updated_at?: string | null
@@ -2056,7 +2325,7 @@ export type Database = {
           company_id: string
           created_at?: string
           id?: string
-          location_id?: string
+          location_id: string
           service_variant_id: string
           staff_id: string
           updated_at?: string | null
@@ -2101,44 +2370,26 @@ export type Database = {
           },
         ]
       }
-      staff_treatment: {
+      stripe_event: {
         Row: {
-          company_id: string
-          created_at: string
-          staff_id: string
-          treatment_id: string
-          updated_at: string | null
+          event_id: string
+          livemode: boolean
+          processed_at: string
+          type: string
         }
         Insert: {
-          company_id?: string
-          created_at?: string
-          staff_id?: string
-          treatment_id?: string
-          updated_at?: string | null
+          event_id: string
+          livemode: boolean
+          processed_at?: string
+          type: string
         }
         Update: {
-          company_id?: string
-          created_at?: string
-          staff_id?: string
-          treatment_id?: string
-          updated_at?: string | null
+          event_id?: string
+          livemode?: boolean
+          processed_at?: string
+          type?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "staff_treatment_staff_id_fkey"
-            columns: ["staff_id"]
-            isOneToOne: false
-            referencedRelation: "staff"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "staff_treatment_treatment_id_fkey"
-            columns: ["treatment_id"]
-            isOneToOne: false
-            referencedRelation: "treatment"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       subscriptions: {
         Row: {
@@ -2198,97 +2449,6 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "company"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      treatment: {
-        Row: {
-          color: string | null
-          company_id: string
-          created_at: string
-          description: string | null
-          id: string
-          image_path: string | null
-          interval: number | null
-          is_active: boolean | null
-          is_deleted: boolean | null
-          name: string
-          order: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          color?: string | null
-          company_id: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          image_path?: string | null
-          interval?: number | null
-          is_active?: boolean | null
-          is_deleted?: boolean | null
-          name: string
-          order?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          color?: string | null
-          company_id?: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          image_path?: string | null
-          interval?: number | null
-          is_active?: boolean | null
-          is_deleted?: boolean | null
-          name?: string
-          order?: number | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "treatment_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "company"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      unavailability: {
-        Row: {
-          company_id: string
-          created_at: string
-          end: string | null
-          id: string
-          staff_id: string
-          start: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          company_id: string
-          created_at: string
-          end?: string | null
-          id?: string
-          staff_id: string
-          start?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          company_id?: string
-          created_at?: string
-          end?: string | null
-          id?: string
-          staff_id?: string
-          start?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "unavailability_staff_id_fkey"
-            columns: ["staff_id"]
-            isOneToOne: false
-            referencedRelation: "staff"
             referencedColumns: ["id"]
           },
         ]
@@ -2466,6 +2626,18 @@ export type Database = {
             }
             Returns: string
           }
+      adjust_product_stock: {
+        Args: { p_delta: number; p_product_id: string }
+        Returns: Json
+      }
+      claim_order_item_webhook: {
+        Args: {
+          p_event_type: string
+          p_fingerprint: string
+          p_order_item_id: string
+        }
+        Returns: boolean
+      }
       create_appointment: {
         Args: {
           p_actual_end: string
@@ -2474,7 +2646,7 @@ export type Database = {
           p_company_id: string
           p_duration_in_minutes: number
           p_end: string
-          p_image_path?: string
+          p_image_path: string
           p_location_id?: string
           p_notes: string
           p_price: number
@@ -2488,7 +2660,7 @@ export type Database = {
         Args: {
           p_actual_end: string
           p_actual_start: string
-          p_client_id: string | null
+          p_client_id: string
           p_company_id: string
           p_duration_in_minutes: number
           p_email?: string
@@ -2504,26 +2676,6 @@ export type Database = {
           p_staff_id: string
           p_staff_notes?: string
           p_start: string
-        }
-        Returns: Json
-      }
-      create_location: {
-        Args: {
-          p_city?: string
-          p_company_id: string
-          p_country?: string
-          p_email?: string
-          p_image_url?: string
-          p_is_active?: boolean
-          p_is_listed?: boolean
-          p_lat?: number
-          p_lon?: number
-          p_name: string
-          p_postal_code?: string
-          p_slug?: string
-          p_state?: string
-          p_street?: string
-          p_timezone?: string
         }
         Returns: Json
       }
@@ -2549,15 +2701,25 @@ export type Database = {
         }
         Returns: Json
       }
-      staff_is_on_schedule: {
+      create_location: {
         Args: {
+          p_city?: string
           p_company_id: string
-          p_end: string
-          p_location_id?: string
-          p_staff_id: string
-          p_start: string
+          p_country?: string
+          p_email?: string
+          p_image_url?: string
+          p_is_active?: boolean
+          p_is_listed?: boolean
+          p_lat?: number
+          p_lon?: number
+          p_name: string
+          p_postal_code?: string
+          p_slug?: string
+          p_state?: string
+          p_street?: string
+          p_timezone?: string
         }
-        Returns: boolean
+        Returns: Json
       }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
@@ -2704,6 +2866,43 @@ export type Database = {
         Returns: boolean
       }
       longtransactionsenabled: { Args: never; Returns: boolean }
+      marketplace_auth_email_status: {
+        Args: { p_email: string }
+        Returns: {
+          account_exists: boolean
+          has_password: boolean
+        }[]
+      }
+      marketplace_link_customer: {
+        Args: {
+          p_email: string
+          p_first_name: string
+          p_last_name: string
+          p_phone: string
+          p_user_id: string
+        }
+        Returns: {
+          appointment_count: number
+          client_count: number
+        }[]
+      }
+      marketplace_my_appointments: {
+        Args: { p_before?: string; p_limit?: number }
+        Returns: {
+          ends_at: string
+          id: string
+          is_canceled: boolean
+          location_city: string
+          location_id: string
+          location_image_url: string
+          location_name: string
+          location_slug: string
+          price: number
+          services: string[]
+          starts_at: string
+          status: string
+        }[]
+      }
       my_company_ids: { Args: never; Returns: string[] }
       my_location_ids: { Args: never; Returns: string[] }
       my_locations: {
@@ -2720,6 +2919,8 @@ export type Database = {
           is_active: boolean
           is_listed: boolean
           is_primary: boolean
+          marketplace_description: string | null
+          marketplace_published_at: string | null
           name: string
           postal_code: string | null
           slug: string | null
@@ -2728,38 +2929,24 @@ export type Database = {
           timezone: string
           updated_at: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "location"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       my_memberships: {
         Args: never
         Returns: {
           company_id: string
           is_active: boolean
-          location_id: string | null
+          location_id: string
           role_id: string
           role_name: string
           role_scope: string
           source: string
         }[]
-      }
-      update_location: {
-        Args: {
-          p_city?: string
-          p_country?: string
-          p_email?: string
-          p_image_url?: string
-          p_is_active?: boolean
-          p_is_listed?: boolean
-          p_lat?: number
-          p_location_id: string
-          p_lon?: number
-          p_name?: string
-          p_postal_code?: string
-          p_slug?: string
-          p_state?: string
-          p_street?: string
-          p_timezone?: string
-        }
-        Returns: Json
       }
       nearby_companies: {
         Args: { radius_m?: number; user_lat: number; user_lon: number }
@@ -3451,8 +3638,38 @@ export type Database = {
         Args: { geom: unknown; move: number; wrap: number }
         Returns: unknown
       }
+      staff_is_on_schedule: {
+        Args: {
+          p_company_id: string
+          p_end: string
+          p_location_id?: string
+          p_staff_id: string
+          p_start: string
+        }
+        Returns: boolean
+      }
       truncate_table: { Args: { table_name: string }; Returns: undefined }
       unlockrows: { Args: { "": string }; Returns: number }
+      update_location: {
+        Args: {
+          p_city?: string
+          p_country?: string
+          p_email?: string
+          p_image_url?: string
+          p_is_active?: boolean
+          p_is_listed?: boolean
+          p_lat?: number
+          p_location_id: string
+          p_lon?: number
+          p_name?: string
+          p_postal_code?: string
+          p_slug?: string
+          p_state?: string
+          p_street?: string
+          p_timezone?: string
+        }
+        Returns: Json
+      }
       updategeometrysrid: {
         Args: {
           catalogn_name: string
@@ -3489,12 +3706,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3518,11 +3735,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3543,11 +3760,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3568,11 +3785,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3585,11 +3802,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

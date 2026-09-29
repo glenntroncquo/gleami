@@ -10,6 +10,7 @@ import {
   fetchNotificationPlacesByIds,
   resolveNotificationPlace,
 } from "@/shared/notification-place-fetch";
+import { appointmentCancelUrl, issueAppointmentAccessToken } from "@/shared/appointment-access-token";
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,7 +29,7 @@ function formatTreatmentsList(treatments) {
 }
 // Email template for appointments overview
 function createAppointmentsEmail(data) {
-  const { customerName, companyName, appointments, cancelLink } = data;
+  const { customerName, companyName, appointments } = data;
   const appointmentRows = appointments.map((appointment)=>{
     const startDate = new Date(appointment.start);
     const endDate = new Date(appointment.end);
@@ -73,6 +74,11 @@ function createAppointmentsEmail(data) {
                       <strong style="color: #E91E63;">Notities:</strong> ${appointment.notes}
                     </td>
                   </tr>` : ""}
+                  ${appointment.cancelLink ? `<tr>
+                    <td style="padding-top: 12px;">
+                      <a href="${appointment.cancelLink}" style="display: inline-block; background-color: #dc3545; color: #ffffff; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; font-size: 13px;">Afspraak annuleren</a>
+                    </td>
+                  </tr>` : ""}
                 </table>
               </td>
             </tr>`;
@@ -114,8 +120,7 @@ function createAppointmentsEmail(data) {
           ${appointmentRows}
           <tr>
             <td style="padding: 20px 0; text-align: center;">
-              <p>Een afspraak annuleren:</p>
-              <a href="${cancelLink}" style="display: inline-block; background-color: #dc3545; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; font-size: 14px;">Afspraak annuleren</a>
+              <p style="margin: 0; font-size: 14px; color: #666;">Een afspraak annuleren kan via de knop bij de betreffende afspraak hierboven.</p>
             </td>
           </tr>
           <tr>
@@ -151,6 +156,20 @@ serve(async (req)=>{
         }
       });
     }
+    // Uniform success response regardless of what we find: this endpoint must
+    // not reveal whether an email address has bookings at a company (C3
+    // enumeration oracle). No client id, company id, or counts leave the
+    // function.
+    const uniformSuccess = () =>
+      new Response(JSON.stringify({
+        success: true,
+        message: "If appointments exist for this email address, a summary is on its way."
+      }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
     // Get the request data
     const requestData = await req.json();
     const { email, companyId } = requestData;
@@ -162,12 +181,12 @@ serve(async (req)=>{
     const { data: client, error: clientError } = await supabaseAdmin.from("client").select("*").eq("email", email).single();
     if (clientError) {
       if (clientError.code === 'PGRST116') {
-        throw new Error(`No client found with email: ${email}`);
+        return uniformSuccess();
       }
-      throw new Error(`Error fetching client: ${clientError.message}`);
+      throw new Error("Error fetching client");
     }
     if (!client) {
-      throw new Error(`Client with email ${email} not found`);
+      return uniformSuccess();
     }
     console.log("Found client:", client.id);
     // Fetch company data
@@ -196,17 +215,7 @@ serve(async (req)=>{
       throw new Error(`Error fetching appointments: ${appointmentsError.message}`);
     }
     if (!appointments || appointments.length === 0) {
-      return new Response(JSON.stringify({
-        success: false,
-        message: "No appointments found for this client and company",
-        clientId: client.id,
-        companyId: companyId
-      }), {
-        status: 404,
-        headers: {
-          "Content-Type": "application/json"
-        }
-      });
+      return uniformSuccess();
     }
     console.log(`Found ${appointments.length} appointments`);
     const placesByLocationId = await fetchNotificationPlacesByIds(
@@ -234,10 +243,17 @@ serve(async (req)=>{
         console.error(`Error fetching services for appointment ${appointment.id}:`, err);
         treatments = [];
       }
+      // Per-appointment manage link: a fresh token that manages exactly this
+      // booking, only while it is still upcoming and not canceled.
+      const isUpcoming = !appointment.is_canceled && new Date(appointment.start).getTime() > Date.now();
+      const manageToken = isUpcoming
+        ? await issueAppointmentAccessToken(supabaseAdmin, appointment.id)
+        : null;
       appointmentsWithTreatments.push({
         ...appointment,
         treatments,
         locationAddress: formatLocationAddress(appointment.location_id),
+        cancelLink: manageToken ? appointmentCancelUrl(appointment.id, manageToken) : null,
       });
     }
     console.log("Fetched treatments for all appointments");
@@ -246,8 +262,7 @@ serve(async (req)=>{
     const emailData = {
       customerName,
       companyName: company.name,
-      appointments: appointmentsWithTreatments,
-      cancelLink: `https://salonify.co/nl/cancel-appointment/${company.id}/${client.id}`
+      appointments: appointmentsWithTreatments
     };
     // Generate HTML content
     const htmlContent = createAppointmentsEmail(emailData);
@@ -263,25 +278,12 @@ serve(async (req)=>{
       html: htmlContent
     });
     console.log("Email sent successfully:", emailResult);
-    return new Response(JSON.stringify({
-      success: true,
-      message: "Appointments email sent successfully",
-      emailId: emailResult.id,
-      clientId: client.id,
-      companyId: companyId,
-      appointmentsCount: appointments.length
-    }), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json"
-      }
-    });
+    return uniformSuccess();
   } catch (error) {
     console.error("Error processing appointments email:", error);
     return new Response(JSON.stringify({
       success: false,
-      error: error.message || "Unknown error occurred",
-      timestamp: new Date().toISOString()
+      error: "Failed to process request"
     }), {
       status: 500,
       headers: {

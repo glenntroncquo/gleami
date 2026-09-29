@@ -224,19 +224,12 @@ export function SalonBooking({
         }
       );
 
-      if (response.data) {
-        if (
-          response.data.success === false &&
-          response.data.message?.includes("No appointments found")
-        ) {
-          setEmailError("Geen afspraken gevonden voor dit e-mailadres.");
-          return;
-        }
-
-        if (response.data.success === false) {
-          setEmailError(response.data.error || "Er is een fout opgetreden.");
-          return;
-        }
+      // The history-email endpoint answers uniformly whether or not bookings
+      // exist for the address (anti-enumeration), so any success means
+      // "check the inbox" — there is no "no appointments" branch anymore.
+      if (response.data && response.data.success === false) {
+        setEmailError(response.data.error || "Er is een fout opgetreden.");
+        return;
       }
 
       setEmailSuccess(true);

@@ -310,8 +310,7 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 [functions.register-salon-owner]
 verify_jwt = false
 
-# Recovered 2026-09-29; guarded by INTERNAL_WEBHOOK_SECRET (legacy
-# x-webhook-secret accepted until all callers migrated).
+# Recovered 2026-09-29; guarded by INTERNAL_WEBHOOK_SECRET only.
 [functions.send-invitation-email]
 verify_jwt = false
 

@@ -3,7 +3,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-const webhookSecret = Deno.env.get("WEBHOOK_SECRET") ?? "";
 const internalSecret = Deno.env.get("INTERNAL_WEBHOOK_SECRET") ?? "";
 const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 const corsHeaders = {
@@ -148,13 +147,9 @@ async function dispatchInviteEmail(invitationId, token) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${serviceRoleKey}`,
-        ...internalSecret ? {
-          "x-internal-secret": internalSecret
-        } : {},
-        ...webhookSecret ? {
-          "x-webhook-secret": webhookSecret
-        } : {}
+        // Internal-secret only: the service-role key must never be sent as
+        // an external bearer credential (audit follow-up 2026-09-29).
+        "x-internal-secret": internalSecret
       },
       body: JSON.stringify({
         invitation_id: invitationId,

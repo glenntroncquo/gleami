@@ -1,9 +1,8 @@
 // Recovered from deployed bundle (eszip) on 2026-09-29 and hardened:
-// - Replaced ad-hoc x-webhook-secret / service-role-bearer check with the shared
-//   internal-secret guard (assertInternalSecret). Legacy headers are still
-//   accepted during the transition so existing callers (staff-invite-create,
-//   database webhooks) keep working until they are redeployed with
-//   x-internal-secret.
+// - Auth is the shared internal-secret guard only (x-internal-secret ==
+//   INTERNAL_WEBHOOK_SECRET). The legacy x-webhook-secret / service-role
+//   bearer fallbacks were removed the same day after the sole caller
+//   (staff-invite-create) was cut over.
 // - HTML-escapes company-provided values interpolated into the email HTML.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -13,7 +12,6 @@ import { escapeHtml, sanitizeDisplayName } from "@/shared/escape-html";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const webhookSecret = Deno.env.get("WEBHOOK_SECRET") ?? "";
 const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
 const DEFAULT_INVITE_ACCEPT_URL = "https://salonify.co/nl/accept-invite";
 function inviteAcceptBase() {
@@ -25,7 +23,7 @@ const acceptUrlBase = inviteAcceptBase();
 const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": `authorization, x-client-info, apikey, content-type, x-webhook-secret, ${INTERNAL_SECRET_HEADER}`,
+  "Access-Control-Allow-Headers": `authorization, x-client-info, apikey, content-type, ${INTERNAL_SECRET_HEADER}`,
   "Access-Control-Allow-Methods": "POST, OPTIONS"
 };
 function json(status: number, body: unknown) {
@@ -37,22 +35,11 @@ function json(status: number, body: unknown) {
     }
   });
 }
-/**
- * Legacy auth accepted during transition: x-webhook-secret == WEBHOOK_SECRET
- * or a service-role bearer token. New callers must use assertInternalSecret's
- * x-internal-secret header instead.
- */
-function legacyAuthorized(req: Request): boolean {
-  const secret = req.headers.get("x-webhook-secret") ?? "";
-  if (webhookSecret && secret && secret === webhookSecret) return true;
-  const token = req.headers.get("Authorization")?.match(/^Bearer\s+(.+)$/i)?.[1] ?? "";
-  return !!token && token === serviceRoleKey;
-}
 function isAuthorized(req: Request): boolean {
-  if (internalSecretMatches(req.headers.get(INTERNAL_SECRET_HEADER), Deno.env.get("INTERNAL_WEBHOOK_SECRET"))) {
-    return true;
-  }
-  return legacyAuthorized(req);
+  return internalSecretMatches(
+    req.headers.get(INTERNAL_SECRET_HEADER),
+    Deno.env.get("INTERNAL_WEBHOOK_SECRET"),
+  );
 }
 Deno.serve(async (req)=>{
   if (req.method === "OPTIONS") return new Response(null, {

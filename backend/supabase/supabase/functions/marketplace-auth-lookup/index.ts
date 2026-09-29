@@ -18,8 +18,29 @@ Deno.serve(async (req) => {
     const validated = validateInput(marketplaceAuthLookupSchema, await req.json());
     if (validated instanceof BadResponse) return validated;
 
-    const { data, error } = await customerAdmin()
-      .rpc("marketplace_auth_email_status", { p_email: normalizeEmail(validated.email) })
+    // M6: the exists/hasPassword answer is an account-enumeration oracle, so
+    // throttle it: per source IP and per target email. The limiter runs as
+    // the service role; the RPC is not callable by anon/authenticated.
+    const admin = customerAdmin();
+    const email = normalizeEmail(validated.email);
+    const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
+    const keys = [
+      { p_key: `auth-lookup:ip:${ip}`, p_limit: 20, p_window_seconds: 3600 },
+      { p_key: `auth-lookup:email:${email}`, p_limit: 5, p_window_seconds: 3600 },
+    ];
+    for (const key of keys) {
+      const { data: allowed, error: limitError } = await admin.rpc("check_rate_limit", key);
+      if (limitError) {
+        console.error("rate limit check failed", limitError);
+        return new BadResponse("Lookup failed", 500);
+      }
+      if (allowed === false) {
+        return new BadResponse("Too many attempts, try again later", 429);
+      }
+    }
+
+    const { data, error } = await admin
+      .rpc("marketplace_auth_email_status", { p_email: email })
       .single<{ account_exists: boolean; has_password: boolean }>();
     if (error) throw error;
 

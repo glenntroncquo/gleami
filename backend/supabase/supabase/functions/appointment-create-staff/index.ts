@@ -4,6 +4,8 @@ import { validateInput } from "@/shared/validation";
 import { RepositoryError, UnauthenticatedError, ForbiddenError, BookingLocationError } from "@/shared/errors";
 import { getAuthContext } from "@/shared/auth-context";
 import { requireShopAccess } from "@/shared/auth-guard";
+import { requireLocationPermission } from "@/shared/auth-permission";
+import { resolveBookingLocation } from "../_shared/location/resolve.ts";
 import { createStaffAppointmentSchema } from "../_shared/appointment/commands/create-staff/schema.ts";
 import { createStaffAppointmentHandler } from "../_shared/appointment/commands/create-staff/handler.ts";
 
@@ -21,6 +23,14 @@ Deno.serve(async (req) => {
     }
 
     requireShopAccess(authContext, validatedInput.companyId, validatedInput.locationId);
+    // Membership alone must not open the service-role booking path: the
+    // caller needs calendar:write at the effective location (the handler
+    // falls back to the company's primary location when none is given).
+    const bookingLocation = await resolveBookingLocation(
+      validatedInput.companyId,
+      validatedInput.locationId ?? undefined,
+    );
+    await requireLocationPermission(authContext, bookingLocation.locationId, "calendar:write");
 
     const result = await createStaffAppointmentHandler(validatedInput);
 

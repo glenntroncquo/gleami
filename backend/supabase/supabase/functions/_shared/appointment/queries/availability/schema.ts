@@ -5,10 +5,11 @@ import { optionalLocationIdFields, pickLocationId } from "../../../location/sche
 export const getAvailabilitySchema = z
   .object({
     companyId: z.string().uuid("Invalid companyId format"),
-    services: z.array(bookingSegmentSchema).min(1, "At least one service is required"),
+    // M7: bounded arrays — the handler iterates every service x day.
+    services: z.array(bookingSegmentSchema).min(1, "At least one service is required").max(10),
     startDate: z.string().min(1, "startDate is required"),
     endDate: z.string().min(1, "endDate is required"),
-    staffIds: z.array(z.string().uuid("Invalid staffId format")).optional(),
+    staffIds: z.array(z.string().uuid("Invalid staffId format")).max(25).optional(),
     ...optionalLocationIdFields,
   })
   .transform((data) => ({

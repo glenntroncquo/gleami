@@ -11,6 +11,7 @@ import {
   resolveNotificationPlace,
 } from "@/shared/notification-place-fetch";
 import { appointmentCancelUrl, issueAppointmentAccessToken } from "@/shared/appointment-access-token";
+import { escapeHtml, sanitizeDisplayName } from "@/shared/escape-html";
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,9 +21,9 @@ export const corsHeaders = {
 // Format treatments list for display
 function formatTreatmentsList(treatments) {
   return treatments.map((t)=>{
-    let display = t.serviceName;
+    let display = escapeHtml(t.serviceName);
     if (t.serviceVariantName) {
-      display += ` - ${t.serviceVariantName}`;
+      display += ` - ${escapeHtml(t.serviceVariantName)}`;
     }
     return display;
   }).join("<br>");
@@ -30,6 +31,8 @@ function formatTreatmentsList(treatments) {
 // Email template for appointments overview
 function createAppointmentsEmail(data) {
   const { customerName, companyName, appointments } = data;
+  const safeCustomerName = escapeHtml(customerName);
+  const safeCompanyName = escapeHtml(companyName);
   const appointmentRows = appointments.map((appointment)=>{
     const startDate = new Date(appointment.start);
     const endDate = new Date(appointment.end);
@@ -38,6 +41,11 @@ function createAppointmentsEmail(data) {
             <tr>
               <td style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 15px; display: block; width: 100%; box-sizing: border-box;">
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                  ${appointment.companyName ? `<tr>
+                    <td style="padding-bottom: 8px;">
+                      <strong style="color: #E91E63;">Salon:</strong> ${escapeHtml(appointment.companyName)}
+                    </td>
+                  </tr>` : ""}
                   <tr>
                     <td style="padding-bottom: 8px;">
                       <strong style="color: #E91E63;">Datum:</strong> ${formatDate(startDate)}
@@ -56,22 +64,22 @@ function createAppointmentsEmail(data) {
                   </tr>
                   <tr>
                     <td style="padding-bottom: 8px;">
-                      <strong style="color: #E91E63;">Medewerker:</strong> ${appointment.staff.first_name} ${appointment.staff.last_name}
+                      <strong style="color: #E91E63;">Medewerker:</strong> ${escapeHtml(appointment.staff?.first_name ?? "")} ${escapeHtml(appointment.staff?.last_name ?? "")}
                     </td>
                   </tr>
                   ${appointment.locationAddress ? `<tr>
                     <td style="padding-bottom: 8px;">
-                      <strong style="color: #E91E63;">Locatie:</strong> ${appointment.locationAddress}
+                      <strong style="color: #E91E63;">Locatie:</strong> ${escapeHtml(appointment.locationAddress)}
                     </td>
                   </tr>` : ""}
                   <tr>
                     <td style="padding-bottom: 8px;">
-                      <strong style="color: #E91E63;">Status:</strong> ${appointment.status || 'Bevestigd'}
+                      <strong style="color: #E91E63;">Status:</strong> ${escapeHtml(appointment.status || 'Bevestigd')}
                     </td>
                   </tr>
                   ${appointment.notes ? `<tr>
                     <td>
-                      <strong style="color: #E91E63;">Notities:</strong> ${appointment.notes}
+                      <strong style="color: #E91E63;">Notities:</strong> ${escapeHtml(appointment.notes)}
                     </td>
                   </tr>` : ""}
                   ${appointment.cancelLink ? `<tr>
@@ -112,8 +120,8 @@ function createAppointmentsEmail(data) {
           </tr>
           <tr>
             <td style="padding-bottom: 20px;">
-              <p style="margin: 0 0 15px 0; font-size: 16px;">Beste ${customerName},</p>
-              <p style="margin: 0 0 20px 0; font-size: 16px;">Hieronder vindt u een overzicht van uw afspraken bij <strong>${companyName}</strong>.</p>
+              <p style="margin: 0 0 15px 0; font-size: 16px;">Beste ${safeCustomerName},</p>
+              <p style="margin: 0 0 20px 0; font-size: 16px;">Hieronder vindt u een overzicht van uw afspraken${companyName ? ` bij <strong>${safeCompanyName}</strong>` : ""}.</p>
               <p style="margin: 0 0 20px 0; font-size: 14px; color: #666;">Totaal aantal afspraken: <strong>${appointments.length}</strong></p>
             </td>
           </tr>
@@ -125,7 +133,7 @@ function createAppointmentsEmail(data) {
           </tr>
           <tr>
             <td style="padding-top: 20px; border-top: 1px solid #e9ecef;">
-              <p style="margin: 0; font-size: 14px;">Met vriendelijke groet,<br><strong>${companyName}</strong></p>
+              <p style="margin: 0; font-size: 14px;">Met vriendelijke groet,<br><strong>${safeCompanyName || "Salonify"}</strong></p>
             </td>
           </tr>
         </table>
@@ -170,32 +178,58 @@ serve(async (req)=>{
           "Content-Type": "application/json"
         }
       });
-    // Get the request data
+    // Get the request data. `companyId` is optional since 2026-09-29: without
+    // it ("recovery mode", e.g. the manage-booking page's "email me my
+    // appointments" form) we send the client's upcoming appointments across
+    // salons. The result only ever goes to the mailbox owner, and the
+    // response stays uniform, so no cross-tenant information leaks.
     const requestData = await req.json();
-    const { email, companyId } = requestData;
-    if (!email || !companyId) {
-      throw new Error("Email and companyId are required");
+    const email = String(requestData?.email ?? "").trim().toLowerCase();
+    const companyId = requestData?.companyId ? String(requestData.companyId) : null;
+    if (!email || !email.includes("@")) {
+      return uniformSuccess();
     }
-    console.log("Email:", email, "Company ID:", companyId);
+    // Rate-limit silently: the uniform 200 defeats enumeration, the limiter
+    // defeats inbox spamming. 3/hour per address, 10/hour per source IP.
+    const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
+    const [emailLimit, ipLimit] = await Promise.all([
+      supabaseAdmin.rpc("check_rate_limit", {
+        p_key: `history-email:email:${email}`,
+        p_limit: 3,
+        p_window_seconds: 3600,
+      }),
+      supabaseAdmin.rpc("check_rate_limit", {
+        p_key: `history-email:ip:${ip}`,
+        p_limit: 10,
+        p_window_seconds: 3600,
+      }),
+    ]);
+    if (emailLimit.data === false || ipLimit.data === false) {
+      console.log("history email skipped: rate limited");
+      return uniformSuccess();
+    }
     // Fetch client by email
-    const { data: client, error: clientError } = await supabaseAdmin.from("client").select("*").eq("email", email).single();
+    const { data: client, error: clientError } = await supabaseAdmin.from("client").select("*").eq("email", email).maybeSingle();
     if (clientError) {
-      if (clientError.code === 'PGRST116') {
-        return uniformSuccess();
-      }
       throw new Error("Error fetching client");
     }
     if (!client) {
       return uniformSuccess();
     }
     console.log("Found client:", client.id);
-    // Fetch company data
-    const { data: company, error: companyError } = await supabaseAdmin.from("company").select("*").eq("id", companyId).single();
-    if (companyError) throw new Error(`Error fetching company: ${companyError.message}`);
-    if (!company) throw new Error(`Company with ID ${companyId} not found`);
-    console.log("Found company:", company.name);
-    // Fetch all appointments for this client and company. start/end only — leftover actual_* columns are ignored.
-    const { data: appointments, error: appointmentsError } = await supabaseAdmin.from("appointment").select(`
+    // Fetch the company when the caller scoped the request to one salon.
+    let company = null;
+    if (companyId) {
+      const { data: companyRow, error: companyError } = await supabaseAdmin.from("company").select("*").eq("id", companyId).maybeSingle();
+      if (companyError) throw new Error(`Error fetching company: ${companyError.message}`);
+      if (!companyRow) {
+        return uniformSuccess();
+      }
+      company = companyRow;
+      console.log("Found company:", company.name);
+    }
+    // Fetch appointments for this client. start/end only — leftover actual_* columns are ignored.
+    let appointmentsQuery = supabaseAdmin.from("appointment").select(`
     id,
     start,
     end,
@@ -203,14 +237,25 @@ serve(async (req)=>{
     status,
     is_canceled,
     location_id,
+    company_id,
     staff (
       first_name,
       last_name
     )
-  `).eq("client_id", client.id).eq("company_id", companyId)
+  `).eq("client_id", client.id)
     .order("start", {
       ascending: true
     });
+    if (companyId) {
+      appointmentsQuery = appointmentsQuery.eq("company_id", companyId);
+    } else {
+      // Recovery mode: upcoming, not canceled, capped.
+      appointmentsQuery = appointmentsQuery
+        .eq("is_canceled", false)
+        .gte("start", new Date().toISOString())
+        .limit(20);
+    }
+    const { data: appointments, error: appointmentsError } = await appointmentsQuery;
     if (appointmentsError) {
       throw new Error(`Error fetching appointments: ${appointmentsError.message}`);
     }
@@ -218,13 +263,37 @@ serve(async (req)=>{
       return uniformSuccess();
     }
     console.log(`Found ${appointments.length} appointments`);
-    const placesByLocationId = await fetchNotificationPlacesByIds(
-      company,
-      appointments.map((appointment) => appointment.location_id),
-    );
-    const companyPlace = resolveNotificationPlace(company, null);
-    const formatLocationAddress = (locationId?: string | null) => {
-      const place = (locationId && placesByLocationId.get(locationId)) || companyPlace;
+    // Resolve every involved company (recovery mode can span salons).
+    const companiesById = new Map<string, any>();
+    if (company) companiesById.set(company.id, company);
+    const missingCompanyIds = [
+      ...new Set(appointments.map((a) => a.company_id).filter((id): id is string => Boolean(id))),
+    ].filter((id) => !companiesById.has(id));
+    if (missingCompanyIds.length > 0) {
+      const { data: companies, error: companiesError } = await supabaseAdmin
+        .from("company")
+        .select("id, name, street, city, postal_code, country, email")
+        .in("id", missingCompanyIds);
+      if (companiesError) throw new Error(`Error fetching companies: ${companiesError.message}`);
+      for (const row of companies ?? []) companiesById.set(row.id, row);
+    }
+    // Resolve places per company so each location falls back to its own salon.
+    const placesByLocationId = new Map<string, ReturnType<typeof resolveNotificationPlace>>();
+    const locationIdsByCompany = new Map<string, string[]>();
+    for (const appointment of appointments) {
+      if (!appointment.location_id || !appointment.company_id) continue;
+      const list = locationIdsByCompany.get(appointment.company_id) ?? [];
+      list.push(appointment.location_id);
+      locationIdsByCompany.set(appointment.company_id, list);
+    }
+    for (const [cid, locationIds] of locationIdsByCompany) {
+      const partial = await fetchNotificationPlacesByIds(companiesById.get(cid) ?? {}, locationIds);
+      for (const [key, value] of partial) placesByLocationId.set(key, value);
+    }
+    const formatLocationAddress = (locationId: string | null, cid: string | null) => {
+      const companyContact = (cid && companiesById.get(cid)) || {};
+      const place = (locationId && placesByLocationId.get(locationId)) ||
+        resolveNotificationPlace(companyContact, null);
       const parts = [];
       if (place.street) parts.push(place.street);
       if (place.postalCode && place.city) parts.push(`${place.postalCode} ${place.city}`);
@@ -252,7 +321,10 @@ serve(async (req)=>{
       appointmentsWithTreatments.push({
         ...appointment,
         treatments,
-        locationAddress: formatLocationAddress(appointment.location_id),
+        locationAddress: formatLocationAddress(appointment.location_id, appointment.company_id),
+        // Per-appointment salon label only makes sense in recovery mode; in
+        // single-company mode the header already names the salon.
+        companyName: companyId ? null : companiesById.get(appointment.company_id)?.name ?? null,
         cancelLink: manageToken ? appointmentCancelUrl(appointment.id, manageToken) : null,
       });
     }
@@ -261,16 +333,16 @@ serve(async (req)=>{
     const customerName = `${client.first_name || ""} ${client.last_name || ""}`.trim();
     const emailData = {
       customerName,
-      companyName: company.name,
+      companyName: company?.name ?? "",
       appointments: appointmentsWithTreatments
     };
     // Generate HTML content
     const htmlContent = createAppointmentsEmail(emailData);
-    const subject = `Uw afspraken bij ${company.name}`;
+    const subject = company ? `Uw afspraken bij ${sanitizeDisplayName(company.name)}` : "Uw afspraken";
     console.log("Sending email...");
     // Send email via Resend
     const emailResult = await sendEmail({
-      from: `${company.name} <afspraken@notifications.salonify.co>`,
+      from: `${company ? sanitizeDisplayName(company.name) : "Salonify"} <afspraken@notifications.salonify.co>`,
       to: [
         email
       ],

@@ -1251,6 +1251,16 @@
     "time": "Horário",
     "success": {
       "cancelled": "Agendamento cancelado com sucesso!"
+    },
+    "linkExpiredTitle": "Esta ligação já não é válida",
+    "linkExpiredDescription": "As ligações de gestão de e-mails antigos deixaram de funcionar. Peça abaixo um novo resumo dos seus agendamentos.",
+    "resend": {
+      "title": "Receba os seus agendamentos por e-mail",
+      "description": "Introduza o endereço de e-mail com que reservou. Enviaremos um resumo com ligações válidas.",
+      "placeholder": "voce@email.pt",
+      "submit": "Enviar",
+      "sending": "A enviar...",
+      "done": "Se existirem agendamentos associados a este endereço, receberá um e-mail dentro de alguns minutos."
     }
   },
   "orders": {

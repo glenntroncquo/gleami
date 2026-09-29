@@ -8,11 +8,13 @@ import {
   RiTimeLine,
   RiScissorsLine,
   RiCloseLine,
+  RiLinkUnlinkM,
 } from "@remixicon/react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { RequestAppointmentsForm } from "@/components/cancel-appointment/request-appointments-form";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
@@ -44,14 +46,20 @@ interface Appointment {
  * Guest manage-booking page. The URL carries the emailed capability:
  * /cancel-appointment/{appointmentId}/{token}. The token is verified
  * server-side against its stored SHA-256 hash and manages exactly one
- * appointment. Links from before the token rollout (…/{companyId}/{clientId})
- * no longer resolve — that is intentional.
+ * appointment. Links from before the token rollout had the same path shape
+ * (…/{companyId}/{clientId}); those end in a UUID instead of a token and
+ * get a "link expired" view with a request-new-links form.
  */
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default function CancelAppointmentPage() {
   const t = useTranslations("cancelAppointment");
   const params = useParams();
   const appointmentId = params.appointmentId as string;
   const token = params.token as string;
+  // Legacy link: /cancel-appointment/{companyId}/{clientId}.
+  const isLegacyLink = UUID_PATTERN.test(token);
 
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,6 +70,12 @@ export default function CancelAppointmentPage() {
     try {
       setLoading(true);
       setError(null);
+
+      if (isLegacyLink) {
+        // Legacy {companyId}/{clientId} link: render the expired view below.
+        setLoading(false);
+        return;
+      }
 
       if (!appointmentId || !token) {
         setError(t("error"));
@@ -130,7 +144,7 @@ export default function CancelAppointmentPage() {
     } finally {
       setLoading(false);
     }
-  }, [appointmentId, token, t]);
+  }, [appointmentId, token, isLegacyLink, t]);
 
   useEffect(() => {
     fetchData();
@@ -180,6 +194,30 @@ export default function CancelAppointmentPage() {
     );
   }
 
+  if (isLegacyLink) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center py-12 px-4">
+        <Card className="w-full max-w-lg border-0 bg-white/80 backdrop-blur-sm shadow-xl">
+          <CardHeader className="text-center pb-4">
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <RiLinkUnlinkM className="h-8 w-8 text-amber-600" />
+            </div>
+            <CardTitle className="text-xl text-gray-900">
+              {t("linkExpiredTitle")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <p className="text-sm text-gray-600 text-center max-w-md mx-auto">
+              {t("linkExpiredDescription")}
+            </p>
+            {/* In the legacy URL shape the first segment was the company id. */}
+            <RequestAppointmentsForm companyId={appointmentId} />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
@@ -197,6 +235,8 @@ export default function CancelAppointmentPage() {
             >
               {t("tryAgain")}
             </Button>
+            <Separator className="my-6" />
+            <RequestAppointmentsForm />
           </CardContent>
         </Card>
       </div>
@@ -234,6 +274,8 @@ export default function CancelAppointmentPage() {
                 <p className="text-gray-600 text-lg max-w-md mx-auto">
                   {t("noAppointmentsDescription")}
                 </p>
+                <Separator className="my-8 max-w-md mx-auto" />
+                <RequestAppointmentsForm />
               </div>
             </CardContent>
           </Card>
@@ -373,7 +415,8 @@ export default function CancelAppointmentPage() {
         {/* Footer */}
         <div className="mt-16 text-center">
           <Separator className="mb-6" />
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-2xl mx-auto space-y-8">
+            <RequestAppointmentsForm />
             <p className="text-gray-500 text-sm leading-relaxed">
               {t("contactSalon")}
             </p>

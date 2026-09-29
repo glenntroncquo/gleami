@@ -1246,6 +1246,16 @@
     "time": "Heure",
     "success": {
       "cancelled": "Rendez-vous annulé avec succès !"
+    },
+    "linkExpiredTitle": "Ce lien n'est plus valide",
+    "linkExpiredDescription": "Les liens de gestion des anciens e-mails ne fonctionnent plus. Demandez un nouvel aperçu de vos rendez-vous ci-dessous.",
+    "resend": {
+      "title": "Recevez vos rendez-vous par e-mail",
+      "description": "Saisissez l'adresse e-mail utilisée lors de la réservation. Nous vous enverrons un aperçu avec des liens valides.",
+      "placeholder": "vous@email.fr",
+      "submit": "Envoyer",
+      "sending": "Envoi...",
+      "done": "Si des rendez-vous sont associés à cette adresse, vous recevrez un e-mail dans quelques minutes."
     }
   },
   "timeline": {

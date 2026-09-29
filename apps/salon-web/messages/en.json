@@ -1251,6 +1251,16 @@
     "time": "Time",
     "success": {
       "cancelled": "Appointment cancelled successfully!"
+    },
+    "linkExpiredTitle": "This link is no longer valid",
+    "linkExpiredDescription": "Manage links from older emails no longer work. Request a fresh overview of your appointments below.",
+    "resend": {
+      "title": "Get your appointments by email",
+      "description": "Enter the email address you booked with. We'll send you an overview with working links.",
+      "placeholder": "you@email.com",
+      "submit": "Send",
+      "sending": "Sending...",
+      "done": "If this address has any appointments, you'll receive an email within a few minutes."
     }
   },
   "orders": {

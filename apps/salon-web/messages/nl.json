@@ -1251,6 +1251,16 @@
     "time": "Tijd",
     "success": {
       "cancelled": "Afspraak succesvol geannuleerd!"
+    },
+    "linkExpiredTitle": "Deze link is niet meer geldig",
+    "linkExpiredDescription": "Beheerlinks uit oudere e-mails werken niet meer. Vraag hieronder een nieuw overzicht van uw afspraken aan.",
+    "resend": {
+      "title": "Afspraken per e-mail ontvangen",
+      "description": "Vul het e-mailadres in waarmee u geboekt heeft. U ontvangt een overzicht met werkende links.",
+      "placeholder": "uw@email.be",
+      "submit": "Verstuur",
+      "sending": "Versturen...",
+      "done": "Als er afspraken gekoppeld zijn aan dit adres, ontvangt u binnen enkele minuten een e-mail."
     }
   },
   "orders": {

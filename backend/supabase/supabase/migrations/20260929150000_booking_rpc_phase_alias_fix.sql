@@ -1,68 +1,10 @@
--- H2: booking trust-boundary hardening for create_appointment /
--- create_appointment_staff / create_appointment_with_referral.
---
--- Before: the RPCs trusted p_price for the appointment header (deposit
--- amounts are derived from it), accepted any caller-supplied service_id next
--- to the variant, never checked variant/service is_active, never checked
--- staff→company, staff→service, or service→location, and leaked SQLERRM.
---
--- After: the header price is the sum of the booked variants' catalog prices
--- (p_price remains in the signature for caller compatibility but is ignored),
--- the variant is the source of truth for service_id, the booking graph is
--- validated, and unexpected errors return a generic 'INTERNAL' key.
---
--- The staff_service / location_service link tables are backfilled from
--- historical bookings first so the new checks don't reject pairs that were
--- already booked operationally.
-
--- ---------------------------------------------------------------------------
--- 1. Backfill qualification links from booking history
--- ---------------------------------------------------------------------------
-
--- staff_service.location_id is NOT NULL: links are per-location. Backfill the
--- effective location of each historical booking (segment, else appointment,
--- else the company's primary location).
-insert into public.staff_service (company_id, staff_id, service_id, location_id)
-select company_id, staff_id, service_id, effective_location_id
-from (
-  select distinct
-    a.company_id,
-    seg.staff_id,
-    seg.service_id,
-    coalesce(
-      seg.location_id,
-      a.location_id,
-      (select l.id from public.location l where l.company_id = a.company_id and l.is_primary limit 1)
-    ) as effective_location_id
-  from public.appointment_segment seg
-  join public.appointment a on a.id = seg.appointment_id
-  where seg.staff_id is not null
-    and seg.service_id is not null
-) pairs
-where effective_location_id is not null
-  and not exists (
-    select 1
-    from public.staff_service ss
-    where ss.staff_id = pairs.staff_id
-      and ss.service_id = pairs.service_id
-      and ss.location_id = pairs.effective_location_id
-  );
-
-insert into public.location_service (location_id, service_id)
-select distinct seg.location_id, seg.service_id
-from public.appointment_segment seg
-where seg.location_id is not null
-  and seg.service_id is not null
-  and not exists (
-    select 1
-    from public.location_service ls
-    where ls.location_id = seg.location_id
-      and ls.service_id = seg.service_id
-  );
-
--- ---------------------------------------------------------------------------
--- 2. create_appointment (public marketplace booking)
--- ---------------------------------------------------------------------------
+-- Fix a live outage introduced by 20260929110000: the phase loop in
+-- create_appointment / create_appointment_staff referenced alias "p"
+-- (p.service_variant_id) without declaring it, so EVERY booking of a
+-- variant with phases raised 42P01 and surfaced as {"error":"INTERNAL"}.
+-- Found by replaying the failing widget booking against a debug copy that
+-- returned SQLERRM. Both function bodies below are identical to
+-- 20260929110000 except the added `p` table alias.
 
 CREATE OR REPLACE FUNCTION public.create_appointment(p_company_id uuid, p_staff_id uuid, p_client_id uuid, p_price numeric, p_notes text, p_duration_in_minutes integer, p_start timestamp with time zone, p_end timestamp with time zone, p_actual_start timestamp with time zone, p_actual_end timestamp with time zone, p_image_path text, p_segments jsonb DEFAULT '[]'::jsonb, p_location_id uuid DEFAULT NULL::uuid)
  RETURNS jsonb
@@ -341,11 +283,6 @@ exception
     return jsonb_build_object('error', 'INTERNAL');
 end;
 $function$;
-
--- ---------------------------------------------------------------------------
--- 3. create_appointment_staff (staff booking; SECURITY DEFINER, membership
---    gate for PostgREST callers stays unchanged)
--- ---------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION public.create_appointment_staff(p_company_id uuid, p_staff_id uuid, p_client_id uuid, p_price numeric, p_notes text, p_duration_in_minutes integer, p_start timestamp with time zone, p_end timestamp with time zone, p_actual_start timestamp with time zone, p_actual_end timestamp with time zone, p_image_path text, p_segments jsonb, p_staff_notes text DEFAULT NULL::text, p_email text DEFAULT NULL::text, p_first_name text DEFAULT NULL::text, p_last_name text DEFAULT NULL::text, p_phone text DEFAULT NULL::text, p_location_id uuid DEFAULT NULL::uuid)
  RETURNS jsonb
@@ -681,213 +618,58 @@ end;
 $function$;
 
 -- ---------------------------------------------------------------------------
--- 4. create_appointment_with_referral: only the error oracle changes; pricing
---    and graph validation come from the inner create_appointment call.
+-- Verification: text-level alias check + an end-to-end smoke test that books
+-- and rolls back via a subtransaction, so a broken function body can no
+-- longer pass apply-time verification. The smoke test uses live seed data
+-- and skips gracefully when it is not present (fresh environments).
 -- ---------------------------------------------------------------------------
-
-CREATE OR REPLACE FUNCTION public.create_appointment_with_referral(p_company_id uuid, p_staff_id uuid, p_email text, p_first_name text, p_last_name text, p_phone text, p_price numeric, p_notes text, p_duration_in_minutes integer, p_start timestamp with time zone, p_end timestamp with time zone, p_actual_start timestamp with time zone, p_actual_end timestamp with time zone, p_image_path text, p_segments jsonb, p_referral_code text DEFAULT NULL::text, p_location_id uuid DEFAULT NULL::uuid)
- RETURNS jsonb
- LANGUAGE plpgsql
- SET search_path TO 'public', 'private', 'pg_temp'
-AS $function$
-declare
-  v_client_id uuid;
-  v_client_was_created boolean := false;
-  v_booking jsonb;
-  v_appointment_id uuid;
-  v_referral_code_id uuid;
-  v_referrer_client_id uuid;
-  v_existing_link boolean;
-  v_link_location_id uuid;
-begin
-  -- p_price is ignored downstream: create_appointment reprices server-side.
-  if p_referral_code is not null and btrim(p_referral_code) = '' then
-    p_referral_code := null;
-  end if;
-
-  select c.id into v_client_id from public.client c where c.email = p_email;
-
-  if v_client_id is null then
-    insert into public.client (email, first_name, last_name, phone, updated_at)
-    values (p_email, p_first_name, p_last_name, coalesce(p_phone, ''), now())
-    returning id into v_client_id;
-    v_client_was_created := true;
-  else
-    update public.client
-    set
-      first_name = coalesce(nullif(p_first_name, ''), first_name),
-      last_name  = coalesce(nullif(p_last_name, ''), last_name),
-      phone      = coalesce(nullif(p_phone, ''), phone),
-      updated_at = now()
-    where id = v_client_id;
-  end if;
-
-  select exists (
-    select 1
-    from public.client_location cl
-    join public.location loc on loc.id = cl.location_id
-    where cl.client_id = v_client_id
-      and loc.company_id = p_company_id
-  ) into v_existing_link;
-
-  if p_referral_code is not null then
-    select rc.id, rc.referrer_client_id
-      into v_referral_code_id, v_referrer_client_id
-    from public.referral_code rc
-    where rc.company_id = p_company_id and rc.code = p_referral_code;
-
-    if v_referral_code_id is null then
-      if v_client_was_created then delete from public.client where id = v_client_id; end if;
-      return jsonb_build_object('error', 'REFERRAL_INVALID');
-    end if;
-
-    if exists (select 1 from public.referral_code rc where rc.id = v_referral_code_id and rc.is_active = false) then
-      if v_client_was_created then delete from public.client where id = v_client_id; end if;
-      return jsonb_build_object('error', 'REFERRAL_INACTIVE');
-    end if;
-
-    if exists (select 1 from public.referral_code rc where rc.id = v_referral_code_id and rc.expires_at is not null and rc.expires_at <= now()) then
-      if v_client_was_created then delete from public.client where id = v_client_id; end if;
-      return jsonb_build_object('error', 'REFERRAL_EXPIRED');
-    end if;
-
-    if v_existing_link then
-      if v_client_was_created then delete from public.client where id = v_client_id; end if;
-      return jsonb_build_object('error', 'REFERRAL_NOT_NEW_CLIENT');
-    end if;
-  end if;
-
-  v_booking := public.create_appointment(
-    p_company_id := p_company_id,
-    p_staff_id := p_staff_id,
-    p_client_id := v_client_id,
-    p_price := p_price,
-    p_notes := p_notes,
-    p_duration_in_minutes := p_duration_in_minutes,
-    p_start := p_start,
-    p_end := p_end,
-    p_actual_start := p_actual_start,
-    p_actual_end := p_actual_end,
-    p_image_path := p_image_path,
-    p_segments := p_segments,
-    p_location_id := p_location_id
-  );
-
-  if (v_booking ? 'error') then
-    if v_client_was_created then delete from public.client where id = v_client_id; end if;
-    return v_booking;
-  end if;
-
-  v_appointment_id := (v_booking->>'id')::uuid;
-
-  if v_appointment_id is null then
-    if v_client_was_created then delete from public.client where id = v_client_id; end if;
-    return jsonb_build_object('error', 'BOOKING_FAILED');
-  end if;
-
-  if p_referral_code is not null then
-    begin
-      insert into public.referral_redemption (
-        company_id, referral_code_id, referrer_client_id, referred_client_id, appointment_id
-      ) values (
-        p_company_id, v_referral_code_id, v_referrer_client_id, v_client_id, v_appointment_id
-      );
-    exception
-      when unique_violation then
-        if v_client_was_created then delete from public.client where id = v_client_id; end if;
-        return jsonb_build_object('error', 'REFERRAL_REDEMPTION_CONFLICT');
-    end;
-  end if;
-
-  if not v_existing_link then
-    v_link_location_id := coalesce(
-      p_location_id,
-      (
-        select loc.id
-        from public.location loc
-        where loc.company_id = p_company_id
-          and loc.is_primary
-      )
-    );
-
-    if v_link_location_id is not null then
-      insert into public.client_location (client_id, location_id)
-      values (v_client_id, v_link_location_id)
-      on conflict (client_id, location_id) do nothing;
-    end if;
-  end if;
-
-  return jsonb_build_object('success', true, 'id', v_appointment_id, 'client_id', v_client_id);
-
-exception
-  when serialization_failure then
-    return jsonb_build_object('error', 'CONCURRENCY_RETRY');
-  when others then
-    return jsonb_build_object('error', 'INTERNAL');
-end;
-$function$;
-
--- ---------------------------------------------------------------------------
--- 5. Apply-time verification
--- ---------------------------------------------------------------------------
-
 do $$
 begin
-  if pg_get_functiondef('public.create_appointment(uuid,uuid,uuid,numeric,text,integer,timestamptz,timestamptz,timestamptz,timestamptz,text,jsonb,uuid)'::regprocedure) like '%SQLERRM%'
-     or pg_get_functiondef('public.create_appointment_staff(uuid,uuid,uuid,numeric,text,integer,timestamptz,timestamptz,timestamptz,timestamptz,text,jsonb,text,text,text,text,text,uuid)'::regprocedure) like '%SQLERRM%'
-     or pg_get_functiondef('public.create_appointment_with_referral(uuid,uuid,text,text,text,text,numeric,text,integer,timestamptz,timestamptz,timestamptz,timestamptz,text,jsonb,text,uuid)'::regprocedure) like '%SQLERRM%'
-  then
-    raise exception 'SQLERRM oracle still present in booking RPCs';
-  end if;
-
-  if not pg_get_functiondef('public.create_appointment(uuid,uuid,uuid,numeric,text,integer,timestamptz,timestamptz,timestamptz,timestamptz,text,jsonb,uuid)'::regprocedure) like '%v_total_price%'
-  then
-    raise exception 'server-side repricing missing from create_appointment';
-  end if;
-
-  -- Backfill must leave no upcoming booking pair unqualified at its
-  -- effective location.
   if exists (
-    select 1
-    from (
-      select distinct
-        seg.staff_id,
-        seg.service_id,
-        coalesce(seg.location_id, a.location_id) as effective_location_id
-      from public.appointment_segment seg
-      join public.appointment a on a.id = seg.appointment_id
-      where a.is_canceled = false
-        and a.start > (now() - interval '7 days')
-    ) fs
-    where fs.effective_location_id is not null
-      and not exists (
-        select 1
-        from public.staff_service ss
-        where ss.staff_id = fs.staff_id
-          and ss.service_id = fs.service_id
-          and ss.location_id = fs.effective_location_id
-      )
+    select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname in ('create_appointment', 'create_appointment_staff')
+      and pg_get_functiondef(p.oid) ~ 'from public\.service_variant_phase\s+where p\.'
   ) then
-    raise exception 'staff_service coverage incomplete after backfill';
+    raise exception 'phase loop alias bug still present';
   end if;
 
-  if exists (
-    select 1
-    from (
-      select distinct seg.location_id, seg.service_id
-      from public.appointment_segment seg
-      join public.appointment a on a.id = seg.appointment_id
-      where a.is_canceled = false
-        and a.start > (now() - interval '7 days')
-        and seg.location_id is not null
-    ) fs
-    where not exists (
-      select 1
-      from public.location_service ls
-      where ls.location_id = fs.location_id
-        and ls.service_id = fs.service_id
-    )
-  ) then
-    raise exception 'location_service coverage incomplete after backfill';
-  end if;
+  declare
+    v_client_id uuid;
+  begin
+    select c.id into v_client_id from public.client c limit 1;
+    if v_client_id is not null
+       and exists (select 1 from public.company where id = 'b66720ac-dcb8-4051-b287-f8f8b6291cc0')
+       and exists (select 1 from public.service_variant_phase svp
+                   where svp.service_variant_id = '05d75e54-57b2-48d6-8420-d6600753cfba') then
+    declare
+      r jsonb;
+    begin
+      begin
+        r := public.create_appointment(
+          'b66720ac-dcb8-4051-b287-f8f8b6291cc0'::uuid,
+          'c9599318-ee8d-4349-a121-9bdd0f07c950'::uuid,
+          v_client_id, 220, null, 60,
+          -- A slot the widget actually offered for this staff/variant.
+          '2026-10-02 09:00:00+02'::timestamptz, '2026-10-02 10:00:00+02'::timestamptz,
+          null, null, null,
+          jsonb_build_array(jsonb_build_object(
+            'service_variant_id', '05d75e54-57b2-48d6-8420-d6600753cfba',
+            'staff_id', 'c9599318-ee8d-4349-a121-9bdd0f07c950',
+            'sequence', 1)),
+          '8e4ce818-b8ea-4918-b6ba-836ed4074d20'::uuid);
+        raise exception '__smoke_rollback__';
+      exception when others then
+        if sqlerrm = '__smoke_rollback__' then
+          if coalesce(r->>'success', '') <> 'true' then
+            raise exception 'booking smoke test returned: %', r;
+          end if;
+        elsif sqlstate = 'P0001' and sqlerrm like '__smoke_rollback__%' then
+          null;
+        else
+          raise exception 'booking smoke test raised: % (%)', sqlerrm, sqlstate;
+        end if;
+      end;
+    end;
+    end if;
+  end;
 end $$;

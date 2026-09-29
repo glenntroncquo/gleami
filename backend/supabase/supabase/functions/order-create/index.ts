@@ -64,6 +64,12 @@ Deno.serve(async (req) => {
           404,
           "The specified client does not belong to this company",
         );
+      case "catalog_item_invalid":
+        return new BadResponse(
+          "CATALOG_ITEM_INVALID",
+          400,
+          "A service variant or product is unknown, inactive, or belongs to another company",
+        );
       case "invalid_card_amount":
         return new BadResponse("Card payment amount must be greater than zero", 400);
       case "charges_not_enabled":

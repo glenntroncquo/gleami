@@ -312,6 +312,10 @@ verify_jwt = false
 
 [functions.payment-webhook]
 verify_jwt = false
+# Recovered deployed-only source; verify_jwt=true matches live and the
+# function additionally enforces company/location membership itself.
+[functions.payment-create-checkout]
+verify_jwt = true
 
 # Public marketplace reads still verify the anon (or user) JWT. The gateway
 # accepts the anon key. These three are called by database webhooks and

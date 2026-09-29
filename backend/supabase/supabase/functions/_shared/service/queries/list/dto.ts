@@ -13,7 +13,8 @@ export interface ServiceVariantDto {
   name: string;
   price: number;
   max_price: number | null;
-  price_net: number | null;
+  // price_net (ex-VAT internal economics) is deliberately not exposed on this
+  // public endpoint.
   client_duration_minutes: number;
   staff_duration_minutes: number | null;
   staff_occupancy_minutes: number;
@@ -64,7 +65,6 @@ export function toServiceListItemDto(entity: ServiceListItem): ServiceListItemDt
         name: variant.name,
         price: variant.price,
         max_price: variant.maxPrice,
-        price_net: variant.priceNet,
         client_duration_minutes: clientMinutes,
         staff_duration_minutes: variant.staffDurationMinutes,
         staff_occupancy_minutes: occupancyMinutes,

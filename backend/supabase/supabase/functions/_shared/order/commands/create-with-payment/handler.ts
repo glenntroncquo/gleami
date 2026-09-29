@@ -7,6 +7,7 @@ import { stripe } from "../../../infrastructure/stripe/client.ts";
 import { resolveBookingLocation } from "../../../location/resolve.ts";
 import { syncOrderItemsStockInFunction } from "../../../../sync-order-items-stock/logic.ts";
 import { calculateTotals } from "./calculate-totals.ts";
+import { loadCatalogPrices } from "./pricing.ts";
 import { resolveCreateOrderLocationId } from "./location.ts";
 import type { CreateOrderWithPaymentInput } from "./schema.ts";
 import type { AuthContext } from "../../../infrastructure/auth/context.ts";
@@ -38,6 +39,7 @@ export type CreateOrderWithPaymentOutcome =
   | { outcome: "appointment_not_found" }
   | { outcome: "appointment_company_mismatch" }
   | { outcome: "client_not_found" }
+  | { outcome: "catalog_item_invalid" }
   | { outcome: "invalid_card_amount" }
   | { outcome: "charges_not_enabled" }
   | { outcome: "missing_client_secret" }
@@ -158,36 +160,54 @@ export async function createOrderWithPaymentHandler(
     }
   }
 
+  // M3: unit price and VAT come from the catalog, never from the request.
+  // The variant row is also the source of truth for service_id.
+  const catalog = await loadCatalogPrices(
+    company_id,
+    treatments.map((treatment) => treatment.service_variant_id),
+    products.map((product) => product.product_id),
+  );
+  if (catalog.missing.length > 0) {
+    return { outcome: "catalog_item_invalid" };
+  }
+
   const allOrderItems: OrderItemDraft[] = [
     // HTTP field stays `treatments`. Persist only service_* catalog ids.
-    ...treatments.map((treatment): OrderItemDraft => ({
-      appointment_id: appointment_id || null,
-      appointment_segment_id: treatment.appointment_segment_id ?? null,
-      service_id: treatment.service_id ?? null,
-      service_variant_id: treatment.service_variant_id ?? null,
-      product_id: null,
-      quantity: treatment.quantity,
-      unit_price: treatment.unit_price,
-      vat_rate: treatment.vat_rate || 0,
-      discount_amount: Math.min(
-        Math.max(treatment.discount_amount || 0, 0),
-        treatment.quantity * treatment.unit_price,
-      ),
-    })),
-    ...products.map((product): OrderItemDraft => ({
-      appointment_id: null,
-      appointment_segment_id: null,
-      service_id: null,
-      service_variant_id: null,
-      product_id: product.product_id,
-      quantity: product.quantity,
-      unit_price: product.unit_price,
-      vat_rate: product.vat_rate || 0,
-      discount_amount: Math.min(
-        Math.max(product.discount_amount || 0, 0),
-        product.quantity * product.unit_price,
-      ),
-    })),
+    ...treatments.map((treatment): OrderItemDraft => {
+      const variant = catalog.variants.get(treatment.service_variant_id)!;
+      return {
+        appointment_id: appointment_id || null,
+        appointment_segment_id: treatment.appointment_segment_id ?? null,
+        service_id: variant.serviceId,
+        service_variant_id: treatment.service_variant_id,
+        product_id: null,
+        quantity: treatment.quantity,
+        unit_price: variant.price,
+        vat_rate: variant.vatRate,
+        // Discount stays a deliberate staff lever, clamped to the line total.
+        discount_amount: Math.min(
+          Math.max(treatment.discount_amount || 0, 0),
+          treatment.quantity * variant.price,
+        ),
+      };
+    }),
+    ...products.map((product): OrderItemDraft => {
+      const catalogProduct = catalog.products.get(product.product_id)!;
+      return {
+        appointment_id: null,
+        appointment_segment_id: null,
+        service_id: null,
+        service_variant_id: null,
+        product_id: product.product_id,
+        quantity: product.quantity,
+        unit_price: catalogProduct.priceGross,
+        vat_rate: catalogProduct.vatRate,
+        discount_amount: Math.min(
+          Math.max(product.discount_amount || 0, 0),
+          product.quantity * catalogProduct.priceGross,
+        ),
+      };
+    }),
   ];
 
   const { subtotal, tax_amount, total_amount } = calculateTotals(allOrderItems);

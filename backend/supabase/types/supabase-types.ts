@@ -1661,6 +1661,24 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_counter: {
+        Row: {
+          count: number
+          key: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          key: string
+          window_start?: string
+        }
+        Update: {
+          count?: number
+          key?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       referral_code: {
         Row: {
           code: string
@@ -2629,6 +2647,10 @@ export type Database = {
       adjust_product_stock: {
         Args: { p_delta: number; p_product_id: string }
         Returns: Json
+      }
+      check_rate_limit: {
+        Args: { p_key: string; p_limit: number; p_window_seconds: number }
+        Returns: boolean
       }
       claim_order_item_webhook: {
         Args: {
@@ -3648,7 +3670,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      truncate_table: { Args: { table_name: string }; Returns: undefined }
       unlockrows: { Args: { "": string }; Returns: number }
       update_location: {
         Args: {

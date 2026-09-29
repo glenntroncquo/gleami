@@ -310,6 +310,16 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 [functions.register-salon-owner]
 verify_jwt = false
 
+# Guest manage-booking flow. Guests arriving from an email link hold no JWT;
+# identity is the high-entropy appointment_access_token verified inside the
+# handler (hashed at rest, scoped to one appointment, expires at start + 1d).
+# The staff path in the same functions still requires a JWT and checks
+# company membership itself.
+[functions.appointment-list]
+verify_jwt = false
+[functions.appointment-cancel]
+verify_jwt = false
+
 # Recovered 2026-09-29; guarded by INTERNAL_WEBHOOK_SECRET only.
 [functions.send-invitation-email]
 verify_jwt = false

@@ -8,7 +8,8 @@ import type { TypedSupabaseClient } from "../infrastructure/supabase/client.ts";
  * old appointmentId + clientId + companyId triple. A token is minted fresh
  * per notification email, scoped to exactly one appointment, and only its
  * SHA-256 hash is stored — a database read does not yield usable links, and
- * tokens are unguessable (256 bits) rather than enumerable UUIDs.
+ * tokens are unguessable (256 bits) rather than enumerable UUIDs. Tokens
+ * expire at appointment start + 1 day and can be revoked by deleting the row.
  *
  * The client is passed in so this module stays free of env-bound singletons
  * and unit-testable.
@@ -40,7 +41,12 @@ export async function hashAppointmentToken(token: string): Promise<string> {
   return toHex(digest);
 }
 
-/** Mints a token for one appointment and stores only its hash. */
+/**
+ * Mints a token for one appointment and stores only its hash.
+ * The token expires at appointment start + 1 day: cancellation requires
+ * start > now anyway, and the grace day lets a guest still view details
+ * shortly after the visit. Deleting the row revokes a token instantly.
+ */
 export async function issueAppointmentAccessToken(
   client: TypedSupabaseClient,
   appointmentId: string,
@@ -48,9 +54,27 @@ export async function issueAppointmentAccessToken(
   const token = generateAppointmentToken();
   const tokenHash = await hashAppointmentToken(token);
 
+  const { data: appointment, error: appointmentError } = await client
+    .from("appointment")
+    .select("start")
+    .eq("id", appointmentId)
+    .single();
+
+  if (appointmentError || !appointment) {
+    throw new RepositoryError("Failed to load appointment for access token", {
+      cause: appointmentError,
+    });
+  }
+
+  const expiresAt = new Date(new Date(appointment.start).getTime() + 24 * 60 * 60 * 1000);
+
   const { error } = await client
     .from("appointment_access_token")
-    .insert({ appointment_id: appointmentId, token_hash: tokenHash });
+    .insert({
+      appointment_id: appointmentId,
+      token_hash: tokenHash,
+      expires_at: expiresAt.toISOString(),
+    });
 
   if (error) {
     throw new RepositoryError("Failed to issue appointment access token", { cause: error });
@@ -73,6 +97,7 @@ export async function verifyAppointmentAccessToken(
     .select("id")
     .eq("appointment_id", appointmentId)
     .eq("token_hash", tokenHash)
+    .gt("expires_at", new Date().toISOString())
     .maybeSingle();
 
   if (error) {

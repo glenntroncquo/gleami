@@ -398,12 +398,65 @@
     "resendConfirmation": "Bevestigingsmail opnieuw versturen",
     "confirmationEmailResent": "Bevestigingsmail verzonden!",
     "enterEmailToResend": "Voer je e-mailadres in om de bevestiging opnieuw te versturen.",
-    "authCallbackError": "Inloggen mislukt. Probeer het opnieuw."
+    "authCallbackError": "Inloggen mislukt. Probeer het opnieuw.",
+    "invite": {
+      "title": "Word lid van het team",
+      "loading": "Uitnodiging controleren…",
+      "description": "Maak een login voor {company} als {role}.",
+      "invalid": "Deze uitnodigingslink is ongeldig of verlopen.",
+      "companyLine": "Toegang geldt voor het hele bedrijf.",
+      "locationLine": "Toegang geldt voor {location}.",
+      "join": "Login aanmaken",
+      "joining": "Login aanmaken…",
+      "signInToAccept": "Log in om te accepteren",
+      "wrongAccount": "Je bent ingelogd met een ander e-mailadres. Log uit en open deze link opnieuw.",
+      "errors": {
+        "generic": "Uitnodiging accepteren mislukt. Probeer het opnieuw.",
+        "weakPassword": "Wachtwoord moet minimaal 8 tekens bevatten.",
+        "alreadyMember": "Dit e-mailadres heeft al toegang.",
+        "signInRequired": "Dit e-mailadres heeft al een account. Log in om de uitnodiging te accepteren."
+      }
+    }
   },
   "staff": {
     "title": "Personeelsbeheer",
     "description": "Beheer je salonteam en roosters",
     "addStaff": "Personeel Toevoegen",
+    "invite": {
+      "button": "Uitnodigen",
+      "title": "Iemand uitnodigen",
+      "description": "Die persoon krijgt een link om een login aan te maken. Toegang is alleen de rol die je kiest.",
+      "scope": "Toegang",
+      "scopeCompany": "Heel het bedrijf",
+      "scopeLocation": "Eén vestiging",
+      "location": "Vestiging",
+      "selectLocation": "Kies een vestiging",
+      "role": "Rol",
+      "selectRole": "Kies een rol",
+      "send": "Uitnodiging versturen",
+      "sending": "Versturen…",
+      "sent": "Uitnodiging verstuurd",
+      "sentWithoutEmail": "Uitnodiging aangemaakt. Kopieer de link — de e-mail kon niet worden verstuurd.",
+      "linkHelp": "Deel deze link als de e-mail niet aankomt. Hij verloopt na 7 dagen.",
+      "copyLink": "Link kopiëren",
+      "linkCopied": "Uitnodigingslink gekopieerd",
+      "roles": {
+        "owner": "Eigenaar",
+        "admin": "Beheerder",
+        "manager": "Manager",
+        "stylist": "Stylist",
+        "staff": "Medewerker",
+        "freelancer": "Freelancer"
+      },
+      "errors": {
+        "forbidden": "Je kunt iemand niet met die toegang uitnodigen.",
+        "roleScope": "Die rol past niet bij bedrijfs- of vestigingstoegang.",
+        "notGrantable": "Je kunt geen rol geven met meer toegang dan je zelf hebt.",
+        "duplicate": "Er is al een openstaande uitnodiging voor dit e-mailadres.",
+        "invalidEmail": "Vul een geldig e-mailadres in.",
+        "generic": "Uitnodiging versturen mislukt."
+      }
+    },
     "filterByNameOrEmail": "Filter op naam of e-mail...",
     "toggleColumns": "Kolommen schakelen",
     "noStaffFound": "Geen personeelsleden gevonden.",

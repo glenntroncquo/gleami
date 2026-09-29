@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { searchCardImages } from "../../supabase/functions/_shared/marketplace/media-url.ts";
+import { promoteMatchingTreatment } from "../../supabase/functions/_shared/marketplace/search.ts";
 import { suggestItemFromRow } from "../../supabase/functions/_shared/marketplace/suggest.ts";
 
 const base = "https://example.supabase.co";
@@ -65,5 +66,41 @@ describe("suggest location slug", () => {
       name: "Knippen",
       type: "service",
     });
+  });
+
+  it("keeps the salon name and the matching treatment", () => {
+    expect(suggestItemFromRow({
+      id: "11111111-1111-4111-8111-111111111111",
+      name: "D'Ana Hair",
+      type: "location",
+      slug: "danahair",
+      location_id: "11111111-1111-4111-8111-111111111111",
+      city: "Merelbeke",
+      detail: "Keratine behandeling",
+    })).toEqual({
+      id: "11111111-1111-4111-8111-111111111111",
+      name: "D'Ana Hair",
+      type: "location",
+      slug: "danahair",
+      locationId: "11111111-1111-4111-8111-111111111111",
+      city: "Merelbeke",
+      detail: "Keratine behandeling",
+    });
+  });
+});
+
+describe("promote matching treatment", () => {
+  it("moves the treatment that contains the query to the front", () => {
+    const treatments = [
+      { name: "Knippen" },
+      { name: "Keratine behandeling" },
+      { name: "Balayage" },
+    ];
+    expect(promoteMatchingTreatment(treatments, "keratine").map((item) => item.name)).toEqual([
+      "Keratine behandeling",
+      "Knippen",
+      "Balayage",
+    ]);
+    expect(promoteMatchingTreatment(treatments, "")).toBe(treatments);
   });
 });

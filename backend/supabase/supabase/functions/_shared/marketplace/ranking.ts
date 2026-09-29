@@ -45,12 +45,10 @@ export const DEFAULT_SUGGEST_LIMIT = 8;
 export const MAX_SUGGEST_LIMIT = 20;
 
 /**
- * Relevance floor for suggest's location branch. That branch orders by trigram
- * distance so the GiST index can serve ORDER BY ... LIMIT, which leaves it no
- * WHERE to gate on: without a floor the nearest N names come back however
- * unrelated they are ("glenn" returned "D'Ana Hair" at similarity 0).
- * 0.3 is pg_trgm's own similarity_threshold, so this matches the cutoff that
- * the `%` operator already applies to the category and service branches.
+ * pg_trgm's default similarity cutoff. Category suggestions still use the
+ * `%` operator, which applies this threshold in the database. Location
+ * suggestions match the search document (name and treatments) instead of
+ * a name-only nearest-neighbour window.
  */
 export const MIN_SUGGEST_SIMILARITY = 0.3;
 

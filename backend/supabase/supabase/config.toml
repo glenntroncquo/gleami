@@ -310,6 +310,16 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 [functions.register-salon-owner]
 verify_jwt = false
 
+# Staff invite. The caller JWT is re-checked, then the function writes the
+# invitation row with the service role. The browser cannot insert invites.
+[functions.invitation-create]
+verify_jwt = true
+
+# Invite signup. verify_jwt stays off: the invitee has no account yet.
+# The unguessable invite token is the credential, and the role comes from the row.
+[functions.invitation-accept]
+verify_jwt = false
+
 # Guest manage-booking flow. Guests arriving from an email link hold no JWT;
 # identity is the high-entropy appointment_access_token verified inside the
 # handler (hashed at rest, scoped to one appointment, expires at start + 1d).

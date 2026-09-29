@@ -16,8 +16,21 @@ import {
 import type { SearchResponse } from '@/src/api/types';
 import { useAuth } from '@/src/auth/auth-context';
 import { PAGE_SIZE } from '@/src/config';
+import { promoteMatchingTreatment } from '@/src/lib/search-match';
 import { useOnline } from '@/src/lib/online';
 import { useDiscovery } from '@/src/store/discovery';
+
+function withMatchingTreatmentFirst(response: SearchResponse, q: string): SearchResponse {
+  const trimmed = q.trim();
+  if (!trimmed) return response;
+  return {
+    ...response,
+    items: response.items.map((item) => ({
+      ...item,
+      treatments: promoteMatchingTreatment(item.treatments, trimmed),
+    })),
+  };
+}
 
 export function useSearchResults() {
   const q = useDiscovery((state) => state.q);
@@ -26,20 +39,34 @@ export function useSearchResults() {
   const radiusKm = useDiscovery((state) => state.radiusKm);
   const bbox = useDiscovery((state) => state.bbox);
   const online = useOnline();
+  const trimmed = q.trim();
 
   return useInfiniteQuery({
-    queryKey: ['search', q, categoryIds, bbox, center.lat, center.lng, radiusKm],
+    // A typed query searches the catalog, so the map area is not part of the key.
+    queryKey: ['search', trimmed, categoryIds, trimmed ? null : bbox, trimmed ? null : center.lat, trimmed ? null : center.lng, trimmed ? null : radiusKm],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) =>
       searchMarketplace({
-        q: q.trim() || undefined,
+        q: trimmed || undefined,
         categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
         cursor: pageParam,
         limit: PAGE_SIZE,
-        ...(bbox ? { bbox } : { center, radiusKm: radiusKm ?? undefined }),
-      }),
+        ...(trimmed ? {} : bbox ? { bbox } : { center, radiusKm: radiusKm ?? undefined }),
+      }).then((response) => withMatchingTreatmentFirst(response, trimmed)),
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     enabled: online,
+  });
+}
+
+/** Salon hits for the search field. Not limited to the current map area. */
+export function useQuerySuggestions(q: string) {
+  const online = useOnline();
+  const trimmed = q.trim();
+  return useQuery({
+    queryKey: ['query-suggestions', trimmed],
+    queryFn: () =>
+      searchMarketplace({ q: trimmed, limit: 8 }).then((response) => withMatchingTreatmentFirst(response, trimmed)),
+    enabled: online && trimmed.length > 0,
   });
 }
 

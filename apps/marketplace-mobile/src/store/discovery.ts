@@ -21,6 +21,8 @@ type DiscoveryState = {
   setUserLocation: (coords: LatLng) => void;
   showAreaSearch: (bbox: BBox) => void;
   applyAreaSearch: () => void;
+  /** Move the map to a text-search hit without clearing the query. */
+  focusResults: (coords: LatLng) => void;
 };
 
 export const useDiscovery = create<DiscoveryState>((set, get) => ({
@@ -73,4 +75,10 @@ export const useDiscovery = create<DiscoveryState>((set, get) => ({
       areaSearchVisible: false,
     });
   },
+  focusResults: (coords) => set({
+    center: coords,
+    bbox: null,
+    pendingBbox: null,
+    areaSearchVisible: false,
+  }),
 }));

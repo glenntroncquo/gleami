@@ -414,12 +414,65 @@
     "resendConfirmation": "Resend confirmation email",
     "confirmationEmailResent": "Confirmation email sent!",
     "enterEmailToResend": "Enter your email address to resend confirmation.",
-    "authCallbackError": "Unable to complete sign in. Please try again."
+    "authCallbackError": "Unable to complete sign in. Please try again.",
+    "invite": {
+      "title": "Join the team",
+      "loading": "Checking your invite…",
+      "description": "Create a login for {company} as {role}.",
+      "invalid": "This invite link is invalid or has expired.",
+      "companyLine": "Access applies to the whole company.",
+      "locationLine": "Access applies to {location}.",
+      "join": "Create login",
+      "joining": "Creating login…",
+      "signInToAccept": "Sign in to accept",
+      "wrongAccount": "You're signed in with a different email. Sign out, then open this link again.",
+      "errors": {
+        "generic": "Couldn't accept this invite. Please try again.",
+        "weakPassword": "Password must be at least 8 characters.",
+        "alreadyMember": "This email already has access.",
+        "signInRequired": "This email already has an account. Sign in to accept the invite."
+      }
+    }
   },
   "staff": {
     "title": "Staff Management",
     "description": "Manage your salon team and schedules",
     "addStaff": "Add Staff",
+    "invite": {
+      "button": "Invite",
+      "title": "Invite someone",
+      "description": "They get a link to create a login. Access is only the role you choose.",
+      "scope": "Access",
+      "scopeCompany": "Whole company",
+      "scopeLocation": "One location",
+      "location": "Location",
+      "selectLocation": "Select a location",
+      "role": "Role",
+      "selectRole": "Select a role",
+      "send": "Send invite",
+      "sending": "Sending…",
+      "sent": "Invite sent",
+      "sentWithoutEmail": "Invite created. Copy the link — the email could not be sent.",
+      "linkHelp": "Share this link if they don't see the email. It expires in 7 days.",
+      "copyLink": "Copy link",
+      "linkCopied": "Invite link copied",
+      "roles": {
+        "owner": "Owner",
+        "admin": "Admin",
+        "manager": "Manager",
+        "stylist": "Stylist",
+        "staff": "Staff",
+        "freelancer": "Freelancer"
+      },
+      "errors": {
+        "forbidden": "You can't invite someone with that access.",
+        "roleScope": "That role doesn't match company or location access.",
+        "notGrantable": "You can't grant a role with more access than you have.",
+        "duplicate": "There's already a pending invite for this email.",
+        "invalidEmail": "Enter a valid email address.",
+        "generic": "Couldn't send the invite."
+      }
+    },
     "filterByNameOrEmail": "Filter by name or email...",
     "toggleColumns": "Toggle columns",
     "noStaffFound": "No staff members found.",

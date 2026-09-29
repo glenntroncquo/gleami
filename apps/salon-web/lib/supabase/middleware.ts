@@ -44,6 +44,7 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.includes("/auth") &&
     !request.nextUrl.pathname.includes("/reset-password") &&
     !request.nextUrl.pathname.includes("/update-password") &&
+    !request.nextUrl.pathname.includes("/invite") &&
     !request.nextUrl.pathname.includes("/cancel-appointment")
   ) {
     // No user, potentially respond by redirecting the user to the login page

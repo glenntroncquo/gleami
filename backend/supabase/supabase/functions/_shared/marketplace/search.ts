@@ -88,6 +88,15 @@ function num(value: number | string | null): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+/** Put the treatment whose name contains the query first, so a card leads with it. */
+export function promoteMatchingTreatment<T extends { name: string }>(treatments: T[], q: string): T[] {
+  const needle = q.trim().toLowerCase();
+  if (!needle || treatments.length < 2) return treatments;
+  const index = treatments.findIndex((treatment) => treatment.name.toLowerCase().includes(needle));
+  if (index <= 0) return treatments;
+  return [treatments[index], ...treatments.slice(0, index), ...treatments.slice(index + 1)];
+}
+
 /**
  * One statement. Predicates that are not requested are the constant TRUE,
  * which Postgres folds away, so a bbox-only call keeps the GiST predicate
@@ -97,6 +106,11 @@ function num(value: number | string | null): number | null {
  * on search_text. The `%` similarity operator under-matches short queries
  * against a long search_text; ILIKE is the gin_trgm_ops fallback. Ranking
  * still uses word_similarity, which scores the best matching slice.
+ *
+ * A typed query is a catalog search: bbox and radius stay out of the
+ * predicate so a treatment or salon name is not hidden by the map area.
+ * Distance is still scored when a center is sent, so a nearer match ranks
+ * higher without dropping the rest.
  */
 export async function searchMarketplace(
   sql: MarketplaceSql,
@@ -131,10 +145,10 @@ export async function searchMarketplace(
         st_distance(m.coordinates, st_setsrid(st_makepoint(${center.lng}, ${center.lat}), 4326)::geography) / 1000.0
       )))`
     : sql`0::float8`;
-  const bboxExpr = hasBbox && bbox
+  const bboxExpr = !hasQ && hasBbox && bbox
     ? sql`st_intersects(m.coordinates, st_makeenvelope(${bbox.minLng}, ${bbox.minLat}, ${bbox.maxLng}, ${bbox.maxLat}, 4326)::geography)`
     : sql`true`;
-  const radiusExpr = hasCenter && center
+  const radiusExpr = !hasQ && hasCenter && center
     ? sql`st_dwithin(m.coordinates, st_setsrid(st_makepoint(${center.lng}, ${center.lat}), 4326)::geography, ${radiusM})`
     : sql`true`;
   const categoryExpr = hasCategories
@@ -258,7 +272,7 @@ export async function searchMarketplace(
       lng: Number(row.lng),
       distanceKm: num(row.distance_km),
       categoryIds: row.category_ids ?? [],
-      treatments: row.treatments ?? [],
+      treatments: promoteMatchingTreatment(row.treatments ?? [], q),
       rating: num(row.rating),
       reviewCount: row.review_count,
       likeCount: row.like_count,

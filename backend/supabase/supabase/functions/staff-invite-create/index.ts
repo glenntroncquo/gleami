@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { roleIsGrantable } from "../_shared/invitation/edge-support.ts";
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
@@ -119,6 +120,30 @@ async function requireInviteAccess(userId, companyIds, companyId) {
     });
   }
 }
+async function permissionKeysForRoles(roleIds) {
+  const ids = roleIds.filter(Boolean);
+  if (ids.length === 0) return new Set();
+  const { data, error } = await supabaseAdmin.from("role_permission").select("permission_key").in("role_id", ids);
+  if (error) throw error;
+  return new Set((data ?? []).map((row)=>row.permission_key));
+}
+async function permissionsAtScope(userId, companyId, locationId) {
+  if (!locationId) {
+    const { data, error } = await supabaseAdmin.from("company_membership").select("role_id").eq("user_id", userId).eq("company_id", companyId).maybeSingle();
+    if (error) throw error;
+    return permissionKeysForRoles(data?.role_id ? [data.role_id] : []);
+  }
+  const [locationMembership, companyMembership] = await Promise.all([
+    supabaseAdmin.from("location_membership").select("role_id").eq("user_id", userId).eq("location_id", locationId).eq("is_active", true).maybeSingle(),
+    supabaseAdmin.from("company_membership").select("role_id").eq("user_id", userId).eq("company_id", companyId).maybeSingle()
+  ]);
+  if (locationMembership.error) throw locationMembership.error;
+  if (companyMembership.error) throw companyMembership.error;
+  return permissionKeysForRoles([
+    locationMembership.data?.role_id,
+    companyMembership.data?.role_id
+  ]);
+}
 async function findAuthUserByEmail(email) {
   const admin = supabaseAdmin.auth.admin;
   if (typeof admin.getUserByEmail === "function") {
@@ -212,6 +237,15 @@ async function handleCreate(input) {
       success: false,
       error: "INVALID_ROLE",
       message: `Unsupported role scope ${role.scope}`
+    });
+  }
+  const callerPermissions = await permissionsAtScope(userId, companyId, resolvedLocationId);
+  const rolePermissions = await permissionKeysForRoles([roleId]);
+  if (!roleIsGrantable(callerPermissions, [...rolePermissions])) {
+    return json(403, {
+      success: false,
+      error: "NOT_GRANTABLE",
+      message: "You cannot grant a role with more access than you have"
     });
   }
   const existingUser = await findAuthUserByEmail(email);

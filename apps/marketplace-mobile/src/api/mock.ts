@@ -93,9 +93,10 @@ export async function mockSearch(request: SearchRequest): Promise<SearchResponse
     const selected = new Set(request.categoryIds);
     rows = rows.filter((salon) => salon.categoryIds.some((categoryId) => selected.has(categoryId)));
   }
-  if (request.bbox) {
+  const hasQuery = Boolean(request.q?.trim());
+  if (!hasQuery && request.bbox) {
     rows = rows.filter((salon) => inBBox(salon.lat, salon.lng, request.bbox!));
-  } else if (request.center && request.radiusKm != null) {
+  } else if (!hasQuery && request.center && request.radiusKm != null) {
     rows = rows.filter(
       (salon) => distanceKm(request.center!, { lat: salon.lat, lng: salon.lng }) <= request.radiusKm!,
     );

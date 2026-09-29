@@ -8,8 +8,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { SuggestItem } from '@/src/api/types';
-import { useCategories, useSuggestions } from '@/src/hooks/use-marketplace';
+import type { SearchItem, SuggestItem } from '@/src/api/types';
+import { useCategories, useQuerySuggestions } from '@/src/hooks/use-marketplace';
+import { salonSuggestionSubtitle } from '@/src/lib/search-match';
 import { useOnline } from '@/src/lib/online';
 import { useDiscovery } from '@/src/store/discovery';
 import { brandColors as colors } from '@/src/theme/colors';
@@ -108,7 +109,7 @@ function SearchOverlay({ session, measureResults, onClosed }: {
   const busy = useRef(false);
   const alive = useRef(true);
   const online = useOnline();
-  const suggestions = useSuggestions(debounced);
+  const suggestions = useQuerySuggestions(debounced);
   const [box] = useState(() => ({
     x: new Animated.Value(session.origin.x), y: new Animated.Value(session.origin.y),
     width: new Animated.Value(session.origin.width), height: new Animated.Value(session.origin.height),
@@ -188,12 +189,21 @@ function SearchOverlay({ session, measureResults, onClosed }: {
     input.current?.blur();
     Keyboard.dismiss();
   };
+  const openSalon = (item: SearchItem) => {
+    if (busy.current) return;
+    busy.current = true;
+    input.current?.blur();
+    Keyboard.dismiss();
+    applySearch(text.trim(), null);
+    router.push({ pathname: '/salon/[slug]', params: { slug: item.slug } });
+    onClosed();
+  };
   const changeText = (value: string) => { setText(value); setCategoryId(null); };
   const categoryName = categories.data?.find((item) => item.id === categoryId)?.name;
   const displayValue = categoryName || text;
-  const options = !debounced.trim()
-    ? (categories.data ?? []).slice(0, 6).map((item): SuggestItem => ({ id: item.id, name: item.name, type: 'category' }))
-    : suggestions.data?.items ?? [];
+  const categoriesShown = !debounced.trim();
+  const categoryOptions = (categories.data ?? []).slice(0, 6).map((item): SuggestItem => ({ id: item.id, name: item.name, type: 'category' }));
+  const salonOptions = suggestions.data?.items ?? [];
   const loading = text.trim() !== debounced.trim() || (Boolean(debounced.trim()) && suggestions.isLoading);
   const failed = debounced.trim() ? suggestions.isError : categories.isError;
   const retry = () => { if (debounced.trim()) void suggestions.refetch(); else void categories.refetch(); };
@@ -222,11 +232,18 @@ function SearchOverlay({ session, measureResults, onClosed }: {
             <Animated.View style={[styles.body, { opacity: box.body }]}>
               <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.suggestions}>
                 <Text style={styles.eyebrow}>{debounced.trim() ? 'Suggesties' : 'Ontdek behandelingen'}</Text>
-                {!online ? <Text style={styles.message}>Je bent offline. Je kunt je zoekopdracht alvast invullen.</Text> : loading ? <ActivityIndicator accessibilityLabel="Suggesties laden" color={colors.blue} style={{ marginVertical: 18 }} /> : failed ? <Pressable onPress={retry} accessibilityRole="button" style={styles.option}><Text style={styles.message}>Suggesties laden lukt niet. Tik om opnieuw te proberen.</Text></Pressable> : options.length === 0 ? <Text style={styles.message}>Geen suggesties. Tik op Zoek om alle salons te doorzoeken.</Text> : options.map((item) => <Pressable key={`${item.type}-${item.id}`} accessibilityRole="button" accessibilityLabel={item.name} onPress={() => choose(item)} style={styles.option}>
-                  <View style={styles.optionIcon}><Ionicons name={item.type === 'location' ? 'location-outline' : 'sparkles-outline'} size={19} color={colors.blue} /></View>
-                  <View style={{ flex: 1 }}><Text style={styles.optionName}>{item.name}</Text><Text style={styles.optionType}>{item.type === 'location' ? 'Salon' : item.type === 'category' ? 'Categorie' : 'Behandeling'}</Text></View>
+                {!online ? <Text style={styles.message}>Je bent offline. Je kunt je zoekopdracht alvast invullen.</Text> : loading ? <ActivityIndicator accessibilityLabel="Suggesties laden" color={colors.blue} style={{ marginVertical: 18 }} /> : failed ? <Pressable onPress={retry} accessibilityRole="button" style={styles.option}><Text style={styles.message}>Suggesties laden lukt niet. Tik om opnieuw te proberen.</Text></Pressable> : categoriesShown ? categoryOptions.map((item) => <Pressable key={`${item.type}-${item.id}`} accessibilityRole="button" accessibilityLabel={item.name} onPress={() => choose(item)} style={styles.option}>
+                  <View style={styles.optionIcon}><Ionicons name="sparkles-outline" size={19} color={colors.blue} /></View>
+                  <View style={{ flex: 1 }}><Text style={styles.optionName}>{item.name}</Text><Text style={styles.optionType}>Categorie</Text></View>
                   <Ionicons name="arrow-up-outline" size={16} color={colors.muted} style={{ transform: [{ rotate: '-45deg' }] }} />
-                </Pressable>)}
+                </Pressable>) : salonOptions.length === 0 ? <Text style={styles.message}>Geen salons. Tik op Zoek om toch te zoeken.</Text> : salonOptions.map((item) => {
+                  const subtitle = salonSuggestionSubtitle(item, debounced);
+                  return <Pressable key={item.locationId} accessibilityRole="button" accessibilityLabel={`${item.name}, ${subtitle}`} onPress={() => openSalon(item)} style={styles.option}>
+                    <View style={styles.optionIcon}><Ionicons name="location-outline" size={19} color={colors.blue} /></View>
+                    <View style={{ flex: 1 }}><Text style={styles.optionName}>{item.name}</Text><Text style={styles.optionType}>{subtitle}</Text></View>
+                    <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+                  </Pressable>;
+                })}
               </ScrollView>
               <View style={styles.footer}>
                 <Pressable onPress={() => changeText('')} accessibilityRole="button" style={styles.reset}><Text style={styles.resetText}>Alles wissen</Text></Pressable>

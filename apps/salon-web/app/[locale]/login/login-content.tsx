@@ -19,6 +19,12 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { useAuth } from "@/providers/auth-provider";
 
+function inviteReturnPath(next: string | null, locale: string): string | null {
+  if (!next || !next.startsWith(`/${locale}/invite`)) return null;
+  if (next.startsWith("//") || next.includes("://") || next.includes("\\")) return null;
+  return next;
+}
+
 export default function LoginPageContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -29,12 +35,13 @@ export default function LoginPageContent() {
   const t = useTranslations();
   const supabase = createClient();
   const { user } = useAuth();
+  const nextPath = inviteReturnPath(searchParams.get("next"), locale);
 
   useEffect(() => {
     if (user) {
-      router.push(`/${locale}/calendar`);
+      router.push(nextPath ?? `/${locale}/calendar`);
     }
-  }, [user, router, locale]);
+  }, [user, router, locale, nextPath]);
 
   useEffect(() => {
     if (searchParams.get("error") === "auth_callback") {
@@ -61,7 +68,7 @@ export default function LoginPageContent() {
         return;
       }
 
-      router.push(`/${locale}/calendar`);
+      router.push(nextPath ?? `/${locale}/calendar`);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : t("common.errorOccurred")

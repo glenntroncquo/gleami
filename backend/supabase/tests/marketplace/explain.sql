@@ -53,52 +53,39 @@ limit 21;
 
 \echo '--- suggest ---'
 explain (analyze, buffers)
-select id, name, type
+select id, name, type, detail
 from (
   (
-    select c.id::text as id, c.name, 'category'::text as type,
-      greatest(extensions.similarity(lower(c.name), 'heren'), extensions.word_similarity('heren', lower(c.name))) as sim
+    select c.id::text as id, c.name, 'category'::text as type, null::text as detail,
+      greatest(extensions.similarity(lower(c.name), 'keratine'), extensions.word_similarity('keratine', lower(c.name))) as sim,
+      1 as kind
     from public.marketplace_category c
     where c.is_active
       and (
-        lower(c.name) operator(extensions.%) 'heren'
-        or lower(c.name) ilike '%heren%' escape '\'
+        lower(c.name) operator(extensions.%) 'keratine'
+        or lower(c.name) ilike '%keratine%' escape '\'
       )
     order by sim desc
     limit 8
   )
   union all
   (
-    select min(s.id::text), min(s.name), 'service'::text,
-      max(greatest(extensions.similarity(lower(s.name), 'keratin'), extensions.word_similarity('keratin', lower(s.name))))
-    from public.service s
-    where coalesce(s.is_deleted, false) = false
-      and coalesce(s.is_active, true) = true
-      and s.is_marketplace_visible
-      and (
-        lower(s.name) operator(extensions.%) 'keratin'
-        or lower(s.name) ilike '%keratin%' escape '\'
-      )
-      and exists (
-        select 1
-        from public.location_service ls
-        join public.location l on l.id = ls.location_id
-        where ls.service_id = s.id
-          and l.is_listed
-          and l.is_active
-      )
-    group by lower(s.name)
-    order by 4 desc
-    limit 8
-  )
-  union all
-  (
     select m.location_id::text, m.name, 'location'::text,
-      (1 - (lower(m.name) operator(extensions.<->) 'keratin'))
+      (
+        select elem->>'name'
+        from jsonb_array_elements(coalesce(m.treatments, '[]'::jsonb)) elem
+        where lower(coalesce(elem->>'name', '')) ilike '%keratine%' escape '\'
+        order by extensions.word_similarity('keratine', lower(coalesce(elem->>'name', ''))) desc
+        limit 1
+      ),
+      greatest(extensions.word_similarity('keratine', m.search_text), extensions.word_similarity('keratine', lower(m.name))),
+      0
     from public.marketplace_search_location m
-    order by lower(m.name) operator(extensions.<->) 'keratin'
+    where m.search_vector @@ plainto_tsquery('simple', 'keratine')
+      or m.search_text ilike '%keratine%' escape '\'
+    order by 5 desc
     limit 8
   )
 ) hits
-order by sim desc, name asc
+order by kind asc, sim desc, name asc
 limit 8;

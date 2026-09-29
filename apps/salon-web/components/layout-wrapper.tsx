@@ -4,12 +4,13 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 
-const AUTH_ROUTES = ["/login", "/signup", "/reset-password", "/update-password"];
+const AUTH_ROUTES = ["/login", "/signup", "/reset-password", "/update-password", "/invite"];
 const PUBLIC_ROUTES = [
   "/login",
   "/signup",
   "/reset-password",
   "/update-password",
+  "/invite",
   "/cancel-appointment",
 ];
 

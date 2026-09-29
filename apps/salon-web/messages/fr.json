@@ -398,12 +398,65 @@
     "resendConfirmation": "Renvoyer l'e-mail de confirmation",
     "confirmationEmailResent": "E-mail de confirmation envoyé !",
     "enterEmailToResend": "Entrez votre e-mail pour renvoyer la confirmation.",
-    "authCallbackError": "Impossible de finaliser la connexion. Veuillez réessayer."
+    "authCallbackError": "Impossible de finaliser la connexion. Veuillez réessayer.",
+    "invite": {
+      "title": "Rejoindre l'équipe",
+      "loading": "Vérification de l'invitation…",
+      "description": "Créez un accès pour {company} en tant que {role}.",
+      "invalid": "Ce lien d'invitation est invalide ou a expiré.",
+      "companyLine": "L'accès concerne toute l'entreprise.",
+      "locationLine": "L'accès concerne {location}.",
+      "join": "Créer l'accès",
+      "joining": "Création de l'accès…",
+      "signInToAccept": "Connectez-vous pour accepter",
+      "wrongAccount": "Vous êtes connecté avec une autre adresse e-mail. Déconnectez-vous, puis rouvrez ce lien.",
+      "errors": {
+        "generic": "Impossible d'accepter cette invitation. Réessayez.",
+        "weakPassword": "Le mot de passe doit contenir au moins 8 caractères.",
+        "alreadyMember": "Cette adresse e-mail a déjà un accès.",
+        "signInRequired": "Cette adresse a déjà un compte. Connectez-vous pour accepter l'invitation."
+      }
+    }
   },
   "staff": {
     "title": "Gestion du Personnel",
     "description": "Gérez votre équipe de salon et les horaires",
     "addStaff": "Ajouter Personnel",
+    "invite": {
+      "button": "Inviter",
+      "title": "Inviter quelqu'un",
+      "description": "La personne reçoit un lien pour créer un accès. L'accès se limite au rôle choisi.",
+      "scope": "Accès",
+      "scopeCompany": "Toute l'entreprise",
+      "scopeLocation": "Un établissement",
+      "location": "Établissement",
+      "selectLocation": "Choisir un établissement",
+      "role": "Rôle",
+      "selectRole": "Choisir un rôle",
+      "send": "Envoyer l'invitation",
+      "sending": "Envoi…",
+      "sent": "Invitation envoyée",
+      "sentWithoutEmail": "Invitation créée. Copiez le lien — l'e-mail n'a pas pu être envoyé.",
+      "linkHelp": "Partagez ce lien si l'e-mail n'arrive pas. Il expire dans 7 jours.",
+      "copyLink": "Copier le lien",
+      "linkCopied": "Lien d'invitation copié",
+      "roles": {
+        "owner": "Propriétaire",
+        "admin": "Administrateur",
+        "manager": "Manager",
+        "stylist": "Styliste",
+        "staff": "Employé",
+        "freelancer": "Freelance"
+      },
+      "errors": {
+        "forbidden": "Vous ne pouvez pas inviter quelqu'un avec cet accès.",
+        "roleScope": "Ce rôle ne correspond pas à un accès entreprise ou établissement.",
+        "notGrantable": "Vous ne pouvez pas accorder un rôle avec plus d'accès que le vôtre.",
+        "duplicate": "Une invitation est déjà en attente pour cette adresse e-mail.",
+        "invalidEmail": "Saisissez une adresse e-mail valide.",
+        "generic": "Impossible d'envoyer l'invitation."
+      }
+    },
     "filterByNameOrEmail": "Filtrer par nom ou e-mail...",
     "toggleColumns": "Basculer les colonnes",
     "noStaffFound": "Aucun membre du personnel trouvé.",

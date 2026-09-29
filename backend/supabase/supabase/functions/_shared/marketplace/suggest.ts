@@ -1,8 +1,6 @@
 import {
   DEFAULT_SUGGEST_LIMIT,
   MAX_SUGGEST_LIMIT,
-  MIN_SUGGEST_SIMILARITY,
-  SUGGEST_CANDIDATE_FACTOR,
 } from "./ranking.ts";
 import type { MarketplaceSql } from "./sql.ts";
 import { likeContainsPattern, normalizeQuery } from "./text-query.ts";
@@ -19,6 +17,8 @@ export type SuggestItem =
     type: "category" | "service";
     slug?: string;
     locationId?: string;
+    city?: string;
+    detail?: string;
   }
   | {
     id: string;
@@ -26,6 +26,8 @@ export type SuggestItem =
     type: "location";
     slug: string;
     locationId?: string;
+    city?: string;
+    detail?: string;
   };
 
 export function suggestItemFromRow(row: {
@@ -34,7 +36,13 @@ export function suggestItemFromRow(row: {
   type: SuggestItem["type"];
   slug: string | null;
   location_id: string | null;
+  city?: string | null;
+  detail?: string | null;
 }): SuggestItem | null {
+  const extra = {
+    ...(row.city ? { city: row.city } : {}),
+    ...(row.detail ? { detail: row.detail } : {}),
+  };
   if (row.type === "location") {
     if (!row.slug) return null;
     return {
@@ -43,6 +51,7 @@ export function suggestItemFromRow(row: {
       type: "location",
       slug: row.slug,
       ...(row.location_id ? { locationId: row.location_id } : {}),
+      ...extra,
     };
   }
   return {
@@ -51,29 +60,21 @@ export function suggestItemFromRow(row: {
     type: row.type,
     ...(row.slug ? { slug: row.slug } : {}),
     ...(row.location_id ? { locationId: row.location_id } : {}),
+    ...extra,
   };
 }
 
 /**
- * One statement. Service rows are restricted to services offered at a listed
- * active location, then deduped by lower(name). Unlisted salons cannot leak
- * a service name through this query.
- *
- * Location candidates are the nearest names by trigram distance
- * (`OPERATOR(extensions.<->)`), which the GiST index can satisfy with
- * `ORDER BY ... LIMIT`. The `%` / ILIKE form sequentially scanned the
- * projection once a few percent of names matched. PostGIS also defines
- * `<->`, so the operator is schema-qualified.
- *
- * That ordering admits any name, so the candidate window is filtered at
- * MIN_SUGGEST_SIMILARITY afterwards — outside the LIMIT subquery, which is an
- * optimisation barrier, so the KNN index scan survives the added predicate.
+ * One statement. Categories stay name matches. Locations match the search
+ * document (salon name, city, categories, and treatment names), so a query
+ * like "keratine" returns the salon that offers it rather than a treatment
+ * with no salon attached. `detail` is the treatment name that matched.
+ * Locations sort ahead of categories.
  */
 export async function suggestMarketplace(sql: MarketplaceSql, input: SuggestInput): Promise<{ items: SuggestItem[] }> {
   const q = normalizeQuery(input.q);
   const pattern = likeContainsPattern(q);
   const limit = Math.min(input.limit ?? DEFAULT_SUGGEST_LIMIT, MAX_SUGGEST_LIMIT);
-  const candidates = limit * SUGGEST_CANDIDATE_FACTOR;
 
   const rows = await sql<{
     id: string;
@@ -81,8 +82,10 @@ export async function suggestMarketplace(sql: MarketplaceSql, input: SuggestInpu
     type: SuggestItem["type"];
     slug: string | null;
     location_id: string | null;
+    city: string | null;
+    detail: string | null;
   }[]>`
-    select id, name, type, slug, location_id
+    select id, name, type, slug, location_id, city, detail
     from (
       (
         select
@@ -91,10 +94,13 @@ export async function suggestMarketplace(sql: MarketplaceSql, input: SuggestInpu
           'category'::text as type,
           c.slug,
           null::uuid as location_id,
+          null::text as city,
+          null::text as detail,
           greatest(
             extensions.similarity(lower(c.name), ${q}),
             extensions.word_similarity(${q}, lower(c.name))
-          ) as sim
+          ) as sim,
+          1 as kind
         from public.marketplace_category c
         where c.is_active
           and (
@@ -107,60 +113,32 @@ export async function suggestMarketplace(sql: MarketplaceSql, input: SuggestInpu
       union all
       (
         select
-          min(s.id::text) as id,
-          min(s.name) as name,
-          'service'::text as type,
-          null::text as slug,
-          null::uuid as location_id,
-          max(greatest(
-            extensions.similarity(lower(s.name), ${q}),
-            extensions.word_similarity(${q}, lower(s.name))
-          )) as sim
-        from public.service s
-        where coalesce(s.is_deleted, false) = false
-          and coalesce(s.is_active, true) = true
-          and s.is_marketplace_visible
-          and (
-            lower(s.name) operator(extensions.%) ${q}
-            or lower(s.name) ilike ${pattern} escape '\\'
-          )
-          and exists (
-            select 1
-            from public.location_service ls
-            join public.location l on l.id = ls.location_id
-            where ls.service_id = s.id
-              and l.is_listed
-              and l.is_active
-          )
-        group by lower(s.name)
-        order by sim desc
-        limit ${limit}
-      )
-      union all
-      (
-        select id, name, type, slug, location_id, sim
-        from (
-          select
-            m.location_id::text as id,
-            m.name,
-            'location'::text as type,
-            m.slug,
-            m.location_id,
-            greatest(
-              extensions.similarity(lower(m.name), ${q}),
-              extensions.word_similarity(${q}, lower(m.name))
-            ) as sim
-          from public.marketplace_search_location m
-          order by lower(m.name) operator(extensions.<->) ${q}
-          limit ${candidates}
-        ) near
-        where near.sim >= ${MIN_SUGGEST_SIMILARITY}
-          or lower(near.name) ilike ${pattern} escape '\\'
+          m.location_id::text as id,
+          m.name,
+          'location'::text as type,
+          m.slug,
+          m.location_id,
+          m.city,
+          (
+            select elem->>'name'
+            from jsonb_array_elements(coalesce(m.treatments, '[]'::jsonb)) elem
+            where lower(coalesce(elem->>'name', '')) ilike ${pattern} escape '\\'
+            order by extensions.word_similarity(${q}, lower(coalesce(elem->>'name', ''))) desc
+            limit 1
+          ) as detail,
+          greatest(
+            extensions.word_similarity(${q}, m.search_text),
+            extensions.word_similarity(${q}, lower(m.name))
+          ) as sim,
+          0 as kind
+        from public.marketplace_search_location m
+        where m.search_vector @@ plainto_tsquery('simple', ${q})
+          or m.search_text ilike ${pattern} escape '\\'
         order by sim desc
         limit ${limit}
       )
     ) hits
-    order by sim desc, name asc
+    order by kind asc, sim desc, name asc
     limit ${limit}
   `;
 

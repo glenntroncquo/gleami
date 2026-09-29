@@ -86,6 +86,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/auth-provider";
 import { toast } from "sonner";
 import { StaffSheet } from "@/components/staff-sheet";
+import { InviteStaffButton } from "@/components/invite-staff-dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -1229,6 +1230,7 @@ export default function StaffPage() {
                     </AlertDialogContent>
                   </AlertDialog>
                 )}
+                <InviteStaffButton />
                 {/* Add staff button */}
                 <Button
                   className="ml-auto"

@@ -31,6 +31,8 @@ const nl = {
     photoHint: "Veeg horizontaal voor meer foto's.",
     emptyTitle: 'Geen salons in dit gebied',
     emptyBody: 'Verplaats de kaart of pas je zoekopdracht aan.',
+    emptyQueryTitle: 'Geen salons voor deze zoekopdracht',
+    emptyQueryBody: 'Probeer een andere naam of behandeling.',
     categoriesError: 'Categorieën laden lukt niet.',
   },
   availability: {

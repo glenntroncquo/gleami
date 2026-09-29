@@ -398,12 +398,65 @@
     "resendConfirmation": "Reenviar e-mail de confirmação",
     "confirmationEmailResent": "E-mail de confirmação enviado!",
     "enterEmailToResend": "Digite seu e-mail para reenviar a confirmação.",
-    "authCallbackError": "Não foi possível concluir o login. Tente novamente."
+    "authCallbackError": "Não foi possível concluir o login. Tente novamente.",
+    "invite": {
+      "title": "Entrar na equipe",
+      "loading": "Verificando o convite…",
+      "description": "Crie um acesso para {company} como {role}.",
+      "invalid": "Este link de convite é inválido ou expirou.",
+      "companyLine": "O acesso vale para toda a empresa.",
+      "locationLine": "O acesso vale para {location}.",
+      "join": "Criar acesso",
+      "joining": "Criando acesso…",
+      "signInToAccept": "Entre para aceitar",
+      "wrongAccount": "Você está conectado com outro e-mail. Saia e abra este link de novo.",
+      "errors": {
+        "generic": "Não foi possível aceitar o convite. Tente novamente.",
+        "weakPassword": "A senha deve ter pelo menos 8 caracteres.",
+        "alreadyMember": "Este e-mail já tem acesso.",
+        "signInRequired": "Este e-mail já tem uma conta. Entre para aceitar o convite."
+      }
+    }
   },
   "staff": {
     "title": "Gestão de Equipe",
     "description": "Gerencie sua equipe do salão e horários",
     "addStaff": "Adicionar Funcionário",
+    "invite": {
+      "button": "Convidar",
+      "title": "Convidar alguém",
+      "description": "A pessoa recebe um link para criar um acesso. O acesso é só o papel que você escolher.",
+      "scope": "Acesso",
+      "scopeCompany": "Toda a empresa",
+      "scopeLocation": "Uma unidade",
+      "location": "Unidade",
+      "selectLocation": "Escolha uma unidade",
+      "role": "Papel",
+      "selectRole": "Escolha um papel",
+      "send": "Enviar convite",
+      "sending": "Enviando…",
+      "sent": "Convite enviado",
+      "sentWithoutEmail": "Convite criado. Copie o link — o e-mail não pôde ser enviado.",
+      "linkHelp": "Compartilhe este link se o e-mail não chegar. Ele expira em 7 dias.",
+      "copyLink": "Copiar link",
+      "linkCopied": "Link do convite copiado",
+      "roles": {
+        "owner": "Proprietário",
+        "admin": "Administrador",
+        "manager": "Gerente",
+        "stylist": "Estilista",
+        "staff": "Funcionário",
+        "freelancer": "Freelancer"
+      },
+      "errors": {
+        "forbidden": "Você não pode convidar alguém com esse acesso.",
+        "roleScope": "Esse papel não corresponde a acesso de empresa ou unidade.",
+        "notGrantable": "Você não pode conceder um papel com mais acesso do que o seu.",
+        "duplicate": "Já existe um convite pendente para este e-mail.",
+        "invalidEmail": "Informe um e-mail válido.",
+        "generic": "Não foi possível enviar o convite."
+      }
+    },
     "filterByNameOrEmail": "Filtrar por nome ou e-mail...",
     "toggleColumns": "Alternar colunas",
     "noStaffFound": "Nenhum funcionário encontrado.",

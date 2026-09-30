@@ -50,6 +50,33 @@ export async function createInvitation(
   return body;
 }
 
+export type PendingInvitationResult = {
+  success: boolean;
+  pending?: boolean;
+  expiresAt?: string | null;
+  error?: string;
+};
+
+export async function lookupPendingInvitation(input: {
+  companyId: string;
+  staffId: string;
+  locationId: string | null;
+}): Promise<PendingInvitationResult> {
+  const supabase = createClient();
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) return { success: false, error: "invitation_forbidden" };
+
+  const response = await fetch(functionsUrl("invitation-create"), {
+    method: "POST",
+    headers: await functionHeaders(token),
+    body: JSON.stringify({ ...input, action: "pending" }),
+  });
+  const body = (await response.json().catch(() => null)) as PendingInvitationResult | null;
+  if (!body?.success) return { success: false, pending: false, error: body?.error };
+  return { success: true, pending: Boolean(body.pending), expiresAt: body.expiresAt ?? null };
+}
+
 export type InvitationPreview = {
   success: boolean;
   error?: string;

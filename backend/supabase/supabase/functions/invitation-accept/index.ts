@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { rejectDisallowedOrigin } from "../_shared/infrastructure/http/cors.ts";
+import { corsHeadersFor, rejectDisallowedOrigin } from "../_shared/infrastructure/http/cors.ts";
 import {
   adminClient,
   findUserIdByEmail,
@@ -192,7 +192,7 @@ async function ensureLocationMembership(
 Deno.serve(async (req) => {
   const origin = req.headers.get("Origin");
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: jsonResponse({}, 204, origin).headers });
+    return new Response(null, { status: 204, headers: corsHeadersFor(origin) });
   }
   const rejected = rejectDisallowedOrigin(req);
   if (rejected) return rejected;

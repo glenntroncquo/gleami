@@ -31,17 +31,41 @@ function isToken(value: unknown): value is string {
   return typeof value === "string" && /^[0-9a-f]{64}$/i.test(value);
 }
 
+function missingColumn(
+  error: { code?: string; message?: string } | null,
+  column: string,
+): boolean {
+  if (!error) return false;
+  const message = (error.message ?? "").toLowerCase();
+  const name = column.toLowerCase();
+  return error.code === "42703" ||
+    error.code === "PGRST204" ||
+    (message.includes(name) &&
+      (message.includes("does not exist") || message.includes("schema cache")));
+}
+
 async function loadInvite(
   admin: ReturnType<typeof adminClient>,
   tokenHash: string,
 ): Promise<InviteRow | null> {
-  const { data, error } = await admin
+  const withStaffId = await admin
     .from("invitation")
     .select("id, company_id, location_id, role_id, staff_id, email, first_name, last_name, status, expires_at")
     .eq("token_hash", tokenHash)
     .maybeSingle();
-  if (error) throw error;
-  return data as InviteRow | null;
+  if (missingColumn(withStaffId.error, "staff_id")) {
+    const withoutStaffId = await admin
+      .from("invitation")
+      .select("id, company_id, location_id, role_id, email, first_name, last_name, status, expires_at")
+      .eq("token_hash", tokenHash)
+      .maybeSingle();
+    if (withoutStaffId.error) throw withoutStaffId.error;
+    return withoutStaffId.data
+      ? { ...(withoutStaffId.data as Omit<InviteRow, "staff_id">), staff_id: null }
+      : null;
+  }
+  if (withStaffId.error) throw withStaffId.error;
+  return withStaffId.data as InviteRow | null;
 }
 
 function isExpired(row: InviteRow): boolean {
@@ -379,54 +403,86 @@ Deno.serve(async (req) => {
         return jsonResponse({ success: false, error: "already_member" }, 409, origin);
       }
 
-      let staffId = staff?.id ?? null;
-      if (!staffId) {
-        const { data: inserted, error: staffInsertError } = await admin
-          .from("staff")
-          .insert({
-            company_id: invite.company_id,
-            user_id: userId,
-            email: invite.email,
-            first_name: invite.first_name,
-            last_name: invite.last_name,
-            status: "Active",
-          })
-          .select("id")
-          .single();
-        if (staffInsertError) throw staffInsertError;
-        staffId = inserted.id;
-        createdStaffId = inserted.id;
-      } else if (!staff?.user_id) {
-        const { error: linkError } = await admin
-          .from("staff")
-          .update({ user_id: userId })
-          .eq("id", staffId)
-          .is("user_id", null);
-        if (linkError) throw linkError;
-      }
-
-      const { error: membershipError } = await admin.from("location_membership").insert({
-        user_id: userId,
-        location_id: invite.location_id,
-        staff_id: staffId,
-        role_id: invite.role_id,
-        is_active: true,
-      });
-      if (membershipError) {
-        if (createdStaffId) {
-          await admin.from("staff").delete().eq("id", createdStaffId);
-          createdStaffId = null;
+      if (staff?.id && invite.location_id) {
+        const claimedStaff = await claimStaffUser(admin, staff.id, userId, invite.company_id);
+        if (!claimedStaff.ok) {
+          return await failMembership(
+            claimedStaff.error === "already_member" ? 409 : 400,
+            claimedStaff.error,
+          );
         }
-        if (createdUserId) await admin.auth.admin.deleteUser(createdUserId);
-        await revert(admin, claimed.id);
-        claimedId = null;
-        createdUserId = null;
-        const duplicate = membershipError.code === "23505";
-        return jsonResponse(
-          { success: false, error: duplicate ? "already_member" : "invalid" },
-          duplicate ? 409 : 500,
-          origin,
-        );
+        staffLink = {
+          linkedStaffId: claimedStaff.linkedStaffId,
+          updatedMembershipId: null,
+          insertedMembershipId: null,
+        };
+        const membership = await ensureLocationMembership(admin, {
+          staffId: staff.id,
+          userId,
+          locationId: invite.location_id,
+          roleId: invite.role_id,
+        });
+        if (!membership.ok) {
+          return await failMembership(
+            membership.error === "already_member" ? 409 : 400,
+            membership.error,
+          );
+        }
+        staffLink = {
+          linkedStaffId: claimedStaff.linkedStaffId,
+          updatedMembershipId: membership.updatedMembershipId,
+          insertedMembershipId: membership.insertedMembershipId,
+        };
+      } else {
+        let staffId = staff?.id ?? null;
+        if (!staffId) {
+          const { data: inserted, error: staffInsertError } = await admin
+            .from("staff")
+            .insert({
+              company_id: invite.company_id,
+              user_id: userId,
+              email: invite.email,
+              first_name: invite.first_name,
+              last_name: invite.last_name,
+              status: "Active",
+            })
+            .select("id")
+            .single();
+          if (staffInsertError) throw staffInsertError;
+          staffId = inserted.id;
+          createdStaffId = inserted.id;
+        } else if (!staff?.user_id) {
+          const { error: linkError } = await admin
+            .from("staff")
+            .update({ user_id: userId })
+            .eq("id", staffId)
+            .is("user_id", null);
+          if (linkError) throw linkError;
+        }
+
+        const { error: membershipError } = await admin.from("location_membership").insert({
+          user_id: userId,
+          location_id: invite.location_id,
+          staff_id: staffId,
+          role_id: invite.role_id,
+          is_active: true,
+        });
+        if (membershipError) {
+          if (createdStaffId) {
+            await admin.from("staff").delete().eq("id", createdStaffId);
+            createdStaffId = null;
+          }
+          if (createdUserId) await admin.auth.admin.deleteUser(createdUserId);
+          await revert(admin, claimed.id);
+          claimedId = null;
+          createdUserId = null;
+          const duplicate = membershipError.code === "23505";
+          return jsonResponse(
+            { success: false, error: duplicate ? "already_member" : "invalid" },
+            duplicate ? 409 : 500,
+            origin,
+          );
+        }
       }
     }
 

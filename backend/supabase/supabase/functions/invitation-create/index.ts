@@ -41,6 +41,19 @@ type InviteTarget = {
   roleId: string;
 };
 
+function missingColumn(
+  error: { code?: string; message?: string } | null,
+  column: string,
+): boolean {
+  if (!error) return false;
+  const message = (error.message ?? "").toLowerCase();
+  const name = column.toLowerCase();
+  return error.code === "42703" ||
+    error.code === "PGRST204" ||
+    (message.includes(name) &&
+      (message.includes("does not exist") || message.includes("schema cache")));
+}
+
 function inviteFirstName(staff: StaffRow, email: string): string {
   const fromProfile = normalizeName(staff.first_name);
   if (fromProfile) return fromProfile;
@@ -291,28 +304,40 @@ Deno.serve(async (req) => {
     const token = randomToken();
     const tokenHash = await sha256Hex(token);
     const expiresAt = new Date(Date.now() + INVITE_TTL_MS).toISOString();
-    const { data: created, error: insertError } = await admin
+    const invitationRow = {
+      company_id: companyId,
+      staff_id: staffId,
+      email,
+      first_name: firstName,
+      last_name: lastName,
+      role_id: roleId,
+      location_id: locationId,
+      invited_by: session.id,
+      status: "pending",
+      token_hash: tokenHash,
+      expires_at: expiresAt,
+    };
+    let { data: created, error: insertError } = await admin
       .from("invitation")
-      .insert({
-        company_id: companyId,
-        staff_id: staffId,
-        email,
-        first_name: firstName,
-        last_name: lastName,
-        role_id: roleId,
-        location_id: locationId,
-        invited_by: session.id,
-        status: "pending",
-        token_hash: tokenHash,
-        expires_at: expiresAt,
-      })
+      .insert(invitationRow)
       .select("id")
       .single();
+    // Production may not have invitation.staff_id yet. The accept path then
+    // links the login by the staff email already stored on the invite.
+    if (missingColumn(insertError, "staff_id")) {
+      const { staff_id: _staffId, ...withoutStaffId } = invitationRow;
+      const retry = await admin.from("invitation").insert(withoutStaffId).select("id").single();
+      created = retry.data;
+      insertError = retry.error;
+    }
     if (insertError) {
       if (insertError.code === "23505") {
         return jsonResponse({ success: false, error: "invitation_duplicate" }, 409, origin);
       }
       throw insertError;
+    }
+    if (!created) {
+      throw new Error("invitation insert returned no row");
     }
 
     const base = salonOrigin(req);

@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { rejectDisallowedOrigin } from "../_shared/infrastructure/http/cors.ts";
+import { corsHeadersFor, rejectDisallowedOrigin } from "../_shared/infrastructure/http/cors.ts";
 import { sendEmail } from "../_shared/infrastructure/email/resend.ts";
 import {
   adminClient,
@@ -197,7 +197,9 @@ function salonOrigin(req: Request): string | null {
 Deno.serve(async (req) => {
   const origin = req.headers.get("Origin");
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: jsonResponse({}, 204, origin).headers });
+    // 204 cannot carry a body. Building that response through jsonResponse throws,
+    // and the browser then blocks the invite request.
+    return new Response(null, { status: 204, headers: corsHeadersFor(origin) });
   }
   const rejected = rejectDisallowedOrigin(req);
   if (rejected) return rejected;

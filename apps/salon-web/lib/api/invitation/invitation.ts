@@ -1,3 +1,5 @@
+import type { InviteRoleOption, InviteScope } from "@/lib/auth/invite-roles";
+import { asLocationClient } from "@/lib/location";
 import { createClient } from "@/lib/supabase/client";
 
 export type CreateInvitationInput = {
@@ -5,6 +7,8 @@ export type CreateInvitationInput = {
   staffId: string;
   locationId: string | null;
   locale: string;
+  roleId?: string;
+  scope?: InviteScope;
 };
 
 export type CreateInvitationResult = {
@@ -61,6 +65,7 @@ export async function lookupPendingInvitation(input: {
   companyId: string;
   staffId: string;
   locationId: string | null;
+  scope?: InviteScope;
 }): Promise<PendingInvitationResult> {
   const supabase = createClient();
   const { data: sessionData } = await supabase.auth.getSession();
@@ -87,7 +92,57 @@ export type InvitationPreview = {
   locationName?: string | null;
   roleName?: string;
   roleScope?: "company" | "location";
+  accountExists?: boolean;
 };
+
+type RoleCatalogRow = {
+  id: string;
+  name: string;
+  scope: string;
+  is_system: boolean;
+  company_id: string | null;
+};
+
+async function rows<T>(
+  query: PromiseLike<{ data: unknown; error: { message?: string } | null }>,
+): Promise<T[]> {
+  const { data, error } = await query;
+  if (error) throw new Error(error.message ?? "role lookup failed");
+  return (Array.isArray(data) ? data : []) as T[];
+}
+
+export async function loadInviteRoleOptions(companyId: string): Promise<InviteRoleOption[]> {
+  const supabase = asLocationClient();
+  const [systemRoles, companyRoles] = await Promise.all([
+    rows<RoleCatalogRow>(
+      supabase.from("role").select("id, name, scope, is_system, company_id").eq("is_system", true),
+    ),
+    rows<RoleCatalogRow>(
+      supabase
+        .from("role")
+        .select("id, name, scope, is_system, company_id")
+        .eq("company_id", companyId),
+    ),
+  ]);
+  const roles = [...systemRoles, ...companyRoles].filter(
+    (role): role is RoleCatalogRow & { scope: InviteScope } =>
+      role.scope === "company" || role.scope === "location",
+  );
+  const ids = [...new Set(roles.map((role) => role.id))];
+  const permissionRows = ids.length
+    ? await rows<{ role_id: string; permission_key: string }>(
+        supabase.from("role_permission").select("role_id, permission_key").in("role_id", ids),
+      )
+    : [];
+  return roles.map((role) => ({
+    id: role.id,
+    name: role.name,
+    scope: role.scope,
+    permissions: permissionRows
+      .filter((row) => row.role_id === role.id)
+      .map((row) => row.permission_key),
+  }));
+}
 
 export async function previewInvitation(token: string): Promise<InvitationPreview> {
   const response = await fetch(functionsUrl("invitation-accept"), {

@@ -4,6 +4,7 @@ import { sendEmail } from "../_shared/infrastructure/email/resend.ts";
 import {
   adminClient,
   escapeHtml,
+  findUserIdByEmail,
   headerSafe,
   isUuid,
   jsonResponse,
@@ -257,12 +258,18 @@ Deno.serve(async (req) => {
     const firstName = inviteFirstName(staffRow, email);
     const lastName = normalizeName(staffRow.last_name);
 
+    const requestedScope = body?.scope === "company" || body?.scope === "location"
+      ? body.scope as "company" | "location"
+      : null;
+    const requestedRoleId = isUuid(body?.roleId) ? body.roleId as string : null;
+
     if (body?.action === "pending") {
+      const pendingScope = requestedScope ?? "location";
       const perms = await callerPermissions({
         admin,
         userId: session.id,
         companyId,
-        locationId: requestedLocationId,
+        locationId: pendingScope === "company" ? null : requestedLocationId,
       });
       if (!perms.has("invites:manage")) {
         return jsonResponse({ success: false, error: "invitation_forbidden" }, 403, origin);
@@ -275,7 +282,9 @@ Deno.serve(async (req) => {
         .eq("status", "pending")
         .ilike("email", email)
         .gt("expires_at", nowIso);
-      if (requestedLocationId) {
+      if (pendingScope === "company") {
+        pendingQuery = pendingQuery.is("location_id", null);
+      } else if (requestedLocationId) {
         pendingQuery = pendingQuery.eq("location_id", requestedLocationId);
       }
       const { data: pendingRows, error: pendingError } = await pendingQuery.limit(1);
@@ -292,29 +301,70 @@ Deno.serve(async (req) => {
       );
     }
 
-    const resolved = await resolveExistingStaffTarget(admin, {
-      companyId,
-      staffId,
-      locationId: requestedLocationId,
-    });
-    if (!resolved.ok) {
-      const status = resolved.error === "invitation_forbidden" ? 403 : 400;
-      return jsonResponse({ success: false, error: resolved.error }, status, origin);
-    }
-    const { locationId, locationName, roleId } = resolved.target;
+    let locationId: string | null = null;
+    let locationName: string | null = null;
+    let roleId: string;
+    let roleRow: RoleRow;
 
-    const { data: role, error: roleError } = await admin
-      .from("role")
-      .select("id, name, scope, is_system, company_id")
-      .eq("id", roleId)
-      .maybeSingle();
-    if (roleError) throw roleError;
-    const roleRow = role as RoleRow | null;
-    if (!roleRow || roleRow.scope !== "location") {
-      return jsonResponse({ success: false, error: "invitation_role_scope" }, 400, origin);
-    }
-    if (!roleRow.is_system && roleRow.company_id !== companyId) {
-      return jsonResponse({ success: false, error: "invitation_forbidden" }, 403, origin);
+    if (requestedScope && requestedRoleId) {
+      const { data: role, error: roleError } = await admin
+        .from("role")
+        .select("id, name, scope, is_system, company_id")
+        .eq("id", requestedRoleId)
+        .maybeSingle();
+      if (roleError) throw roleError;
+      const chosen = role as RoleRow | null;
+      if (!chosen || chosen.scope !== requestedScope) {
+        return jsonResponse({ success: false, error: "invitation_role_scope" }, 400, origin);
+      }
+      if (!chosen.is_system && chosen.company_id !== companyId) {
+        return jsonResponse({ success: false, error: "invitation_forbidden" }, 403, origin);
+      }
+      roleId = chosen.id;
+      roleRow = chosen;
+      if (requestedScope === "location") {
+        if (!requestedLocationId) {
+          return jsonResponse({ success: false, error: "invitation_no_location" }, 400, origin);
+        }
+        const { data: location, error: locationError } = await admin
+          .from("location")
+          .select("id, name, company_id")
+          .eq("id", requestedLocationId)
+          .maybeSingle();
+        if (locationError) throw locationError;
+        if (!location || location.company_id !== companyId) {
+          return jsonResponse({ success: false, error: "invitation_forbidden" }, 403, origin);
+        }
+        locationId = location.id as string;
+        locationName = (location.name as string | null) ?? "";
+      }
+    } else {
+      const resolved = await resolveExistingStaffTarget(admin, {
+        companyId,
+        staffId,
+        locationId: requestedLocationId,
+      });
+      if (!resolved.ok) {
+        const status = resolved.error === "invitation_forbidden" ? 403 : 400;
+        return jsonResponse({ success: false, error: resolved.error }, status, origin);
+      }
+      locationId = resolved.target.locationId;
+      locationName = resolved.target.locationName;
+      roleId = resolved.target.roleId;
+      const { data: role, error: roleError } = await admin
+        .from("role")
+        .select("id, name, scope, is_system, company_id")
+        .eq("id", roleId)
+        .maybeSingle();
+      if (roleError) throw roleError;
+      const chosen = role as RoleRow | null;
+      if (!chosen || chosen.scope !== "location") {
+        return jsonResponse({ success: false, error: "invitation_role_scope" }, 400, origin);
+      }
+      if (!chosen.is_system && chosen.company_id !== companyId) {
+        return jsonResponse({ success: false, error: "invitation_forbidden" }, 403, origin);
+      }
+      roleRow = chosen;
     }
 
     const callerPerms = await callerPermissions({
@@ -329,13 +379,16 @@ Deno.serve(async (req) => {
     }
 
     const now = new Date().toISOString();
-    const { error: revokeError } = await admin
+    let revokeQuery = admin
       .from("invitation")
       .update({ status: "revoked", token_hash: null, updated_at: now })
       .eq("company_id", companyId)
       .eq("status", "pending")
-      .eq("location_id", locationId)
       .ilike("email", email);
+    revokeQuery = locationId
+      ? revokeQuery.eq("location_id", locationId)
+      : revokeQuery.is("location_id", null);
+    const { error: revokeError } = await revokeQuery;
     if (revokeError) throw revokeError;
 
     const token = randomToken();
@@ -382,6 +435,13 @@ Deno.serve(async (req) => {
     const inviteUrl = base ? `${base}${path}` : null;
     let emailSent = false;
 
+    let accountExists = false;
+    try {
+      accountExists = Boolean(await findUserIdByEmail(email));
+    } catch (lookupError) {
+      console.error("Invite account lookup failed", lookupError);
+    }
+
     if (inviteUrl && Deno.env.get("RESEND_API_KEY")) {
       const safeCompany = escapeHtml(company.name ?? "Gleami");
       const safeName = escapeHtml([firstName, lastName].filter(Boolean).join(" "));
@@ -390,22 +450,26 @@ Deno.serve(async (req) => {
       const where = locationName
         ? `${safeCompany} (${safeLocation})`
         : safeCompany;
+      const existingAccountText = accountExists
+        ? "You already have an account with this email. Sign in with it to join. This does not create a second login."
+        : "";
       try {
         await sendEmail({
           from: `${headerSafe(company.name ?? "Gleami")} <afspraken@notifications.salonify.co>`,
           to: [email],
-          subject: `Create your login for ${headerSafe(company.name ?? "Gleami")}`,
+          subject: `${accountExists ? "Link" : "Create"} your login for ${headerSafe(company.name ?? "Gleami")}`,
           text: [
             `Hi ${firstName},`,
             "",
             `Create a login for your staff profile at ${company.name ?? "the salon"} as ${roleRow.name}.`,
-            ...(locationName ? [`Location: ${locationName}`] : []),
+            ...(locationName ? [`Location: ${locationName}`] : ["Access: whole company"]),
+            ...(existingAccountText ? ["", existingAccountText] : []),
             "",
-            `Create your login: ${inviteUrl}`,
+            `${accountExists ? "Open your invite" : "Create your login"}: ${inviteUrl}`,
             "",
             "This link expires in 7 days.",
           ].join("\n"),
-          html: `<p>Hi ${safeName},</p><p>Create a login for your staff profile at ${where} as <strong>${safeRole}</strong>.</p><p><a href="${escapeHtml(inviteUrl)}">Create your login</a></p><p>This link expires in 7 days.</p>`,
+          html: `<p>Hi ${safeName},</p><p>Create a login for your staff profile at ${where} as <strong>${safeRole}</strong>.</p>${existingAccountText ? `<p>${escapeHtml(existingAccountText)}</p>` : ""}<p><a href="${escapeHtml(inviteUrl)}">${accountExists ? "Open your invite" : "Create your login"}</a></p><p>This link expires in 7 days.</p>`,
         });
         emailSent = true;
         await admin

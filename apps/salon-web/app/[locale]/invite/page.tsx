@@ -132,15 +132,20 @@ function InviteContent() {
                 : t("auth.invite.companyLine")}
             </p>
             <p className="text-sm mb-4">{preview.email}</p>
-            {needsSignIn ? (
-              <Button asChild className="w-full">
-                <Link href={loginHref}>{t("auth.invite.signInToAccept")}</Link>
-              </Button>
-            ) : signedInAsSomeoneElse ? (
+            {signedInAsSomeoneElse ? (
               <div className="space-y-3">
                 <p className="text-sm">{t("auth.invite.wrongAccount")}</p>
                 <Button type="button" variant="outline" onClick={() => void signOut()}>
                   {t("auth.signOut")}
+                </Button>
+              </div>
+            ) : needsSignIn || (preview.accountExists && !signedInAsInvitee) ? (
+              <div className="space-y-3">
+                {preview.accountExists && (
+                  <p className="text-sm">{t("auth.invite.existingAccount")}</p>
+                )}
+                <Button asChild className="w-full">
+                  <Link href={loginHref}>{t("auth.invite.signInToAccept")}</Link>
                 </Button>
               </div>
             ) : (
@@ -174,7 +179,9 @@ function InviteContent() {
                   </>
                 )}
                 <Button type="submit" className="w-full" disabled={submitting}>
-                  {submitting ? t("auth.invite.joining") : t("auth.invite.join")}
+                  {submitting
+                    ? t(preview.accountExists ? "auth.invite.linking" : "auth.invite.joining")
+                    : t(preview.accountExists ? "auth.invite.link" : "auth.invite.join")}
                 </Button>
               </form>
             )}

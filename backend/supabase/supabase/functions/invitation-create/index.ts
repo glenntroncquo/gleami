@@ -257,6 +257,41 @@ Deno.serve(async (req) => {
     const firstName = inviteFirstName(staffRow, email);
     const lastName = normalizeName(staffRow.last_name);
 
+    if (body?.action === "pending") {
+      const perms = await callerPermissions({
+        admin,
+        userId: session.id,
+        companyId,
+        locationId: requestedLocationId,
+      });
+      if (!perms.has("invites:manage")) {
+        return jsonResponse({ success: false, error: "invitation_forbidden" }, 403, origin);
+      }
+      const nowIso = new Date().toISOString();
+      let pendingQuery = admin
+        .from("invitation")
+        .select("expires_at")
+        .eq("company_id", companyId)
+        .eq("status", "pending")
+        .ilike("email", email)
+        .gt("expires_at", nowIso);
+      if (requestedLocationId) {
+        pendingQuery = pendingQuery.eq("location_id", requestedLocationId);
+      }
+      const { data: pendingRows, error: pendingError } = await pendingQuery.limit(1);
+      if (pendingError) throw pendingError;
+      const pending = pendingRows?.[0] ?? null;
+      return jsonResponse(
+        {
+          success: true,
+          pending: Boolean(pending),
+          expiresAt: pending?.expires_at ?? null,
+        },
+        200,
+        origin,
+      );
+    }
+
     const resolved = await resolveExistingStaffTarget(admin, {
       companyId,
       staffId,

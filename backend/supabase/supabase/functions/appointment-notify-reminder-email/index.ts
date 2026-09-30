@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/shared/supabase";
 import { formatDate, formatTime } from "@/shared/format-date";
 import { sendEmail } from "@/shared/resend";
 import { fetchAppointmentServicesForEmail } from "@/shared/appointment-services-for-email";
-import { fetchNotificationPlace, placeToEmailAddress } from "../_shared/appointment/notifications/place-fetch.ts";
+import { fetchNotificationPlace, placeToEmailAddress } from "@/shared/notification-place-fetch";
 import {
   isInReminderWindow,
   localReminderWindowUtc,
@@ -22,49 +22,6 @@ function formatTreatmentsWithPrices(treatments) {
     }
     return display;
   }).join("<br>");
-}
-function staffNotificationRecipients(placeEmail, staffEmail) {
-  const seen = new Set();
-  const recipients = [];
-  for (const raw of [placeEmail, staffEmail]) {
-    const trimmed = raw?.trim();
-    if (!trimmed) continue;
-    const key = trimmed.toLowerCase();
-    if (seen.has(key) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(key)) continue;
-    seen.add(key);
-    recipients.push(trimmed);
-  }
-  return recipients;
-}
-function createStaffReminderText(data) {
-  const startDate = new Date(data.appointmentStart);
-  const endDate = new Date(data.appointmentEnd);
-  const treatmentsList = (data.treatments ?? [])
-    .map((treatment) =>
-      treatment.serviceVariantName
-        ? `${treatment.serviceName} - ${treatment.serviceVariantName}`
-        : treatment.serviceName
-    )
-    .join(", ");
-  return `HERINNERING
-
-Afspraak morgen.
-
-KLANTGEGEVENS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Naam: ${data.customerName}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-AFSPRAAKDETAILS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Datum: ${formatDate(startDate)}
-Tijd: ${formatTime(startDate)} - ${formatTime(endDate)}
-Behandeling(en): ${treatmentsList}
-Medewerker: ${data.staffName}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Met vriendelijke groet,
-${data.companyName}`;
 }
 function calculateTotalPrice(treatments) {
   return treatments.reduce((total, t)=>total + (parseFloat(t.price) || 0), 0);
@@ -285,27 +242,6 @@ serve(async (req)=>{
           html: reminderHtml
         });
         console.log(`Reminder email sent for appointment ${appointment.id}:`, emailResult.id);
-        const staffRecipients = staffNotificationRecipients(place.email, staff.email);
-        const staffReminderText = createStaffReminderText({
-          customerName,
-          companyName: company.name,
-          appointmentStart: appointment.start,
-          appointmentEnd: appointment.end,
-          staffName,
-          treatments,
-        });
-        for (const recipient of staffRecipients) {
-          try {
-            await sendEmail({
-              from: `${company.name} <afspraken@notifications.salonify.co>`,
-              to: [recipient],
-              subject: `Herinnering: Afspraak morgen met ${customerName}`,
-              text: staffReminderText,
-            });
-          } catch (staffEmailError) {
-            console.error("Staff reminder failed:", staffEmailError);
-          }
-        }
         // Update appointment to mark reminder as sent
         const { error: updateError } = await supabaseAdmin.from("appointment").update({
           reminder_sent: true

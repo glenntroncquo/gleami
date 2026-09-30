@@ -4,7 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import React, { useRef } from 'react';
-import { Platform, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { AppState, Platform, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import Animated, { Easing, FadeIn, LinearTransition, ReduceMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +20,8 @@ import { TopFade } from '@/src/components/top-fade';
 import { useCategories, useFavorites, useSearchResults } from '@/src/hooks/use-marketplace';
 import { useOnline } from '@/src/lib/online';
 import { useDiscovery } from '@/src/store/discovery';
+import { formatDistance } from '@/src/format';
+import { distanceKm } from '@/src/lib/geo';
 
 function categoryIcon(name: string): keyof typeof Ionicons.glyphMap {
   if (/haar|kapper|keratine/i.test(name)) return 'cut-outline';
@@ -31,8 +33,18 @@ function categoryIcon(name: string): keyof typeof Ionicons.glyphMap {
   return 'flower-outline';
 }
 
+function categoryTint(name: string): string {
+  if (/haar|kapper/i.test(name)) return '#EEF0FF';
+  if (/nagel|make-up/i.test(name)) return '#FFF3ED';
+  if (/massage|spa/i.test(name)) return '#EAF7F3';
+  if (/wenkbrauw|wimper/i.test(name)) return '#F0F2FA';
+  if (/gezicht/i.test(name)) return '#F6ECFA';
+  return '#F4F5FA';
+}
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const [greeting, setGreeting] = React.useState(() => greetingForCurrentTime());
   const categories = useCategories();
   const favorites = useFavorites();
   const search = useSearchResults();
@@ -41,6 +53,18 @@ export default function HomeScreen() {
   const toggleCategory = useDiscovery((s) => s.toggleCategory);
   const selectedCategoryIds = useDiscovery((s) => s.categoryIds);
   const userLocation = useDiscovery((s) => s.userLocation);
+  const locationLabel = useDiscovery((s) => s.locationLabel);
+  const center = useDiscovery((s) => s.center);
+  const initializeDeviceLocation = useDiscovery((s) => s.initializeDeviceLocation);
+  React.useEffect(() => { void initializeDeviceLocation(); }, [initializeDeviceLocation]);
+  React.useEffect(() => {
+    const updateGreeting = () => setGreeting(greetingForCurrentTime());
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') updateGreeting();
+    });
+    const timer = setInterval(updateGreeting, 60_000);
+    return () => { subscription.remove(); clearInterval(timer); };
+  }, []);
   const items = search.data?.pages.flatMap((page) => page.items) ?? [];
   const discoverItems = items.slice(0, 10);
   const nearbyItems = [...items].filter((item) => item.distanceKm != null).sort((a, b) => a.distanceKm! - b.distanceKm!).slice(0, 10);
@@ -49,7 +73,6 @@ export default function HomeScreen() {
     .filter((uri): uri is string => Boolean(uri));
   const coversReady = useImagesReady(firstCovers);
   const choices = [{ id: null, name: 'Alle', icon: 'grid-outline' as const }, ...(categories.data ?? []).map((c) => ({ ...c, icon: categoryIcon(c.name) }))];
-  const columns = Array.from({ length: Math.ceil(choices.length / 2) }, (_, i) => choices.slice(i * 2, i * 2 + 2));
   const isSelected = (id: string | null) => (id ? selectedCategoryIds.includes(id) : selectedCategoryIds.length === 0);
   const ios = Platform.OS === 'ios';
   return <View className="flex-1 bg-canvas">
@@ -61,21 +84,25 @@ export default function HomeScreen() {
       scrollIndicatorInsets={ios ? { top: insets.top } : undefined}
       contentContainerStyle={{ paddingTop: ios ? 0 : insets.top, paddingBottom: insets.bottom + 104 }}
       refreshControl={<RefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} tintColor={brandColors.navy} progressViewOffset={insets.top} />}>
-      <View className="flex-row items-center justify-between px-5 pb-4 pt-3">
-        <Pressable accessibilityRole="button" accessibilityLabel="Zoekgebied wijzigen op de kaart" onPress={() => router.navigate('/discover')} className="min-h-11 flex-row items-center gap-1">
-          <Ionicons name="location" size={15} color={brandColors.blue} /><Text className="text-xs font-semibold text-ink">{userLocation ? 'Huidige locatie' : 'Brussel'}</Text><Ionicons name="chevron-down" size={12} color="#071D43" />
+      <View className="flex-row items-center justify-between px-5 pb-2 pt-3">
+        <Pressable accessibilityRole="button" accessibilityLabel="Locatie wijzigen" onPress={() => router.push('/location')} className="min-h-11 flex-row items-center gap-1">
+          <Ionicons name="location" size={15} color={brandColors.blue} /><Text className="text-xs font-semibold text-ink">{locationLabel}{userLocation ? `, ${formatDistance(distanceKm(center, userLocation))}` : ''}</Text><Ionicons name="chevron-down" size={12} color="#071D43" />
         </Pressable>
         <Image source={require('@/assets/gleami-wordmark.svg')} contentFit="contain" accessibilityLabel="Gleami" style={{ width: 96, height: 36 }} />
       </View>
+      <View className="px-5 pb-3 pt-1">
+        <Text className="text-[26px] font-bold tracking-tight text-ink">{greeting} 👋</Text>
+        <Text className="mt-1 text-base text-muted">Waar wil je vandaag tijd voor maken?</Text>
+      </View>
       <SearchBar variant="home" />
-      {categories.data ? <Animated.View entering={FADE_IN}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 26, gap: 8 }}>
-        {columns.map((column, i) => <View key={i} style={{ gap: 18 }}>{column.map((c) => {
+      {categories.data ? <Animated.View entering={FADE_IN}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 18, gap: 12 }}>
+        {choices.map((c) => {
           const selected = isSelected(c.id);
-          return <Pressable key={c.id ?? 'all'} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} accessibilityLabel={c.name} onPress={() => toggleCategory(c.id)} style={{ width: 70, alignItems: 'center', gap: 7 }}>
-            <View style={{ width: 56, height: 56, borderRadius: 17, borderWidth: selected ? 1.5 : 1, borderColor: selected ? brandColors.blue : brandColors.line, backgroundColor: selected ? brandColors.blueTint : brandColors.surface, alignItems: 'center', justifyContent: 'center' }}><Ionicons name={c.icon} size={25} color={selected ? brandColors.blue : '#071D43'} /></View>
-            <Text numberOfLines={2} style={{ height: 30, fontSize: 10, lineHeight: 14, textAlign: 'center', fontWeight: selected ? '600' : '400', color: '#071D43' }}>{c.name}</Text>
+          return <Pressable key={c.id ?? 'all'} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} accessibilityLabel={c.name} onPress={() => toggleCategory(c.id)} style={{ width: 68, alignItems: 'center', gap: 6 }}>
+            <View style={{ width: 60, height: 60, borderRadius: 30, borderWidth: selected ? 1.5 : 1, borderColor: selected ? brandColors.blue : 'transparent', backgroundColor: selected ? brandColors.blueTint : categoryTint(c.name), alignItems: 'center', justifyContent: 'center' }}><Ionicons name={c.icon} size={24} color={selected ? brandColors.blue : '#26385D'} /></View>
+            <Text numberOfLines={2} style={{ height: 30, fontSize: 11, lineHeight: 14, textAlign: 'center', fontWeight: selected ? '600' : '400', color: selected ? brandColors.blue : '#071D43' }}>{c.name}</Text>
           </Pressable>;
-        })}</View>)}
+        })}
       </ScrollView></Animated.View> : categories.isError ? <Pressable accessibilityRole="button" onPress={() => categories.refetch()} className="px-5 py-3"><Text className="text-accent">Categorieën opnieuw laden</Text></Pressable> : <CategoryGridSkeleton />}
       <Animated.View layout={ROW_LAYOUT}><FavoritesRow items={favorites.data ?? []} /></Animated.View>
       {!online && !items.length ? <OfflineState onRetry={() => search.refetch()} /> : search.isLoading || (items.length > 0 && !coversReady) ? <>
@@ -92,6 +119,13 @@ export default function HomeScreen() {
     </ScrollView>
     <TopFade />
   </View>;
+}
+
+function greetingForCurrentTime(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Goedemorgen';
+  if (hour < 18) return 'Goedemiddag';
+  return 'Goedenavond';
 }
 
 const ROW_LAYOUT = LinearTransition.duration(280).easing(Easing.out(Easing.cubic)).reduceMotion(ReduceMotion.System);

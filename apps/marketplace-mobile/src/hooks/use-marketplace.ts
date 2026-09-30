@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { Alert } from 'react-native';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 
 import {
   addLike,
@@ -11,7 +12,6 @@ import {
   nextAvailable,
   removeLike,
   searchMarketplace,
-  suggestMarketplace,
 } from '@/src/api/client';
 import type { SearchResponse } from '@/src/api/types';
 import { useAuth } from '@/src/auth/auth-context';
@@ -40,15 +40,21 @@ export function useSearchResults() {
   const bbox = useDiscovery((state) => state.bbox);
   const online = useOnline();
   const trimmed = q.trim();
+  const [debouncedCategoryIds, setDebouncedCategoryIds] = useState(categoryIds);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedCategoryIds(categoryIds), 250);
+    return () => clearTimeout(timer);
+  }, [categoryIds]);
 
   return useInfiniteQuery({
     // A typed query searches the catalog, so the map area is not part of the key.
-    queryKey: ['search', trimmed, categoryIds, trimmed ? null : bbox, trimmed ? null : center.lat, trimmed ? null : center.lng, trimmed ? null : radiusKm],
+    queryKey: ['search', trimmed, debouncedCategoryIds, trimmed ? null : bbox, trimmed ? null : center.lat, trimmed ? null : center.lng, trimmed ? null : radiusKm],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) =>
       searchMarketplace({
         q: trimmed || undefined,
-        categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
+        categoryIds: debouncedCategoryIds.length > 0 ? debouncedCategoryIds : undefined,
         cursor: pageParam,
         limit: PAGE_SIZE,
         ...(trimmed ? {} : bbox ? { bbox } : { center, radiusKm: radiusKm ?? undefined }),
@@ -66,16 +72,6 @@ export function useQuerySuggestions(q: string) {
     queryKey: ['query-suggestions', trimmed],
     queryFn: () =>
       searchMarketplace({ q: trimmed, limit: 8 }).then((response) => withMatchingTreatmentFirst(response, trimmed)),
-    enabled: online && trimmed.length > 0,
-  });
-}
-
-export function useSuggestions(q: string) {
-  const online = useOnline();
-  const trimmed = q.trim();
-  return useQuery({
-    queryKey: ['suggest', trimmed],
-    queryFn: () => suggestMarketplace({ q: trimmed, limit: 8 }),
     enabled: online && trimmed.length > 0,
   });
 }

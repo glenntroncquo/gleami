@@ -1,5 +1,7 @@
-/** Brussels city centre. Used until the user shares a location. */
-export const BRUSSELS = { lat: 50.8503, lng: 4.3517 };
+/** Ghent city centre. Used when device location is unavailable or denied. */
+export const GHENT = { lat: 51.0543, lng: 3.7174 };
+/** @deprecated Prefer GHENT for the no-location fallback. */
+export const BRUSSELS = GHENT;
 
 /** Wide enough to include Ghent and Antwerp from Brussels. */
 export const DEFAULT_RADIUS_KM = 70;

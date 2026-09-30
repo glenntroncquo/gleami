@@ -1,6 +1,6 @@
-import * as Location from 'expo-location';
-import { useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -14,46 +14,61 @@ import { useDiscovery } from '@/src/store/discovery';
 
 export default function DiscoverScreen() {
   const { expandSearch } = useLocalSearchParams<{ expandSearch?: string }>();
+  const openSheet = useLocalSearchParams<{ openSheet?: string }>().openSheet === '1';
   const insets = useSafeAreaInsets();
   const [searchBarHeight, setSearchBarHeight] = useState(58);
   const sheetTopInset = insets.top + 8 + searchBarHeight + 8;
   const q = useDiscovery((state) => state.q);
   const categoryId = useDiscovery((state) => state.categoryIds[0] ?? null);
   const categoryCount = useDiscovery((state) => state.categoryIds.length);
-  const setUserLocation = useDiscovery((state) => state.setUserLocation);
+  const locationLabel = useDiscovery((state) => state.locationLabel);
+  const initializeDeviceLocation = useDiscovery((state) => state.initializeDeviceLocation);
+  const focusResults = useDiscovery((state) => state.focusResults);
+  const focusedQuery = useRef('');
   const areaSearchVisible = useDiscovery((state) => state.areaSearchVisible);
   const applyAreaSearch = useDiscovery((state) => state.applyAreaSearch);
   const categories = useCategories();
   const search = useSearchResults();
-  const items = search.data?.pages.flatMap((page) => page.items) ?? [];
+  const items = useMemo(
+    () => search.data?.pages.flatMap((page) => page.items) ?? [],
+    [search.data],
+  );
   const categoryName = categories.data?.find((category) => category.id === categoryId)?.name;
   const summary = q || (categoryCount > 1 ? `${categoryCount} behandelingen` : categoryName) || 'Alle behandelingen';
+
+  useEffect(() => {
+    const trimmed = q.trim();
+    if (!trimmed) {
+      focusedQuery.current = '';
+      return;
+    }
+    const top = items[0];
+    if (!top || focusedQuery.current === trimmed) return;
+    focusedQuery.current = trimmed;
+    focusResults({ lat: top.lat, lng: top.lng });
+  }, [q, items, focusResults]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const permission = await Location.requestForegroundPermissionsAsync();
-        if (cancelled || permission.status !== Location.PermissionStatus.GRANTED) return;
-        const position = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
         if (cancelled) return;
-        setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
-      } catch {
-        // Permission denied or location unavailable: stay on Brussels.
-      }
+        await initializeDeviceLocation();
+      } catch { /* Keep the Ghent fallback. */ }
     })();
     return () => {
       cancelled = true;
     };
-  }, [setUserLocation]);
+  }, [initializeDeviceLocation]);
 
   return (
     <View className="flex-1 bg-canvas">
       <DiscoverMap items={items} />
       <View pointerEvents="box-none" className="absolute inset-0">
         <View pointerEvents="box-none" style={{ paddingTop: insets.top + 8 }} className="gap-3">
+          <Pressable accessibilityRole="button" accessibilityLabel="Locatie wijzigen" onPress={() => router.push('/location')} className="mx-5 h-10 flex-row items-center gap-2 self-start rounded-full bg-white/95 px-4 shadow-sm">
+            <Ionicons name="location" size={15} color="#6488E8" /><Text className="text-xs font-semibold text-ink">{locationLabel}</Text><Ionicons name="chevron-down" size={12} color="#071D43" />
+          </Pressable>
           <View onLayout={(event) => setSearchBarHeight(event.nativeEvent.layout.height)}>
             <SearchBar variant="results" summary={summary} autoExpand={expandSearch === '1'} />
           </View>
@@ -71,7 +86,7 @@ export default function DiscoverScreen() {
           </View>
         ) : null}
       </View>
-      <DiscoverSheet topInset={sheetTopInset} />
+      <DiscoverSheet topInset={sheetTopInset} openInitially={openSheet} />
     </View>
   );
 }

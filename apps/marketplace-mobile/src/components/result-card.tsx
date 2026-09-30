@@ -9,7 +9,7 @@ import type { AvailabilityBucket, SearchItem } from "@/src/api/types";
 import { useAuth } from "@/src/auth/auth-context";
 import { AvailabilityBadge } from "@/src/components/availability-badge";
 import { MediaCarousel } from "@/src/components/media-carousel";
-import { cityLine, formatCount } from "@/src/format";
+import { formatCount, formatDistance } from "@/src/format";
 import { useToggleLike } from "@/src/hooks/use-marketplace";
 import { t } from "@/src/i18n";
 
@@ -29,8 +29,7 @@ export const ResultCard = React.memo(function ResultCard({
   const { user } = useAuth();
   const likes = useToggleLike();
   const liked = likes.likedIds.has(item.locationId);
-  const treatment = item.treatments[0]?.name;
-  const place = cityLine(item.city, item.distanceKm);
+  const distance = formatDistance(item.distanceKm);
   const images = galleryFromItem(item.images, item.imageUrl);
 
   const open = () => {
@@ -80,23 +79,14 @@ export const ResultCard = React.memo(function ResultCard({
             >
               {item.name}
             </Text>
-            {item.rating != null && item.reviewCount > 0 ? (
-              <View className="mt-1 flex-row items-center gap-1">
-                <Ionicons name="star" size={12} color="#FF934F" />
-                <Text className="text-xs font-semibold text-ink">
-                  {item.rating.toFixed(1)}
-                </Text>
-                <Text className="text-xs text-muted">
-                  ({formatCount(item.reviewCount)})
-                </Text>
-              </View>
-            ) : null}
-            {place ? (
-              <Text className="mt-0.5 text-sm text-muted">{place}</Text>
-            ) : null}
-            {treatment ? (
-              <Text className="mt-0.5 text-sm text-ink">{treatment}</Text>
-            ) : null}
+            <View className="mt-1 flex-row items-center gap-1.5">
+                <Ionicons name="star" size={15} color="#F5B400" />
+                <Text className="text-sm font-semibold text-ink">{item.rating != null ? item.rating.toFixed(1).replace('.', ',') : '—'}</Text>
+                <Text className="text-sm text-muted">({formatCount(item.reviewCount)})</Text>
+                {distance ? <Text className="text-sm text-muted">·</Text> : null}
+                {distance ? <Text className="text-sm text-muted">{distance}</Text> : null}
+            </View>
+            {item.city ? <Text numberOfLines={1} className="mt-0.5 text-sm text-muted">{item.city}</Text> : null}
           </View>
         </View>
       </Pressable>

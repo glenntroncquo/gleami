@@ -181,7 +181,7 @@ function SearchOverlay({ session, measureResults, onClosed }: {
     Keyboard.dismiss();
     applySearch(categoryId ? '' : text.trim(), categoryId);
     setPhase('submitting');
-    router.navigate('/discover');
+    router.navigate({ pathname: '/discover', params: { openSheet: session.source === 'home' ? '1' : undefined } });
   };
   const choose = (item: SuggestItem) => {
     setText(item.name);
@@ -232,12 +232,12 @@ function SearchOverlay({ session, measureResults, onClosed }: {
             <Animated.View style={[styles.body, { opacity: box.body }]}>
               <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.suggestions}>
                 <Text style={styles.eyebrow}>{debounced.trim() ? 'Suggesties' : 'Ontdek behandelingen'}</Text>
-                {!online ? <Text style={styles.message}>Je bent offline. Je kunt je zoekopdracht alvast invullen.</Text> : loading ? <ActivityIndicator accessibilityLabel="Suggesties laden" color={colors.blue} style={{ marginVertical: 18 }} /> : failed ? <Pressable onPress={retry} accessibilityRole="button" style={styles.option}><Text style={styles.message}>Suggesties laden lukt niet. Tik om opnieuw te proberen.</Text></Pressable> : categoriesShown ? categoryOptions.map((item) => <Pressable key={`${item.type}-${item.id}`} accessibilityRole="button" accessibilityLabel={item.name} onPress={() => choose(item)} style={styles.option}>
+                {!online ? <Text style={styles.message}>Je bent offline. Je kunt je zoekopdracht alvast invullen.</Text> : loading ? <ActivityIndicator accessibilityLabel="Suggesties laden" color={colors.blue} style={{ marginVertical: 18 }} /> : failed ? <Pressable onPress={retry} accessibilityRole="button" style={styles.option}><Text style={styles.message}>Suggesties laden lukt niet. Tik om opnieuw te proberen.</Text></Pressable> : categoriesShown && categoryOptions.length === 0 ? <Text style={styles.message}>Geen suggesties.</Text> : categoriesShown ? categoryOptions.map((item) => <Pressable key={`${item.type}-${item.id}`} accessibilityRole="button" accessibilityLabel={item.name} onPress={() => choose(item)} style={styles.option}>
                   <View style={styles.optionIcon}><Ionicons name="sparkles-outline" size={19} color={colors.blue} /></View>
                   <View style={{ flex: 1 }}><Text style={styles.optionName}>{item.name}</Text><Text style={styles.optionType}>Categorie</Text></View>
                   <Ionicons name="arrow-up-outline" size={16} color={colors.muted} style={{ transform: [{ rotate: '-45deg' }] }} />
                 </Pressable>) : salonOptions.length === 0 ? <Text style={styles.message}>Geen salons. Tik op Zoek om toch te zoeken.</Text> : salonOptions.map((item) => {
-                  const subtitle = salonSuggestionSubtitle(item, debounced);
+                  const subtitle = salonSuggestionSubtitle(item);
                   return <Pressable key={item.locationId} accessibilityRole="button" accessibilityLabel={`${item.name}, ${subtitle}`} onPress={() => openSalon(item)} style={styles.option}>
                     <View style={styles.optionIcon}><Ionicons name="location-outline" size={19} color={colors.blue} /></View>
                     <View style={{ flex: 1 }}><Text style={styles.optionName}>{item.name}</Text><Text style={styles.optionType}>{subtitle}</Text></View>

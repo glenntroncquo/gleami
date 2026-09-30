@@ -20,7 +20,7 @@ import { DEFAULT_RADIUS_KM } from '@/src/config';
 /** Grabber (8 + 4 + 8) above the 44pt title/filters row. Also the collapsed height. */
 const HANDLE_HEIGHT = 64;
 
-export function DiscoverSheet({ topInset }: { topInset: number }) {
+export function DiscoverSheet({ topInset, openInitially = false }: { topInset: number; openInitially?: boolean }) {
   const insets = useSafeAreaInsets();
   // Native tabs already contribute their height to the screen's bottom safe area.
   const tabClearance = insets.bottom + (Platform.OS === 'ios' ? 0 : 74);
@@ -28,6 +28,7 @@ export function DiscoverSheet({ topInset }: { topInset: number }) {
   const [collapsed, setCollapsed] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const categoryCount = useDiscovery((state) => state.categoryIds.length);
+  const query = useDiscovery((state) => state.q).trim();
   const radius = useDiscovery((state) => state.radiusKm);
   const filterCount = categoryCount + (radius != null && radius !== DEFAULT_RADIUS_KM ? 1 : 0);
   const online = useOnline();
@@ -38,6 +39,12 @@ export function DiscoverSheet({ topInset }: { topInset: number }) {
     [search.data],
   );
   const [visibleIds, setVisibleIds] = useState<string[] | null>(null);
+
+  React.useEffect(() => {
+    if (!openInitially) return;
+    const frame = requestAnimationFrame(() => sheet.current?.snapToIndex(1));
+    return () => cancelAnimationFrame(frame);
+  }, [openInitially]);
 
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: { item: SearchItem }[] }) => {
@@ -165,10 +172,10 @@ export function DiscoverSheet({ topInset }: { topInset: number }) {
               {search.isError ? (
                 <ErrorState onRetry={() => search.refetch()} />
               ) : (
-                <Text className="py-8 text-center text-base font-semibold text-ink">{t('discover.emptyTitle')}</Text>
+                <Text className="py-8 text-center text-base font-semibold text-ink">{query ? t('discover.emptyQueryTitle') : t('discover.emptyTitle')}</Text>
               )}
               {!search.isError ? (
-                <Text className="text-center text-sm text-muted">{t('discover.emptyBody')}</Text>
+                <Text className="text-center text-sm text-muted">{query ? t('discover.emptyQueryBody') : t('discover.emptyBody')}</Text>
               ) : null}
             </View>
           }

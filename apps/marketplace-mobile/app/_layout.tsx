@@ -43,6 +43,7 @@ export default function RootLayout() {
                   contentStyle: { backgroundColor: '#ffffff' },
                 }}>
                 <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="location" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
                 <Stack.Screen name="salon/[slug]" />
                 <Stack.Screen name="book/[slug]" options={{ presentation: 'fullScreenModal' }} />
                 <Stack.Screen name="auth" options={{ presentation: 'modal' }} />

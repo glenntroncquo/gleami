@@ -2,10 +2,7 @@ import { createClient } from "@/lib/supabase/client";
 
 export type CreateInvitationInput = {
   companyId: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  roleId: string;
+  staffId: string;
   locationId: string | null;
   locale: string;
 };

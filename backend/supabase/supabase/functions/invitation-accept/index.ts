@@ -25,6 +25,8 @@ type StaffLink = {
   linkedStaffId: string | null;
   updatedMembershipId: string | null;
   insertedMembershipId: string | null;
+  insertedCompanyMembershipId: string | null;
+  claimedLocationMembershipIds: string[];
 };
 
 function isToken(value: unknown): value is string {
@@ -97,9 +99,88 @@ async function undoStaffLink(
       .eq("id", link.updatedMembershipId)
       .eq("user_id", userId);
   }
+  if (link.insertedCompanyMembershipId) {
+    await admin.from("company_membership").delete().eq("id", link.insertedCompanyMembershipId);
+  }
+  for (const membershipId of link.claimedLocationMembershipIds) {
+    await admin
+      .from("location_membership")
+      .update({ user_id: null })
+      .eq("id", membershipId)
+      .eq("user_id", userId);
+  }
   if (link.linkedStaffId) {
     await admin.from("staff").update({ user_id: null }).eq("id", link.linkedStaffId).eq("user_id", userId);
   }
+}
+
+function emptyStaffLink(linkedStaffId: string | null = null): StaffLink {
+  return {
+    linkedStaffId,
+    updatedMembershipId: null,
+    insertedMembershipId: null,
+    insertedCompanyMembershipId: null,
+    claimedLocationMembershipIds: [],
+  };
+}
+
+async function ensureCompanyMembership(
+  admin: ReturnType<typeof adminClient>,
+  input: { userId: string; companyId: string; roleId: string },
+): Promise<{ ok: true; insertedId: string | null } | { ok: false; error: "already_member" }> {
+  const { data: existing, error } = await admin
+    .from("company_membership")
+    .select("id, role_id")
+    .eq("user_id", input.userId)
+    .eq("company_id", input.companyId)
+    .maybeSingle();
+  if (error) throw error;
+  if (existing) {
+    if (existing.role_id === input.roleId) return { ok: true, insertedId: null };
+    return { ok: false, error: "already_member" };
+  }
+  const { data: inserted, error: insertError } = await admin
+    .from("company_membership")
+    .insert({
+      user_id: input.userId,
+      company_id: input.companyId,
+      role_id: input.roleId,
+    })
+    .select("id")
+    .single();
+  if (insertError) {
+    if (insertError.code === "23505") return { ok: false, error: "already_member" };
+    throw insertError;
+  }
+  return { ok: true, insertedId: inserted.id };
+}
+
+async function claimNullLocationMemberships(
+  admin: ReturnType<typeof adminClient>,
+  staffId: string,
+  userId: string,
+): Promise<string[]> {
+  const { data, error } = await admin
+    .from("location_membership")
+    .select("id")
+    .eq("staff_id", staffId)
+    .is("user_id", null);
+  if (error) throw error;
+  const claimed: string[] = [];
+  for (const row of data ?? []) {
+    const { data: updated, error: updateError } = await admin
+      .from("location_membership")
+      .update({ user_id: userId })
+      .eq("id", row.id)
+      .is("user_id", null)
+      .select("id");
+    if (updateError) {
+      if (updateError.code === "23505") continue;
+      throw updateError;
+    }
+    if (updated?.[0]) claimed.push(row.id as string);
+  }
+  return claimed;
 }
 
 async function claimStaffUser(
@@ -245,6 +326,12 @@ Deno.serve(async (req) => {
     }
 
     if (action === "preview") {
+      let accountExists = false;
+      try {
+        accountExists = Boolean(await findUserIdByEmail(invite.email));
+      } catch (lookupError) {
+        console.error("Invite account lookup failed", lookupError);
+      }
       return jsonResponse(
         {
           success: true,
@@ -255,6 +342,7 @@ Deno.serve(async (req) => {
           locationName: locationResult.data?.name ?? null,
           roleName: role.name,
           roleScope: role.scope,
+          accountExists,
         },
         200,
         origin,
@@ -337,50 +425,90 @@ Deno.serve(async (req) => {
     };
 
     if (invite.staff_id) {
-      if (!invite.location_id || role.scope !== "location") {
-        return await failMembership(400, "invalid");
-      }
       const claimedStaff = await claimStaffUser(admin, invite.staff_id, userId, invite.company_id);
       if (!claimedStaff.ok) {
         return await failMembership(claimedStaff.error === "already_member" ? 409 : 400, claimedStaff.error);
       }
-      staffLink = {
-        linkedStaffId: claimedStaff.linkedStaffId,
-        updatedMembershipId: null,
-        insertedMembershipId: null,
-      };
-      const membership = await ensureLocationMembership(admin, {
-        staffId: invite.staff_id,
+      staffLink = emptyStaffLink(claimedStaff.linkedStaffId);
+      if (role.scope === "company") {
+        if (invite.location_id) return await failMembership(400, "invalid");
+        const companyMembership = await ensureCompanyMembership(admin, {
+          userId,
+          companyId: invite.company_id,
+          roleId: invite.role_id,
+        });
+        if (!companyMembership.ok) {
+          return await failMembership(409, companyMembership.error);
+        }
+        staffLink = {
+          ...staffLink,
+          insertedCompanyMembershipId: companyMembership.insertedId,
+          claimedLocationMembershipIds: await claimNullLocationMemberships(
+            admin,
+            invite.staff_id,
+            userId,
+          ),
+        };
+      } else {
+        if (!invite.location_id) return await failMembership(400, "invalid");
+        const membership = await ensureLocationMembership(admin, {
+          staffId: invite.staff_id,
+          userId,
+          locationId: invite.location_id,
+          roleId: invite.role_id,
+        });
+        if (!membership.ok) {
+          return await failMembership(membership.error === "already_member" ? 409 : 400, membership.error);
+        }
+        staffLink = {
+          ...staffLink,
+          updatedMembershipId: membership.updatedMembershipId,
+          insertedMembershipId: membership.insertedMembershipId,
+        };
+      }
+    } else if (role.scope === "company") {
+      const { data: staffRows, error: staffLookupError } = await admin
+        .from("staff")
+        .select("id, user_id")
+        .eq("company_id", invite.company_id)
+        .ilike("email", invite.email)
+        .limit(5);
+      if (staffLookupError) throw staffLookupError;
+      const staff = (staffRows ?? []).find((row) => row.user_id === userId) ??
+        (staffRows ?? []).find((row) => !row.user_id) ??
+        null;
+      const ownedBySomeoneElse = (staffRows ?? []).some(
+        (row) => row.user_id && row.user_id !== userId,
+      );
+      if (!staff && ownedBySomeoneElse) {
+        return await failMembership(409, "already_member");
+      }
+      if (staff?.id) {
+        const claimedStaff = await claimStaffUser(admin, staff.id, userId, invite.company_id);
+        if (!claimedStaff.ok) {
+          return await failMembership(
+            claimedStaff.error === "already_member" ? 409 : 400,
+            claimedStaff.error,
+          );
+        }
+        staffLink = emptyStaffLink(claimedStaff.linkedStaffId);
+        staffLink = {
+          ...staffLink,
+          claimedLocationMembershipIds: await claimNullLocationMemberships(admin, staff.id, userId),
+        };
+      }
+      const companyMembership = await ensureCompanyMembership(admin, {
         userId,
-        locationId: invite.location_id,
+        companyId: invite.company_id,
         roleId: invite.role_id,
       });
-      if (!membership.ok) {
-        return await failMembership(membership.error === "already_member" ? 409 : 400, membership.error);
+      if (!companyMembership.ok) {
+        return await failMembership(409, companyMembership.error);
       }
       staffLink = {
-        linkedStaffId: claimedStaff.linkedStaffId,
-        updatedMembershipId: membership.updatedMembershipId,
-        insertedMembershipId: membership.insertedMembershipId,
+        ...(staffLink ?? emptyStaffLink()),
+        insertedCompanyMembershipId: companyMembership.insertedId,
       };
-    } else if (role.scope === "company") {
-      const { error: membershipError } = await admin.from("company_membership").insert({
-        user_id: userId,
-        company_id: invite.company_id,
-        role_id: invite.role_id,
-      });
-      if (membershipError) {
-        if (createdUserId) await admin.auth.admin.deleteUser(createdUserId);
-        await revert(admin, claimed.id);
-        claimedId = null;
-        createdUserId = null;
-        const duplicate = membershipError.code === "23505";
-        return jsonResponse(
-          { success: false, error: duplicate ? "already_member" : "invalid" },
-          duplicate ? 409 : 500,
-          origin,
-        );
-      }
     } else {
       const { data: staffRows, error: staffLookupError } = await admin
         .from("staff")
@@ -411,11 +539,7 @@ Deno.serve(async (req) => {
             claimedStaff.error,
           );
         }
-        staffLink = {
-          linkedStaffId: claimedStaff.linkedStaffId,
-          updatedMembershipId: null,
-          insertedMembershipId: null,
-        };
+        staffLink = emptyStaffLink(claimedStaff.linkedStaffId);
         const membership = await ensureLocationMembership(admin, {
           staffId: staff.id,
           userId,
@@ -429,7 +553,7 @@ Deno.serve(async (req) => {
           );
         }
         staffLink = {
-          linkedStaffId: claimedStaff.linkedStaffId,
+          ...staffLink,
           updatedMembershipId: membership.updatedMembershipId,
           insertedMembershipId: membership.insertedMembershipId,
         };

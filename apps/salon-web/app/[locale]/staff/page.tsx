@@ -86,7 +86,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/auth-provider";
 import { toast } from "sonner";
 import { StaffSheet } from "@/components/staff-sheet";
-import { InviteStaffButton } from "@/components/invite-staff-dialog";
+import { InviteExistingStaffDialog } from "@/components/invite-staff-dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -123,6 +123,7 @@ import {
 
 type Staff = {
   id: string;
+  user_id?: string | null;
   first_name: string | null;
   last_name: string | null;
   email: string;
@@ -152,7 +153,7 @@ const getWeekdayAbbr = (dayOfWeek: number, locale: string = "nl") => {
   return days[locale as keyof typeof days]?.[dayOfWeek] || days.en[dayOfWeek];
 };
 
-const STAFF_LIST_SELECT = `id, first_name, last_name, email, phone, slug, specialization, image_path, status, hire_date, specialties,
+const STAFF_LIST_SELECT = `id, user_id, first_name, last_name, email, phone, slug, specialization, image_path, status, hire_date, specialties,
            staff_schedule_rule (id, start_time, end_time, day_of_week, is_active)`;
 
 async function loadStaffRows(locationId: string | null): Promise<Staff[]> {
@@ -268,7 +269,9 @@ const createColumns = (
   t: ReturnType<typeof useTranslations>,
   onRowClick: (staff: Staff) => void,
   onDelete: (staff: Staff) => void,
-  onAvailability: (staff: Staff) => void
+  onAvailability: (staff: Staff) => void,
+  canInvite: boolean,
+  onInvite: (staff: Staff) => void,
 ): ColumnDef<Staff>[] => [
   {
     header: t("common.name"),
@@ -339,6 +342,8 @@ const createColumns = (
         onDelete={onDelete}
         onEdit={onRowClick}
         onAvailability={onAvailability}
+        canInvite={canInvite}
+        onInvite={onInvite}
       />
     ),
     size: 60,
@@ -353,12 +358,16 @@ function MobileStaffCard({
   onDelete,
   onToggleStatus,
   onAvailabilityClick,
+  canInvite,
+  onInvite,
 }: {
   staff: Staff;
   onEdit: (staff: Staff) => void;
   onDelete: (staff: Staff) => void;
   onToggleStatus: (staff: Staff) => void;
   onAvailabilityClick: (staff: Staff) => void;
+  canInvite: boolean;
+  onInvite: (staff: Staff) => void;
 }) {
   const t = useTranslations();
   const fullName = `${staff.first_name || ""} ${staff.last_name || ""}`.trim();
@@ -460,6 +469,17 @@ function MobileStaffCard({
             </p>
           </div>
 
+          {canInvite && !staff.user_id && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => onInvite(staff)}
+            >
+              {t("staff.invite.action")}
+            </Button>
+          )}
+
           {/* Actions */}
           <div className="flex justify-between items-center pt-2 border-t">
             <Button
@@ -488,7 +508,7 @@ function MobileStaffCard({
 export default function StaffPage() {
   const t = useTranslations();
   const id = useId();
-  const { user } = useAuth();
+  const { user, hasCompanyPermission, hasPermission } = useAuth();
   const isMobile = useIsMobile();
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -510,6 +530,7 @@ export default function StaffPage() {
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   const [isStaffSheetOpen, setIsStaffSheetOpen] = useState(false);
   const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null);
+  const [staffToInvite, setStaffToInvite] = useState<Staff | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isAvailabilityDialogOpen, setIsAvailabilityDialogOpen] =
     useState(false);
@@ -771,11 +792,19 @@ export default function StaffPage() {
     setIsDeleteDialogOpen(true);
   };
 
+  const canInviteStaff = Boolean(
+    companyId &&
+      (hasCompanyPermission("invites:manage", companyId) ||
+        (locationId ? hasPermission("invites:manage", locationId) : false)),
+  );
+
   const columns = createColumns(
     t,
     handleRowClick,
     handleDeleteClick,
-    handleAvailabilityClick
+    handleAvailabilityClick,
+    canInviteStaff,
+    setStaffToInvite,
   );
 
   const refreshStaffData = async () => {
@@ -1230,7 +1259,6 @@ export default function StaffPage() {
                     </AlertDialogContent>
                   </AlertDialog>
                 )}
-                <InviteStaffButton />
                 {/* Add staff button */}
                 <Button
                   className="ml-auto"
@@ -1267,6 +1295,8 @@ export default function StaffPage() {
                         }}
                         onToggleStatus={handleToggleStatus}
                         onAvailabilityClick={handleAvailabilityClick}
+                        canInvite={canInviteStaff}
+                        onInvite={setStaffToInvite}
                       />
                     ))
                   ) : (
@@ -1502,6 +1532,14 @@ export default function StaffPage() {
         </div>
       </SidebarInset>
 
+      <InviteExistingStaffDialog
+        staff={staffToInvite}
+        open={staffToInvite !== null}
+        onOpenChange={(open) => {
+          if (!open) setStaffToInvite(null);
+        }}
+      />
+
       {/* Main Staff Sheet for creating new staff only */}
       <StaffSheet
         staff={selectedStaff}
@@ -1685,12 +1723,16 @@ function RowActions({
   onDelete,
   onEdit,
   onAvailability,
+  canInvite,
+  onInvite,
 }: {
   t: ReturnType<typeof useTranslations>;
   staff: Staff;
   onDelete: (staff: Staff) => void;
   onEdit: (staff: Staff) => void;
   onAvailability: (staff: Staff) => void;
+  canInvite: boolean;
+  onInvite: (staff: Staff) => void;
 }) {
   const handleEditStaff = () => {
     onEdit(staff);
@@ -1722,6 +1764,11 @@ function RowActions({
           <DropdownMenuItem onClick={handleOpenAvailability}>
             <span>{t("staff.actions.addAvailability")}</span>
           </DropdownMenuItem>
+          {canInvite && !staff.user_id && (
+            <DropdownMenuItem onClick={() => onInvite(staff)}>
+              <span>{t("staff.invite.action")}</span>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="text-destructive focus:text-destructive"

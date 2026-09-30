@@ -26,6 +26,112 @@ type RoleRow = {
   company_id: string | null;
 };
 
+type StaffRow = {
+  id: string;
+  company_id: string | null;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  user_id: string | null;
+};
+
+type InviteTarget = {
+  locationId: string;
+  locationName: string;
+  roleId: string;
+};
+
+function missingColumn(
+  error: { code?: string; message?: string } | null,
+  column: string,
+): boolean {
+  if (!error) return false;
+  const message = (error.message ?? "").toLowerCase();
+  const name = column.toLowerCase();
+  return error.code === "42703" ||
+    error.code === "PGRST204" ||
+    (message.includes(name) &&
+      (message.includes("does not exist") || message.includes("schema cache")));
+}
+
+function inviteFirstName(staff: StaffRow, email: string): string {
+  const fromProfile = normalizeName(staff.first_name);
+  if (fromProfile) return fromProfile;
+  const local = email.split("@")[0]?.replace(/[._+-]+/g, " ").trim() ?? "";
+  return normalizeName(local) ?? "Team";
+}
+
+async function defaultLocationStaffRoleId(
+  admin: ReturnType<typeof adminClient>,
+): Promise<string | null> {
+  const { data, error } = await admin
+    .from("role")
+    .select("id, name")
+    .eq("scope", "location")
+    .eq("is_system", true);
+  if (error) throw error;
+  const roles = data ?? [];
+  for (const name of ["stylist", "staff"]) {
+    const match = roles.find((role) => role.name === name);
+    if (match?.id) return match.id as string;
+  }
+  return (roles[0]?.id as string | undefined) ?? null;
+}
+
+async function resolveExistingStaffTarget(
+  admin: ReturnType<typeof adminClient>,
+  input: { companyId: string; staffId: string; locationId: string | null },
+): Promise<
+  | { ok: true; target: InviteTarget }
+  | { ok: false; error: "invitation_forbidden" | "invitation_no_location" | "invitation_invalid" }
+> {
+  const { data: locations, error: locationError } = await admin
+    .from("location")
+    .select("id, name")
+    .eq("company_id", input.companyId);
+  if (locationError) throw locationError;
+  const locationById = new Map(
+    (locations ?? []).map((row) => [row.id as string, (row.name as string | null) ?? ""]),
+  );
+  if (input.locationId && !locationById.has(input.locationId)) {
+    return { ok: false, error: "invitation_forbidden" };
+  }
+
+  const { data: memberships, error: membershipError } = await admin
+    .from("location_membership")
+    .select("location_id, role_id, is_active")
+    .eq("staff_id", input.staffId);
+  if (membershipError) throw membershipError;
+  const rows = (memberships ?? []).filter((row) => locationById.has(row.location_id as string));
+  const pool = input.locationId
+    ? rows.filter((row) => row.location_id === input.locationId)
+    : rows;
+  const chosen = pool.find((row) => row.is_active) ?? pool[0] ?? null;
+  if (chosen) {
+    const locationId = chosen.location_id as string;
+    return {
+      ok: true,
+      target: {
+        locationId,
+        locationName: locationById.get(locationId) ?? "",
+        roleId: chosen.role_id as string,
+      },
+    };
+  }
+
+  if (!input.locationId) return { ok: false, error: "invitation_no_location" };
+  const roleId = await defaultLocationStaffRoleId(admin);
+  if (!roleId) return { ok: false, error: "invitation_invalid" };
+  return {
+    ok: true,
+    target: {
+      locationId: input.locationId,
+      locationName: locationById.get(input.locationId) ?? "",
+      roleId,
+    },
+  };
+}
+
 async function permissionKeys(
   admin: ReturnType<typeof adminClient>,
   roleIds: string[],
@@ -107,20 +213,14 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => null);
     const companyId = body?.companyId;
-    const roleId = body?.roleId;
-    const locationId = body?.locationId ?? null;
-    const email = normalizeEmail(body?.email);
-    const firstName = normalizeName(body?.firstName);
-    const lastName = normalizeName(body?.lastName);
+    const staffId = body?.staffId;
+    const requestedLocationId = body?.locationId ?? null;
     const locale = normalizeLocale(body?.locale);
 
-    if (body?.email != null && !email) {
-      return jsonResponse({ success: false, error: "invitation_invalid_email" }, 400, origin);
-    }
-    if (!isUuid(companyId) || !isUuid(roleId) || !email || !firstName || !lastName) {
+    if (!isUuid(companyId) || !isUuid(staffId)) {
       return jsonResponse({ success: false, error: "invitation_invalid" }, 400, origin);
     }
-    if (locationId != null && !isUuid(locationId)) {
+    if (requestedLocationId != null && !isUuid(requestedLocationId)) {
       return jsonResponse({ success: false, error: "invitation_invalid" }, 400, origin);
     }
 
@@ -135,6 +235,37 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: false, error: "invitation_forbidden" }, 403, origin);
     }
 
+    const { data: staff, error: staffError } = await admin
+      .from("staff")
+      .select("id, company_id, email, first_name, last_name, user_id")
+      .eq("id", staffId)
+      .maybeSingle();
+    if (staffError) throw staffError;
+    const staffRow = staff as StaffRow | null;
+    if (!staffRow || staffRow.company_id !== companyId) {
+      return jsonResponse({ success: false, error: "invitation_staff_not_found" }, 404, origin);
+    }
+    if (staffRow.user_id) {
+      return jsonResponse({ success: false, error: "invitation_already_has_login" }, 409, origin);
+    }
+    const email = normalizeEmail(staffRow.email);
+    if (!email) {
+      return jsonResponse({ success: false, error: "invitation_invalid_email" }, 400, origin);
+    }
+    const firstName = inviteFirstName(staffRow, email);
+    const lastName = normalizeName(staffRow.last_name);
+
+    const resolved = await resolveExistingStaffTarget(admin, {
+      companyId,
+      staffId,
+      locationId: requestedLocationId,
+    });
+    if (!resolved.ok) {
+      const status = resolved.error === "invitation_forbidden" ? 403 : 400;
+      return jsonResponse({ success: false, error: resolved.error }, status, origin);
+    }
+    const { locationId, locationName, roleId } = resolved.target;
+
     const { data: role, error: roleError } = await admin
       .from("role")
       .select("id, name, scope, is_system, company_id")
@@ -142,31 +273,11 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (roleError) throw roleError;
     const roleRow = role as RoleRow | null;
-    if (!roleRow || (roleRow.scope !== "company" && roleRow.scope !== "location")) {
-      return jsonResponse({ success: false, error: "invitation_forbidden" }, 403, origin);
+    if (!roleRow || roleRow.scope !== "location") {
+      return jsonResponse({ success: false, error: "invitation_role_scope" }, 400, origin);
     }
     if (!roleRow.is_system && roleRow.company_id !== companyId) {
       return jsonResponse({ success: false, error: "invitation_forbidden" }, 403, origin);
-    }
-    if (roleRow.scope === "company" && locationId) {
-      return jsonResponse({ success: false, error: "invitation_role_scope" }, 400, origin);
-    }
-    if (roleRow.scope === "location" && !locationId) {
-      return jsonResponse({ success: false, error: "invitation_role_scope" }, 400, origin);
-    }
-
-    let locationName: string | null = null;
-    if (locationId) {
-      const { data: location, error: locationError } = await admin
-        .from("location")
-        .select("id, company_id, name")
-        .eq("id", locationId)
-        .maybeSingle();
-      if (locationError) throw locationError;
-      if (!location || location.company_id !== companyId) {
-        return jsonResponse({ success: false, error: "invitation_forbidden" }, 403, origin);
-      }
-      locationName = location.name;
     }
 
     const callerPerms = await callerPermissions({
@@ -180,43 +291,53 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: false, error: "invitation_not_grantable" }, 403, origin);
     }
 
-    let pending = admin
+    const now = new Date().toISOString();
+    const { error: revokeError } = await admin
       .from("invitation")
-      .select("id")
+      .update({ status: "revoked", token_hash: null, updated_at: now })
       .eq("company_id", companyId)
       .eq("status", "pending")
+      .eq("location_id", locationId)
       .ilike("email", email);
-    pending = locationId ? pending.eq("location_id", locationId) : pending.is("location_id", null);
-    const { data: existing, error: existingError } = await pending.maybeSingle();
-    if (existingError) throw existingError;
-    if (existing) {
-      return jsonResponse({ success: false, error: "invitation_duplicate" }, 409, origin);
-    }
+    if (revokeError) throw revokeError;
 
     const token = randomToken();
     const tokenHash = await sha256Hex(token);
     const expiresAt = new Date(Date.now() + INVITE_TTL_MS).toISOString();
-    const { data: created, error: insertError } = await admin
+    const invitationRow = {
+      company_id: companyId,
+      staff_id: staffId,
+      email,
+      first_name: firstName,
+      last_name: lastName,
+      role_id: roleId,
+      location_id: locationId,
+      invited_by: session.id,
+      status: "pending",
+      token_hash: tokenHash,
+      expires_at: expiresAt,
+    };
+    let { data: created, error: insertError } = await admin
       .from("invitation")
-      .insert({
-        company_id: companyId,
-        email,
-        first_name: firstName,
-        last_name: lastName,
-        role_id: roleId,
-        location_id: locationId,
-        invited_by: session.id,
-        status: "pending",
-        token_hash: tokenHash,
-        expires_at: expiresAt,
-      })
+      .insert(invitationRow)
       .select("id")
       .single();
+    // Production may not have invitation.staff_id yet. The accept path then
+    // links the login by the staff email already stored on the invite.
+    if (missingColumn(insertError, "staff_id")) {
+      const { staff_id: _staffId, ...withoutStaffId } = invitationRow;
+      const retry = await admin.from("invitation").insert(withoutStaffId).select("id").single();
+      created = retry.data;
+      insertError = retry.error;
+    }
     if (insertError) {
       if (insertError.code === "23505") {
         return jsonResponse({ success: false, error: "invitation_duplicate" }, 409, origin);
       }
       throw insertError;
+    }
+    if (!created) {
+      throw new Error("invitation insert returned no row");
     }
 
     const base = salonOrigin(req);
@@ -226,7 +347,7 @@ Deno.serve(async (req) => {
 
     if (inviteUrl && Deno.env.get("RESEND_API_KEY")) {
       const safeCompany = escapeHtml(company.name ?? "Gleami");
-      const safeName = escapeHtml(`${firstName} ${lastName}`);
+      const safeName = escapeHtml([firstName, lastName].filter(Boolean).join(" "));
       const safeRole = escapeHtml(roleRow.name);
       const safeLocation = locationName ? escapeHtml(locationName) : "";
       const where = locationName
@@ -236,18 +357,18 @@ Deno.serve(async (req) => {
         await sendEmail({
           from: `${headerSafe(company.name ?? "Gleami")} <afspraken@notifications.salonify.co>`,
           to: [email],
-          subject: `You're invited to ${headerSafe(company.name ?? "Gleami")}`,
+          subject: `Create your login for ${headerSafe(company.name ?? "Gleami")}`,
           text: [
             `Hi ${firstName},`,
             "",
-            `You've been invited to ${company.name ?? "the salon"} as ${roleRow.name}.`,
-            locationName ? `Location: ${locationName}` : "Access: whole company",
+            `Create a login for your staff profile at ${company.name ?? "the salon"} as ${roleRow.name}.`,
+            ...(locationName ? [`Location: ${locationName}`] : []),
             "",
             `Create your login: ${inviteUrl}`,
             "",
             "This link expires in 7 days.",
           ].join("\n"),
-          html: `<p>Hi ${safeName},</p><p>You've been invited to ${where} as <strong>${safeRole}</strong>.</p><p><a href="${escapeHtml(inviteUrl)}">Create your login</a></p><p>This link expires in 7 days.</p>`,
+          html: `<p>Hi ${safeName},</p><p>Create a login for your staff profile at ${where} as <strong>${safeRole}</strong>.</p><p><a href="${escapeHtml(inviteUrl)}">Create your login</a></p><p>This link expires in 7 days.</p>`,
         });
         emailSent = true;
         await admin

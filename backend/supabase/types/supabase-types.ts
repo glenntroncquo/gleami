@@ -828,10 +828,13 @@ export type Database = {
           email: string
           email_sent_at: string | null
           expires_at: string | null
+          first_name: string | null
           id: string
           invited_by: string | null
+          last_name: string | null
           location_id: string | null
           role_id: string | null
+          staff_id: string | null
           status: string
           token_hash: string | null
           updated_at: string | null
@@ -843,10 +846,13 @@ export type Database = {
           email: string
           email_sent_at?: string | null
           expires_at?: string | null
+          first_name?: string | null
           id?: string
           invited_by?: string | null
+          last_name?: string | null
           location_id?: string | null
           role_id?: string | null
+          staff_id?: string | null
           status: string
           token_hash?: string | null
           updated_at?: string | null
@@ -858,10 +864,13 @@ export type Database = {
           email?: string
           email_sent_at?: string | null
           expires_at?: string | null
+          first_name?: string | null
           id?: string
           invited_by?: string | null
+          last_name?: string | null
           location_id?: string | null
           role_id?: string | null
+          staff_id?: string | null
           status?: string
           token_hash?: string | null
           updated_at?: string | null
@@ -879,6 +888,13 @@ export type Database = {
             columns: ["role_id"]
             isOneToOne: false
             referencedRelation: "role"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitation_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
             referencedColumns: ["id"]
           },
         ]

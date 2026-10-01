@@ -122,13 +122,13 @@ const createStyles = (theme: typeof Colors.light) =>
       minHeight: Design.touchTarget,
       paddingHorizontal: 14,
       justifyContent: 'center',
-      borderRadius: 18,
+      borderRadius: Design.pillRadius,
       borderWidth: 1,
       borderColor: theme.border,
     },
     chipSelected: {
-      backgroundColor: theme.tint,
-      borderColor: theme.tint,
+      backgroundColor: theme.blueTint,
+      borderColor: `${theme.brandBlue}55`,
     },
     addChip: {
       borderStyle: 'dashed',
@@ -139,7 +139,7 @@ const createStyles = (theme: typeof Colors.light) =>
       color: theme.text,
     },
     chipTextSelected: {
-      color: theme.onTint,
+      color: theme.tint,
     },
     addRow: {
       flexDirection: 'row',

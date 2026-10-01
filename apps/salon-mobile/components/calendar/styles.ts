@@ -1,6 +1,7 @@
 import { StyleSheet } from 'react-native';
 
 import { Colors } from '@/constants/theme';
+import { Design } from '@/constants/theme';
 
 export const createStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({
@@ -14,7 +15,7 @@ export const createStyles = (theme: typeof Colors.light) =>
     },
     scrollContent: {
       flex: 1,
-      paddingHorizontal: 16,
+      paddingHorizontal: Design.screenPadding,
       paddingBottom: 0,
     },
     headerBlock: {
@@ -424,7 +425,7 @@ export const createStyles = (theme: typeof Colors.light) =>
     retryButton: {
       paddingHorizontal: 16,
       paddingVertical: 10,
-      borderRadius: 10,
+      borderRadius: Design.controlRadius,
       backgroundColor: theme.tint,
     },
     retryButtonText: {

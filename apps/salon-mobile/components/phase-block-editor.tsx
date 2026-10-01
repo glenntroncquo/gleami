@@ -261,9 +261,9 @@ function TypeChip({
       style={[
         styles.typeChip,
         { borderColor: theme.border, backgroundColor: theme.background },
-        selected && { backgroundColor: theme.tint, borderColor: theme.tint },
+        selected && { backgroundColor: theme.blueTint, borderColor: `${theme.brandBlue}55` },
       ]}>
-      <Text style={[styles.typeChipText, { color: selected ? theme.onTint : theme.text }]}>{label}</Text>
+      <Text style={[styles.typeChipText, { color: selected ? theme.tint : theme.text }]}>{label}</Text>
     </Pressable>
   );
 }

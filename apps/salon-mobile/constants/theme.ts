@@ -3,21 +3,20 @@
  * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
  */
 
-// Monochrome accent: the accent *is* the theme's text color, so it flips
-// naturally with light/dark mode instead of carrying a separate brand hue.
-// `onTint` is the correct foreground for anything drawn on a tint-colored
-// surface (e.g. a solid button) — it's the theme's background color, so
-// contrast is automatic in both modes.
-const textLight = '#11181C';
-const textDark = '#ECEDEE';
+// Keep the staff app on the same visual foundation as marketplace-mobile.
+// Dark mode preserves the same Gleami brand hierarchy with accessible contrast.
+const textLight = '#071D43';
+const textDark = '#F4F6FB';
 
 export const Colors = {
   light: {
     text: textLight,
     background: '#fff',
-    surface: '#F5F6F7',
-    border: '#DCDFE1',
-    muted: '#687076',
+    surface: '#F7F8FC',
+    border: '#E5E9F2',
+    muted: '#737989',
+    blueTint: '#F0F3FC',
+    brandBlue: '#6488E8',
     error: '#E5484D',
     errorSurface: '#FCEDEE',
     success: '#2E9E5B',
@@ -26,21 +25,20 @@ export const Colors = {
     warningSurface: '#FCF3D9',
     destructive: '#E85D58',
     onDestructive: '#FFFFFF',
-    tint: textLight,
-    onTint: '#fff',
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: textLight,
+    tint: '#071D43',
+    onTint: '#FFFFFF',
+    icon: '#737989',
+    tabIconDefault: '#737989',
+    tabIconSelected: '#071D43',
   },
   dark: {
-    // True black, Instagram-style: large flat surfaces read as clean rather
-    // than a stack of gray card levels — structure comes from hairline
-    // borders, not elevation.
     text: textDark,
-    background: '#000000',
-    surface: '#0A0A0A',
-    border: '#262626',
-    muted: '#A8A8A8',
+    background: '#07111F',
+    surface: '#111A2B',
+    border: '#27344A',
+    muted: '#A7B0C0',
+    blueTint: '#1A2945',
+    brandBlue: '#8FAAFF',
     error: '#FF6B6B',
     errorSurface: '#301719',
     success: '#4FBE7E',
@@ -49,20 +47,32 @@ export const Colors = {
     warningSurface: '#332A11',
     destructive: '#E85D58',
     onDestructive: '#FFFFFF',
-    tint: textDark,
-    onTint: '#000000',
-    icon: '#A8A8A8',
-    tabIconDefault: '#A8A8A8',
-    tabIconSelected: textDark,
+    tint: '#8FAAFF',
+    onTint: '#071D43',
+    icon: '#A7B0C0',
+    tabIconDefault: '#A7B0C0',
+    tabIconSelected: '#8FAAFF',
   },
 };
 
 /** Compact sizing shared by navigation, forms, and list screens. */
 export const Design = {
-  screenPadding: 16,
+  screenPadding: 20,
   sectionGap: 20,
-  controlRadius: 12,
+  controlRadius: 14,
+  cardRadius: 20,
+  sheetRadius: 24,
+  pillRadius: 999,
   touchTarget: 44,
+  colors: {
+    navy: '#071D43',
+    blue: '#6488E8',
+    lavender: '#817BFA',
+    orange: '#FF934F',
+    blueTint: '#F0F3FC',
+    line: '#E5E9F2',
+    surface: '#F7F8FC',
+  },
   type: {
     body: { fontSize: 15, lineHeight: 22 },
     title: { fontSize: 20, lineHeight: 26, fontWeight: '700' as const },

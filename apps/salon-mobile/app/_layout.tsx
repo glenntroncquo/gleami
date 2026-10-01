@@ -69,6 +69,7 @@ function SentryStaffContext() {
 
 function RootNavigator() {
   const { session, loading } = useAuth();
+  const colorScheme = useColorScheme() ?? 'light';
 
   useEffect(() => {
     if (!loading) {
@@ -83,6 +84,12 @@ function RootNavigator() {
   return (
     <Stack
       screenOptions={{
+        contentStyle: { backgroundColor: colorScheme === 'dark' ? Colors.dark.background : Colors.light.background },
+        headerStyle: { backgroundColor: colorScheme === 'dark' ? Colors.dark.background : Colors.light.background },
+        headerTintColor: colorScheme === 'dark' ? Colors.dark.text : Colors.light.tint,
+        headerTitleStyle: { fontWeight: '600' },
+        headerShadowVisible: false,
+        sheetCornerRadius: 24,
         // Otherwise iOS falls back to the previous screen's route name (e.g.
         // the literal "(tabs)") as the back-button label whenever that
         // screen has no title of its own — show just the chevron instead.
@@ -107,15 +114,15 @@ function RootNavigator() {
         */}
         <Stack.Screen
           name="appointment-new/client-picker"
-          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.75], sheetGrabberVisible: true, sheetCornerRadius: 20 }}
+          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.75], sheetGrabberVisible: true }}
         />
         <Stack.Screen
           name="appointment-new/new-client"
-          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.7], sheetGrabberVisible: true, sheetCornerRadius: 20 }}
+          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.7], sheetGrabberVisible: true }}
         />
         <Stack.Screen
           name="appointment-new/service-picker"
-          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.75], sheetGrabberVisible: true, sheetCornerRadius: 20 }}
+          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.75], sheetGrabberVisible: true }}
         />
         {/*
           service-variants and staff-picker fetch their list after the sheet
@@ -126,15 +133,15 @@ function RootNavigator() {
         */}
         <Stack.Screen
           name="appointment-new/service-variants"
-          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.55], sheetGrabberVisible: true, sheetCornerRadius: 20 }}
+          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.55], sheetGrabberVisible: true }}
         />
         <Stack.Screen
           name="appointment-new/staff-picker"
-          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.5], sheetGrabberVisible: true, sheetCornerRadius: 20 }}
+          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.5], sheetGrabberVisible: true }}
         />
         <Stack.Screen
           name="date-time-picker"
-          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.38], sheetGrabberVisible: true, sheetCornerRadius: 20 }}
+          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.38], sheetGrabberVisible: true }}
         />
         <Stack.Screen name="appointment/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="client/[id]" />

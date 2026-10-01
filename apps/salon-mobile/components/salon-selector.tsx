@@ -31,7 +31,7 @@ export function SalonSelector() {
               imagePath={location.image_url}
               name={location.name}
               size={THUMB_SIZE}
-              backgroundColor={isSelected ? theme.onTint : theme.border}
+              backgroundColor={isSelected ? theme.background : theme.border}
               textColor={isSelected ? theme.tint : theme.muted}
               fontSize={9}
             />
@@ -61,12 +61,12 @@ const createStyles = (theme: typeof Colors.light) =>
       paddingLeft: 6,
       paddingRight: 10,
       minHeight: 44,
-      borderRadius: 10,
+      borderRadius: 999,
       borderWidth: 1,
     },
     chipSelected: {
-      backgroundColor: theme.tint,
-      borderColor: theme.tint,
+      backgroundColor: theme.blueTint,
+      borderColor: `${theme.brandBlue}55`,
     },
     chipUnselected: {
       backgroundColor: theme.background,
@@ -77,7 +77,7 @@ const createStyles = (theme: typeof Colors.light) =>
       fontWeight: '600',
     },
     labelSelected: {
-      color: theme.onTint,
+      color: theme.tint,
     },
     labelUnselected: {
       color: theme.text,

@@ -3,6 +3,7 @@ import { AccessibilityInfo, Platform, StyleSheet, View, type ViewProps } from 'r
 import { BlurView } from 'expo-blur';
 import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from '@/constants/theme';
 
 /**
  * Checked once at module load and shared, not per-mount. The glass menus
@@ -35,13 +36,14 @@ function useReduceTransparency() {
 /** Native glass on supported iOS builds, with a readable fallback elsewhere. */
 export function LiquidGlass({ children, style, ...props }: ViewProps) {
   const dark = useColorScheme() === 'dark';
+  const theme = Colors[dark ? 'dark' : 'light'];
   const reduceTransparency = useReduceTransparency();
   const nativeGlass = Platform.OS === 'ios' && isGlassEffectAPIAvailable() && isLiquidGlassAvailable();
   if (nativeGlass && !reduceTransparency) {
     return <GlassView {...props} glassEffectStyle="regular" colorScheme={dark ? 'dark' : 'light'} style={style}>{children}</GlassView>;
   }
   return (
-    <View {...props} style={[style, { overflow: 'hidden', backgroundColor: dark ? '#242426' : '#f8f8fa' }]}>
+    <View {...props} style={[style, { overflow: 'hidden', backgroundColor: theme.surface, borderColor: theme.border, borderWidth: StyleSheet.hairlineWidth }]}>
       {!reduceTransparency && Platform.OS === 'ios' && <BlurView pointerEvents="none" tint={dark ? 'systemMaterialDark' : 'systemMaterialLight'} intensity={80} style={StyleSheet.absoluteFill} />}
       {children}
     </View>

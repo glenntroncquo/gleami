@@ -83,23 +83,29 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         variant="inset"
         collapsible="icon"
         {...props}
-        className="dark scheme-only-dark max-lg:p-3 lg:pe-1"
+        className="max-lg:p-3 lg:pe-1"
       >
         <SidebarHeader>
-          <div className="flex justify-center items-center">
+          <div className="flex min-h-12 items-center justify-center group-data-[collapsible=icon]:hidden">
             <Link
-              className="inline-flex"
+              className="inline-flex items-center"
               href="/"
               title="Gleami"
               onClick={handleNavClick}
             >
               <Image
-                src="/gleami-mark-white.svg"
+                src="/gleami-logo.svg"
                 alt="Gleami"
-                width={32}
-                height={32}
+                width={116}
+                height={42}
                 priority
+                className="h-auto w-[116px]"
               />
+            </Link>
+          </div>
+          <div className="hidden min-h-12 items-center justify-center group-data-[collapsible=icon]:flex">
+            <Link href="/" title="Gleami" onClick={handleNavClick} className="inline-flex">
+              <Image src="/gleami-mark.svg" alt="Gleami" width={28} height={28} priority />
             </Link>
           </div>
         </SidebarHeader>

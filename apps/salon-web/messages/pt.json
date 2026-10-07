@@ -1459,5 +1459,20 @@
       "paymentDeleted": "Pagamento excluído",
       "orderDeleted": "Pedido excluído"
     }
+  },
+  "onboarding": {
+    "back": "Voltar ao início de sessão",
+    "startTitle": "Configure o seu salão com a Gleami",
+    "startBody": "Crie a sua conta e comece a configurar o seu negócio. Pode pausar e continuar quando quiser.",
+    "checkEmailTitle": "Verifique a sua caixa de entrada",
+    "checkEmailBody": "Enviámos um link seguro de início de sessão para {email}. Abra-o para continuar a configuração.",
+    "error": "Ocorreu um erro. Tente novamente.",
+    "orEmail": "ou continuar com e-mail",
+    "email": "Endereço de e-mail",
+    "continueEmail": "Continuar com e-mail",
+    "emailHint": "Enviaremos um link seguro. Se for novo, a conta será criada após confirmar o e-mail.",
+    "checkEmailHint": "A configuração ficará guardada quando regressar neste ou noutro dispositivo.",
+    "existingAccount": "Já tem uma conta?",
+    "signIn": "Iniciar sessão"
   }
 }

@@ -14,7 +14,10 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const locale = resolveLocale(searchParams.get("locale"));
-  const next = searchParams.get("next") ?? `/${locale}/calendar`;
+  const requestedNext = searchParams.get("next");
+  const next = requestedNext?.startsWith(`/${locale}/`) && !requestedNext.startsWith("//") && !requestedNext.includes("\\")
+    ? requestedNext
+    : `/${locale}/calendar`;
 
   if (code) {
     const supabase = await createClient();
@@ -29,7 +32,7 @@ export async function GET(request: Request) {
         (user?.user_metadata?.locale as string | undefined) ?? locale
       );
 
-      const redirectPath = next.startsWith("/")
+      const redirectPath = requestedNext?.startsWith(`/${locale}/`) && !requestedNext.startsWith("//") && !requestedNext.includes("\\")
         ? next
         : `/${userLocale}/calendar`;
 

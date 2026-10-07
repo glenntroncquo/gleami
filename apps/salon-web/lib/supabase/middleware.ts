@@ -41,6 +41,8 @@ export async function updateSession(request: NextRequest) {
     !user &&
     !request.nextUrl.pathname.includes("/login") &&
     !request.nextUrl.pathname.includes("/signup") &&
+    !request.nextUrl.pathname.includes("/start") &&
+    !request.nextUrl.pathname.includes("/setup") &&
     !request.nextUrl.pathname.includes("/auth") &&
     !request.nextUrl.pathname.includes("/reset-password") &&
     !request.nextUrl.pathname.includes("/update-password") &&

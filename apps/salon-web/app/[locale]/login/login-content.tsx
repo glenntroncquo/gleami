@@ -159,7 +159,7 @@ export default function LoginPageContent() {
             </button>
             <div>
               <Link
-                href={`/${locale}/signup`}
+                href={`/${locale}/start`}
                 className="text-primary-600 hover:text-primary-700 hover:underline"
               >
                 {t("auth.createSalonAccount")}

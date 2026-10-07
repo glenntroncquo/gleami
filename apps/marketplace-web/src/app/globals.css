@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --canvas: #f7f8fc;
+  --ink: #0b1c3f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: #c7d3fb;
+  color: #0b1c3f;
+}
+
+:focus-visible {
+  outline: 2px solid #5b7cf0;
+  outline-offset: 3px;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+.text-pretty {
+  text-wrap: pretty;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.map-grid {
+  background-color: #f3efe8;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.72) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.72) 2px, transparent 2px),
+    linear-gradient(35deg, transparent 43%, rgba(255, 255, 255, 0.92) 44%, rgba(255, 255, 255, 0.92) 47%, transparent 48%);
+  background-size: 72px 72px, 72px 72px, 180px 180px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

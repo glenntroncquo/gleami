@@ -1459,5 +1459,20 @@
       "paymentDeleted": "Betaling verwijderd",
       "orderDeleted": "Bestelling verwijderd"
     }
+  },
+  "onboarding": {
+    "back": "Terug naar inloggen",
+    "startTitle": "Stel je salon in met Gleami",
+    "startBody": "Maak je account aan en begin met het instellen van je zaak. Je kunt altijd pauzeren en later verdergaan.",
+    "checkEmailTitle": "Controleer je inbox",
+    "checkEmailBody": "We hebben een veilige inloglink gestuurd naar {email}. Open die om door te gaan met het instellen van je salon.",
+    "error": "Er ging iets mis. Probeer het opnieuw.",
+    "orEmail": "of ga verder met e-mail",
+    "email": "E-mailadres",
+    "continueEmail": "Doorgaan met e-mail",
+    "emailHint": "We sturen je een veilige link. Als je nieuw bent, maken we je account aan nadat je e-mail is bevestigd.",
+    "checkEmailHint": "Je instellingen blijven bewaard wanneer je op dit of een ander apparaat terugkomt.",
+    "existingAccount": "Heb je al een account?",
+    "signIn": "Inloggen"
   }
 }

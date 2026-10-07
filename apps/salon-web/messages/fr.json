@@ -1459,5 +1459,20 @@
       "paymentDeleted": "Paiement supprimé",
       "orderDeleted": "Commande supprimée"
     }
+  },
+  "onboarding": {
+    "back": "Retour à la connexion",
+    "startTitle": "Configurez votre salon avec Gleami",
+    "startBody": "Créez votre compte et commencez la configuration. Vous pourrez reprendre à tout moment.",
+    "checkEmailTitle": "Consultez votre boîte mail",
+    "checkEmailBody": "Nous avons envoyé un lien de connexion sécurisé à {email}. Ouvrez-le pour continuer la configuration.",
+    "error": "Une erreur est survenue. Réessayez.",
+    "orEmail": "ou continuer par e-mail",
+    "email": "Adresse e-mail",
+    "continueEmail": "Continuer par e-mail",
+    "emailHint": "Nous vous enverrons un lien sécurisé. Si vous êtes nouveau, votre compte sera créé après confirmation de votre e-mail.",
+    "checkEmailHint": "Votre configuration sera conservée si vous revenez sur cet appareil ou un autre.",
+    "existingAccount": "Vous avez déjà un compte ?",
+    "signIn": "Se connecter"
   }
 }

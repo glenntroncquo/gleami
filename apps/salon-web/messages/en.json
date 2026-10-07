@@ -1459,5 +1459,20 @@
       "paymentDeleted": "Payment deleted",
       "orderDeleted": "Order deleted"
     }
+  },
+  "onboarding": {
+    "back": "Back to sign in",
+    "startTitle": "Set up your salon with Gleami",
+    "startBody": "Create your account to start setting up your business. You can pause and continue anytime.",
+    "checkEmailTitle": "Check your inbox",
+    "checkEmailBody": "We sent a secure sign-in link to {email}. Open it to continue setting up your salon.",
+    "error": "Something went wrong. Please try again.",
+    "orEmail": "or continue with email",
+    "email": "Email address",
+    "continueEmail": "Continue with email",
+    "emailHint": "We’ll email you a secure link. If you’re new, your account will be created after you verify your email.",
+    "checkEmailHint": "Your setup will be ready when you return on this device or another one.",
+    "existingAccount": "Already have an account?",
+    "signIn": "Sign in"
   }
 }

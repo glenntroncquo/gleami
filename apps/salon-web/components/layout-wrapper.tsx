@@ -3,11 +3,14 @@
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { SetupResumeBanner } from "@/components/onboarding/setup-resume-banner";
 
-const AUTH_ROUTES = ["/login", "/signup", "/reset-password", "/update-password", "/invite"];
+const AUTH_ROUTES = ["/login", "/signup", "/start", "/setup", "/reset-password", "/update-password", "/invite"];
 const PUBLIC_ROUTES = [
   "/login",
   "/signup",
+  "/start",
+  "/setup",
   "/reset-password",
   "/update-password",
   "/invite",
@@ -49,5 +52,5 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   }
 
   // For protected pages, wrap with SidebarProvider
-  return <SidebarProvider>{children}</SidebarProvider>;
+  return <SidebarProvider><SetupResumeBanner />{children}</SidebarProvider>;
 }

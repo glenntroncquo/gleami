@@ -412,7 +412,7 @@
     "checkEmailInstructions": "After confirming your email, you will be redirected to your salon portal.",
     "emailNotConfirmed": "Please confirm your email before signing in.",
     "resendConfirmation": "Resend confirmation email",
-    "confirmationEmailResent": "Confirmation email sent!",
+    "confirmationEmailResent": "Verification code sent!",
     "enterEmailToResend": "Enter your email address to resend confirmation.",
     "authCallbackError": "Unable to complete sign in. Please try again.",
     "invite": {
@@ -1465,13 +1465,13 @@
     "startTitle": "Gleami for professionals",
     "startBody": "Create an account or sign in to manage your business.",
     "checkEmailTitle": "Check your inbox",
-    "checkEmailBody": "We sent an email to {email}. Follow the instructions to verify your address and continue setting up your salon.",
+    "checkEmailBody": "Enter the 6-digit code we sent to {email}.",
     "error": "Something went wrong. Please try again.",
     "orEmail": "or continue with email",
     "email": "Email address",
     "continueEmail": "Continue with email",
     "emailHint": "Enter your email to continue or create an account.",
-    "checkEmailHint": "If this address can be used to create an account, you will receive an email shortly.",
+    "checkEmailHint": "Your code is valid for a limited time.",
     "existingAccount": "Already have an account?",
     "signIn": "Sign in",
     "continue": "Continue",
@@ -1487,6 +1487,10 @@
     "createPasswordBody": "Create a password to set up your Gleami account.",
     "newAccount": "New to Gleami? Create an account",
     "backToSignIn": "Already have an account? Sign in",
-    "loadingLabel": "Loading"
+    "loadingLabel": "Loading",
+    "resendEmail": "Resend code",
+    "resendIn": "Resend in {seconds}s",
+    "codeLabel": "Verification code",
+    "verifyCode": "Verify and continue"
   }
 }

@@ -396,7 +396,7 @@
     "checkEmailInstructions": "Após confirmar, você será redirecionado para o portal do salão.",
     "emailNotConfirmed": "Confirme seu e-mail antes de entrar.",
     "resendConfirmation": "Reenviar e-mail de confirmação",
-    "confirmationEmailResent": "E-mail de confirmação enviado!",
+    "confirmationEmailResent": "Código de verificação enviado!",
     "enterEmailToResend": "Digite seu e-mail para reenviar a confirmação.",
     "authCallbackError": "Não foi possível concluir o login. Tente novamente.",
     "invite": {
@@ -1465,13 +1465,13 @@
     "startTitle": "Gleami para profissionais",
     "startBody": "Crie uma conta ou inicie sessão para gerir o seu negócio.",
     "checkEmailTitle": "Verifique a sua caixa de entrada",
-    "checkEmailBody": "Enviámos um e-mail para {email}. Siga as instruções para verificar o endereço e continuar a configurar o seu salão.",
+    "checkEmailBody": "Introduza o código de 6 dígitos enviado para {email}.",
     "error": "Ocorreu um erro. Tente novamente.",
     "orEmail": "ou continuar com e-mail",
     "email": "Endereço de e-mail",
     "continueEmail": "Continuar com e-mail",
     "emailHint": "Introduza o seu e-mail para continuar ou criar uma conta.",
-    "checkEmailHint": "Se puder criar uma conta com este endereço, receberá um e-mail em breve.",
+    "checkEmailHint": "O código é válido durante um período limitado.",
     "existingAccount": "Já tem uma conta?",
     "signIn": "Iniciar sessão",
     "continue": "Continuar",
@@ -1487,6 +1487,10 @@
     "createPasswordBody": "Crie uma palavra-passe para configurar a sua conta Gleami.",
     "newAccount": "É novo na Gleami? Crie uma conta",
     "backToSignIn": "Já tem uma conta? Inicie sessão",
-    "loadingLabel": "A carregar"
+    "loadingLabel": "A carregar",
+    "resendEmail": "Reenviar código",
+    "resendIn": "Reenviar em {seconds}s",
+    "codeLabel": "Código de verificação",
+    "verifyCode": "Verificar e continuar"
   }
 }

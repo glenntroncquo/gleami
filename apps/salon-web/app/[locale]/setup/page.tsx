@@ -60,7 +60,7 @@ export default function SalonSetupPage() {
         : { openingHours: hours };
       const result = await saveSalonSetup(targetStep, data);
       setDraft(result);
-      if (targetStep === 5) router.replace(`/${locale}/calendar`);
+      if (targetStep === 6) router.replace(`/${locale}/calendar`);
       else setStep(targetStep + 1);
     } catch (error) { toast.error(error instanceof Error ? error.message : "Could not save setup"); }
     finally { setBusy(false); }

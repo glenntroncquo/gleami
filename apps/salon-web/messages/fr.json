@@ -396,7 +396,7 @@
     "checkEmailInstructions": "Après confirmation, vous serez redirigé vers votre portail salon.",
     "emailNotConfirmed": "Veuillez confirmer votre e-mail avant de vous connecter.",
     "resendConfirmation": "Renvoyer l'e-mail de confirmation",
-    "confirmationEmailResent": "E-mail de confirmation envoyé !",
+    "confirmationEmailResent": "Code de vérification envoyé !",
     "enterEmailToResend": "Entrez votre e-mail pour renvoyer la confirmation.",
     "authCallbackError": "Impossible de finaliser la connexion. Veuillez réessayer.",
     "invite": {
@@ -1465,13 +1465,13 @@
     "startTitle": "Gleami pour les professionnels",
     "startBody": "Créez un compte ou connectez-vous pour gérer votre activité.",
     "checkEmailTitle": "Consultez votre boîte mail",
-    "checkEmailBody": "Nous avons envoyé un e-mail à {email}. Suivez les instructions pour vérifier votre adresse et poursuivre la configuration de votre salon.",
+    "checkEmailBody": "Saisissez le code à 6 chiffres envoyé à {email}.",
     "error": "Une erreur est survenue. Réessayez.",
     "orEmail": "ou continuer par e-mail",
     "email": "Adresse e-mail",
     "continueEmail": "Continuer par e-mail",
     "emailHint": "Saisissez votre adresse e-mail pour continuer ou créer un compte.",
-    "checkEmailHint": "Si cette adresse peut être utilisée pour créer un compte, vous recevrez bientôt un e-mail.",
+    "checkEmailHint": "Votre code est valable pendant une durée limitée.",
     "existingAccount": "Vous avez déjà un compte ?",
     "signIn": "Se connecter",
     "continue": "Continuer",
@@ -1487,6 +1487,10 @@
     "createPasswordBody": "Créez un mot de passe pour configurer votre compte Gleami.",
     "newAccount": "Nouveau sur Gleami ? Créez un compte",
     "backToSignIn": "Vous avez déjà un compte ? Connectez-vous",
-    "loadingLabel": "Chargement"
+    "loadingLabel": "Chargement",
+    "resendEmail": "Renvoyer le code",
+    "resendIn": "Renvoyer dans {seconds}s",
+    "codeLabel": "Code de vérification",
+    "verifyCode": "Vérifier et continuer"
   }
 }

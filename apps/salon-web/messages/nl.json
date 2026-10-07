@@ -396,7 +396,7 @@
     "checkEmailInstructions": "Na bevestiging word je doorgestuurd naar je salonportaal.",
     "emailNotConfirmed": "Bevestig je e-mailadres voordat je inlogt.",
     "resendConfirmation": "Bevestigingsmail opnieuw versturen",
-    "confirmationEmailResent": "Bevestigingsmail verzonden!",
+    "confirmationEmailResent": "Verificatiecode verzonden!",
     "enterEmailToResend": "Voer je e-mailadres in om de bevestiging opnieuw te versturen.",
     "authCallbackError": "Inloggen mislukt. Probeer het opnieuw.",
     "invite": {
@@ -1465,13 +1465,13 @@
     "startTitle": "Gleami voor professionals",
     "startBody": "Maak een account aan of log in om je zaak te beheren.",
     "checkEmailTitle": "Controleer je inbox",
-    "checkEmailBody": "We hebben een e-mail gestuurd naar {email}. Volg de instructies om je adres te bevestigen en door te gaan met het instellen van je salon.",
+    "checkEmailBody": "Vul de 6-cijferige code in die we naar {email} hebben gestuurd.",
     "error": "Er ging iets mis. Probeer het opnieuw.",
     "orEmail": "of ga verder met e-mail",
     "email": "E-mailadres",
     "continueEmail": "Doorgaan met e-mail",
     "emailHint": "Vul je e-mailadres in om verder te gaan of een account aan te maken.",
-    "checkEmailHint": "Als je met dit adres een account kunt aanmaken, ontvang je zo een e-mail.",
+    "checkEmailHint": "Je code is tijdelijk geldig.",
     "existingAccount": "Heb je al een account?",
     "signIn": "Inloggen",
     "continue": "Doorgaan",
@@ -1487,6 +1487,10 @@
     "createPasswordBody": "Maak een wachtwoord aan om je Gleami-account in te stellen.",
     "newAccount": "Nieuw bij Gleami? Maak een account aan",
     "backToSignIn": "Heb je al een account? Log in",
-    "loadingLabel": "Laden"
+    "loadingLabel": "Laden",
+    "resendEmail": "Code opnieuw versturen",
+    "resendIn": "Opnieuw versturen over {seconds}s",
+    "codeLabel": "Verificatiecode",
+    "verifyCode": "Verifiëren en doorgaan"
   }
 }

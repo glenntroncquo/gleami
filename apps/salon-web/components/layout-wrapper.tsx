@@ -1,9 +1,12 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { useLocale } from "next-intl";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { SetupResumeBanner } from "@/components/onboarding/setup-resume-banner";
+import { useAuth } from "@/providers/auth-provider";
 
 const AUTH_ROUTES = ["/login", "/setup", "/reset-password", "/update-password", "/invite"];
 const PUBLIC_ROUTES = [
@@ -17,6 +20,9 @@ const PUBLIC_ROUTES = [
 
 export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const locale = useLocale();
+  const { user, companyIds, membershipReady } = useAuth();
 
   // Remove locale prefix to check the actual route
   const route = pathname.replace(/^\/[a-z]{2}/, "") || "/";
@@ -26,6 +32,19 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const isPublicPage = PUBLIC_ROUTES.some((publicRoute) =>
     route.startsWith(publicRoute)
   );
+  const isSetupPage = route === "/setup" || route.startsWith("/setup/");
+  const isInvitePage = route === "/invite" || route.startsWith("/invite/");
+  const isPublicActionPage = route === "/cancel-appointment" || route.startsWith("/cancel-appointment/");
+  const needsCompanySetup = Boolean(
+    user && !isSetupPage && !isInvitePage && !isPublicActionPage && membershipReady && companyIds.length === 0,
+  );
+  const checkingCompanyMembership = Boolean(
+    user && !isSetupPage && !isInvitePage && !isPublicActionPage && !membershipReady,
+  );
+
+  useEffect(() => {
+    if (needsCompanySetup) router.replace(`/${locale}/setup`);
+  }, [locale, needsCompanySetup, router]);
 
   useEffect(() => {
     // Update body class based on page type
@@ -43,6 +62,9 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
       }
     }
   }, [pathname, isAuthPage, isPublicPage]);
+
+  // Keep protected pages hidden until the user's company membership is known.
+  if (checkingCompanyMembership || needsCompanySetup) return null;
 
   // For auth pages and public pages, render children without SidebarProvider wrapper
   if (isAuthPage || isPublicPage) {

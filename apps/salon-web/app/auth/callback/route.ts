@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { loadMembershipSnapshot, type MembershipSupabase } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { defaultLocale, locales } from "@/i18n/config";
 
@@ -15,9 +16,9 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
   const locale = resolveLocale(searchParams.get("locale"));
   const requestedNext = searchParams.get("next");
-  const next = requestedNext?.startsWith(`/${locale}/`) && !requestedNext.startsWith("//") && !requestedNext.includes("\\")
+  const inviteNext = requestedNext?.startsWith(`/${locale}/invite`) && !requestedNext.startsWith("//") && !requestedNext.includes("\\")
     ? requestedNext
-    : `/${locale}/calendar`;
+    : null;
 
   if (code) {
     const supabase = await createClient();
@@ -31,10 +32,16 @@ export async function GET(request: Request) {
       const userLocale = resolveLocale(
         (user?.user_metadata?.locale as string | undefined) ?? locale
       );
-
-      const redirectPath = requestedNext?.startsWith(`/${locale}/`) && !requestedNext.startsWith("//") && !requestedNext.includes("\\")
-        ? next
-        : `/${userLocale}/calendar`;
+      const membership = user
+        ? await loadMembershipSnapshot(
+            supabase as unknown as MembershipSupabase,
+            user.id,
+          )
+        : null;
+      const destination = membership?.companyIds.length
+        ? `/${userLocale}/calendar`
+        : `/${userLocale}/setup`;
+      const redirectPath = inviteNext ?? destination;
 
       return NextResponse.redirect(`${origin}${redirectPath}`);
     }

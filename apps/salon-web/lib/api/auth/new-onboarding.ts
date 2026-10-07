@@ -17,11 +17,11 @@ export async function lookupAuthEmail(email: string) {
   return result as { exists: boolean; hasPassword: boolean };
 }
 
-export async function startEmailAuth(email: string, locale: string) {
+export async function startEmailAuth(email: string) {
   const supabase = createClient();
   const { error } = await supabase.auth.signInWithOtp({
     email: email.trim().toLowerCase(),
-    options: { emailRedirectTo: `${window.location.origin}/auth/callback?locale=${locale}&next=/${locale}/setup` },
+    options: { shouldCreateUser: false },
   });
   if (error) throw error;
 }

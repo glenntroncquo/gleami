@@ -2,6 +2,21 @@ import { createClient } from "@/lib/supabase/client";
 
 const endpoint = (name: string) => `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/${name}`;
 
+export async function lookupAuthEmail(email: string) {
+  const response = await fetch(endpoint("marketplace-auth-lookup"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
+    },
+    body: JSON.stringify({ email: email.trim().toLowerCase() }),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error ?? "Unable to check this email");
+  return result as { exists: boolean; hasPassword: boolean };
+}
+
 export async function startEmailAuth(email: string, locale: string) {
   const supabase = createClient();
   const { error } = await supabase.auth.signInWithOtp({
@@ -11,11 +26,12 @@ export async function startEmailAuth(email: string, locale: string) {
   if (error) throw error;
 }
 
-export async function startSocialAuth(provider: "google" | "apple", locale: string) {
+export async function startSocialAuth(provider: "google" | "apple", locale: string, next?: string) {
   const supabase = createClient();
+  const callback = new URLSearchParams({ locale, next: next ?? `/${locale}/setup` });
   const { error } = await supabase.auth.signInWithOAuth({
     provider,
-    options: { redirectTo: `${window.location.origin}/auth/callback?locale=${locale}&next=/${locale}/setup` },
+    options: { redirectTo: `${window.location.origin}/auth/callback?${callback.toString()}` },
   });
   if (error) throw error;
 }

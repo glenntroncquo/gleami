@@ -33,7 +33,7 @@ export default function SalonSetupPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) router.replace(`/${locale}/start`);
+    if (!loading && !user) router.replace(`/${locale}/login`);
   }, [loading, user, router, locale]);
 
   useEffect(() => {

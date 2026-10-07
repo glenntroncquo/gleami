@@ -94,7 +94,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               onClick={handleNavClick}
             >
               <Image
-                src="/gleami-logo.svg"
+                src="/gleami-wordmark.svg"
                 alt="Gleami"
                 width={116}
                 height={42}

@@ -8,13 +8,6 @@ export default async function AppHome({
 }) {
   const { locale } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user) {
-    redirect(`/${locale}/calendar`);
-  } else {
-    redirect(`/${locale}/login`);
-  }
+  const { data: { user } } = await supabase.auth.getUser();
+  redirect(user ? `/${locale}/calendar` : `/${locale}/login`);
 }

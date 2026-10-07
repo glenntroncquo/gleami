@@ -39,9 +39,9 @@ export async function updateSession(request: NextRequest) {
 
   if (
     !user &&
+    // These retired paths have been removed; allow Next.js to return 404.
+    !/^\/[a-z]{2}\/(?:start|signup)(?:\/|$)/.test(request.nextUrl.pathname) &&
     !request.nextUrl.pathname.includes("/login") &&
-    !request.nextUrl.pathname.includes("/signup") &&
-    !request.nextUrl.pathname.includes("/start") &&
     !request.nextUrl.pathname.includes("/setup") &&
     !request.nextUrl.pathname.includes("/auth") &&
     !request.nextUrl.pathname.includes("/reset-password") &&
@@ -49,7 +49,7 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.includes("/invite") &&
     !request.nextUrl.pathname.includes("/cancel-appointment")
   ) {
-    // No user, potentially respond by redirecting the user to the login page
+    // No user, redirect to the unified email-first auth entry point.
     // Extract locale from current path or use default
     const pathSegments = request.nextUrl.pathname.split("/");
     const validLocales = ["en", "nl", "fr", "pt"];
@@ -60,6 +60,7 @@ export async function updateSession(request: NextRequest) {
 
     const url = request.nextUrl.clone();
     url.pathname = `/${locale}/login`;
+    url.search = "";
     return NextResponse.redirect(url);
   }
 

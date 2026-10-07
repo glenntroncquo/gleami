@@ -5,11 +5,9 @@ import { useEffect } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { SetupResumeBanner } from "@/components/onboarding/setup-resume-banner";
 
-const AUTH_ROUTES = ["/login", "/signup", "/start", "/setup", "/reset-password", "/update-password", "/invite"];
+const AUTH_ROUTES = ["/login", "/setup", "/reset-password", "/update-password", "/invite"];
 const PUBLIC_ROUTES = [
   "/login",
-  "/signup",
-  "/start",
   "/setup",
   "/reset-password",
   "/update-password",

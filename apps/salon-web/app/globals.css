@@ -203,3 +203,26 @@ select {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+@keyframes gleami-loading-dot {
+  0%, 70%, 100% {
+    opacity: 0.35;
+    transform: translateY(0) scale(0.72);
+  }
+
+  35% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1);
+  }
+}
+
+.gleami-loading-dot {
+  animation: gleami-loading-dot 900ms ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gleami-loading-dot {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

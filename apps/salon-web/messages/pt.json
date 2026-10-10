@@ -54,7 +54,8 @@
     "products": "Produtos",
     "orders": "Pedidos",
     "billing": "Faturamento",
-    "marketing": "Marketing"
+    "marketing": "Marketing",
+    "more": "Mais"
   },
   "locations": {
     "switcherLabel": "Local",

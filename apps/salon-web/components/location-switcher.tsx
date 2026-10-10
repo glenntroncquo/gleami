@@ -47,7 +47,7 @@ export function LocationSwitcher() {
               tooltip={current?.name ?? t("switcherLabel")}
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <RiMapPinLine className="size-5 text-muted-foreground/80" />
+              <RiMapPinLine className="size-4 text-muted-foreground/80" />
               {!collapsed && (
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate text-xs text-muted-foreground">
@@ -62,9 +62,9 @@ export function LocationSwitcher() {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-(--radix-dropdown-menu-trigger-width) min-w-56 dark bg-sidebar"
-            side="bottom"
-            align="start"
-            sideOffset={4}
+            side={collapsed ? "right" : "bottom"}
+            align={collapsed ? "center" : "start"}
+            sideOffset={8}
           >
             {options.map((location) => (
               <DropdownMenuItem

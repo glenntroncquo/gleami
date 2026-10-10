@@ -247,7 +247,7 @@ export function WeekView({
         {days.map((day) => (
           <div
             key={day.toString()}
-            className="data-today:text-foreground text-muted-foreground/70 py-2 text-center text-xs data-today:font-medium"
+            className="data-today:bg-accent data-today:text-foreground text-muted-foreground/70 py-2 text-center text-xs data-today:font-medium"
             data-today={isToday(day) || undefined}
           >
             <span className="sm:hidden" aria-hidden="true">
@@ -280,7 +280,7 @@ export function WeekView({
               return (
                 <div
                   key={day.toString()}
-                  className="border-border/70 relative border-r p-1 last:border-r-0"
+                  className="border-border/70 data-today:bg-accent relative border-r p-1 last:border-r-0"
                   data-today={isToday(day) || undefined}
                 >
                   {dayAllDayEvents.map((event) => {
@@ -342,7 +342,7 @@ export function WeekView({
         {days.map((day, dayIndex) => (
           <div
             key={day.toString()}
-            className="border-border/70 relative border-r last:border-r-0 grid auto-cols-fr overflow-hidden"
+            className="border-border/70 data-today:bg-accent relative border-r last:border-r-0 grid auto-cols-fr overflow-hidden"
             data-today={isToday(day) || undefined}
           >
             {/* Positioned events */}

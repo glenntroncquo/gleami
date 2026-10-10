@@ -54,7 +54,8 @@
     "products": "Producten",
     "orders": "Bestellingen",
     "billing": "Facturatie",
-    "marketing": "Marketing"
+    "marketing": "Marketing",
+    "more": "Meer"
   },
   "locations": {
     "switcherLabel": "Locatie",

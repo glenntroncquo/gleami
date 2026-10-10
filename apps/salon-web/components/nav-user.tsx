@@ -22,6 +22,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/providers/auth-provider";
 import { NAV_PERMISSION } from "@/lib/auth";
@@ -35,6 +36,8 @@ export function NavUser() {
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const { currentLocale } = useLocaleNavigation();
+  const { state } = useSidebar();
+  const collapsed = state === "collapsed";
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -99,26 +102,31 @@ export function NavUser() {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground [&>svg]:size-5"
+              tooltip={displayName}
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:[&>svg]:size-4!"
             >
-              <Avatar className="size-8">
+              <Avatar className="size-8 group-data-[collapsible=icon]:size-5">
                 <AvatarImage src={avatarUrl} alt={displayName} />
                 <AvatarFallback className="rounded-lg">
                   {displayName.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{displayName}</span>
-                <span className="truncate text-xs text-muted-foreground">{userEmail}</span>
-              </div>
-              <RiExpandUpDownLine className="ml-auto size-5 text-muted-foreground/80" />
+              {!collapsed && (
+                <>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-medium">{displayName}</span>
+                    <span className="truncate text-xs text-muted-foreground">{userEmail}</span>
+                  </div>
+                  <RiExpandUpDownLine className="ml-auto size-5 text-muted-foreground/80" />
+                </>
+              )}
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) dark bg-sidebar"
-            side="bottom"
-            align="end"
-            sideOffset={4}
+            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 dark bg-sidebar"
+            side={collapsed ? "right" : "bottom"}
+            align={collapsed ? "center" : "end"}
+            sideOffset={8}
           >
             <DropdownMenuGroup>
               <DropdownMenuItem

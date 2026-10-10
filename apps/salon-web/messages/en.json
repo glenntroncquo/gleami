@@ -54,7 +54,8 @@
     "products": "Products",
     "orders": "Orders",
     "billing": "Billing",
-    "marketing": "Marketing"
+    "marketing": "Marketing",
+    "more": "More"
   },
   "locations": {
     "switcherLabel": "Location",

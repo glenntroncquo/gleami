@@ -326,7 +326,7 @@ export default function POSPage() {
           </div>
 
           {/* Persistent Cart Summary Bar - Mobile Only */}
-          <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t shadow-lg">
+          <div className="lg:hidden fixed inset-x-0 z-40 border-t bg-white shadow-lg bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0">
             <CartSummaryBar
               cartLength={cart.length}
               getSubtotal={getSubtotal}

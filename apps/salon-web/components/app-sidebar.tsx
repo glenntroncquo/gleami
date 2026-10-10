@@ -12,7 +12,6 @@ import {
   RiShoppingCartLine,
   RiUserLine,
   RiBox1Line,
-  RiMenuLine,
   RiMegaphoneLine,
   RiDashboardLine,
   RiReceiptLine,
@@ -38,29 +37,12 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { MobileTabBar } from "@/components/mobile-tab-bar";
 import Participants from "@/components/participants";
 import SidebarCalendar from "@/components/sidebar-calendar";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
 import { NAV_PERMISSION, type PermissionKey } from "@/lib/auth";
 import { useAuth } from "@/providers/auth-provider";
-
-// Mobile trigger component
-function MobileSidebarTrigger() {
-  const { setOpenMobile } = useSidebar();
-
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="lg:hidden fixed top-6 left-6 z-50 bg-background/80 backdrop-blur-sm border border-border/50 shadow-lg hover:bg-background/90 transition-colors"
-      onClick={() => setOpenMobile(true)}
-    >
-      <RiMenuLine size={20} />
-      <span className="sr-only">Open sidebar</span>
-    </Button>
-  );
-}
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
@@ -78,7 +60,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   };
   return (
     <>
-      <MobileSidebarTrigger />
+      <MobileTabBar />
       <Sidebar
         variant="inset"
         collapsible="icon"
@@ -401,7 +383,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarGroup className="px-1 mt-3 pt-4 border-t group-data-[collapsible=icon]:hidden">
                 <SidebarCalendar />
               </SidebarGroup>
-              <SidebarGroup className="px-1 mt-3 pt-4 border-t">
+              <SidebarGroup className="px-1 mt-3 pt-4 border-t group-data-[collapsible=icon]:hidden">
                 <SidebarGroupLabel className="uppercase text-muted-foreground/65">
                   Participants
                 </SidebarGroupLabel>

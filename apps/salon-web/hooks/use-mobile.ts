@@ -19,3 +19,27 @@ export function useIsMobile() {
 
   return !!isMobile;
 }
+
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = React.useState(false);
+
+  React.useEffect(() => {
+    const mql = window.matchMedia(query);
+    const onChange = () => setMatches(mql.matches);
+    onChange();
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, [query]);
+
+  return matches;
+}
+
+/** Phone widths keep the bottom tab bar. iPad and up get the sidebar. */
+export function useIsPhone() {
+  return useMediaQuery("(max-width: 767px)");
+}
+
+/** Below this, the sidebar stays an icon rail. Labels return on a desktop window. */
+export function useIsCompactNav() {
+  return useMediaQuery("(max-width: 1399px)");
+}

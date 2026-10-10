@@ -75,6 +75,22 @@ Do not commit tokens. After this workflow is on `main` and both values are set, 
 
 ---
 
+## Automatic migration deploys
+
+Pushes to `main` that change files under `backend/supabase/supabase/migrations/` run [`.github/workflows/deploy-migrations.yml`](../../.github/workflows/deploy-migrations.yml). You can also run **Actions → Deploy Migrations → Run workflow**.
+
+The workflow links the project and runs `supabase db push` from `backend/supabase`. It applies migration files whose versions are not yet in the remote history table. It does not repair history and it does not pass `--include-all`.
+
+Add this repository secret next to the Edge Function secrets:
+
+| Secret | Where to get it |
+| --- | --- |
+| `SUPABASE_DB_PASSWORD` | Supabase Dashboard → Project Settings → Database → Database password. |
+
+`SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_ID` are the same values the Edge Function workflow uses.
+
+---
+
 ## Troubleshooting
 
 - Ensure you have the correct project reference when linking. The password of the db is also required.

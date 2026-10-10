@@ -1,10 +1,19 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+function nextWithPath(request: NextRequest) {
+  const headers = new Headers(request.headers);
+  headers.set("x-pathname", request.nextUrl.pathname);
+  const cookie = request.cookies
+    .getAll()
+    .map((entry) => `${entry.name}=${entry.value}`)
+    .join("; ");
+  if (cookie) headers.set("cookie", cookie);
+  return NextResponse.next({ request: { headers } });
+}
+
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  });
+  let supabaseResponse = nextWithPath(request);
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,9 +27,7 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
-          supabaseResponse = NextResponse.next({
-            request,
-          });
+          supabaseResponse = nextWithPath(request);
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           );
@@ -42,7 +49,6 @@ export async function updateSession(request: NextRequest) {
     // These retired paths have been removed; allow Next.js to return 404.
     !/^\/[a-z]{2}\/(?:start|signup)(?:\/|$)/.test(request.nextUrl.pathname) &&
     !request.nextUrl.pathname.includes("/login") &&
-    !request.nextUrl.pathname.includes("/setup") &&
     !request.nextUrl.pathname.includes("/auth") &&
     !request.nextUrl.pathname.includes("/reset-password") &&
     !request.nextUrl.pathname.includes("/update-password") &&

@@ -1,16 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useLocale } from "next-intl";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoadingDots } from "@/components/ui/loading-dots";
 import { useAuth } from "@/providers/auth-provider";
-import { loadSalonSetup, saveSalonSetup } from "@/lib/api/auth/new-onboarding";
+import { discardSalonSetup, loadSalonSetup, saveSalonSetup } from "@/lib/api/auth/new-onboarding";
+import { loadBrowserAccountDestination } from "@/lib/auth/account-client";
+import { selectEstablishedCompany } from "@/lib/auth/select-company";
 
 const categories = ["Hair salon", "Nails", "Brows & lashes", "Beauty salon", "Medical spa", "Barber", "Massage", "Spa & sauna", "Makeup", "Tattoo"];
 const sizes = ["Just me", "2–5 people", "6–10 people", "11–20 people", "20+ people"];
@@ -19,10 +21,25 @@ const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 type Hours = Record<string, { closed: boolean; start: string; end: string }>;
 const defaultHours = Object.fromEntries(days.map((d, i) => [d, { closed: i === 6, start: "10:00", end: i === 5 ? "17:00" : "19:00" }])) as Hours;
 
+function idempotencyKey() {
+  const storageKey = "gleami:setup-idempotency:new";
+  const existing = window.sessionStorage.getItem(storageKey);
+  if (existing) return existing;
+  const created = crypto.randomUUID();
+  window.sessionStorage.setItem(storageKey, created);
+  return created;
+}
+
 export default function SalonSetupPage() {
   const locale = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const draftId = searchParams.get("draft");
+  const startNew = searchParams.get("new") === "1";
+  const freshStart = searchParams.get("fresh") === "1";
   const { user, loading } = useAuth();
+  const [setupId, setSetupId] = useState<string | null>(draftId);
+  const [canExit, setCanExit] = useState(false);
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
   const [website, setWebsite] = useState("");
@@ -32,6 +49,7 @@ export default function SalonSetupPage() {
   const [address, setAddress] = useState({ street: "", city: "", postalCode: "", state: "", country: "Belgium", timezone: "Europe/Brussels" });
   const [hours, setHours] = useState<Hours>(defaultHours);
   const [busy, setBusy] = useState(false);
+  const clearedNewDraft = useRef(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace(`/${locale}/login`);
@@ -39,16 +57,77 @@ export default function SalonSetupPage() {
 
   useEffect(() => {
     if (!user) return;
-    loadSalonSetup().then(value => {
-      if (!value) return;
-      setName(value.business_name ?? ""); setWebsite(value.website ?? "");
-      setSelected(value.categories ?? []); setTeamSize(value.team_size ?? "");
-      setSoftware(value.current_software ?? "");
-      setAddress(prev => ({ ...prev, ...(value.address ?? {}) }));
-      setHours({ ...defaultHours, ...(value.opening_hours ?? {}) } as Hours);
-      setStep(value.current_step ?? 1);
-    }).catch(error => toast.error(error instanceof Error ? error.message : "Could not load setup"));
-  }, [user]);
+    let cancelled = false;
+    const load = async () => {
+      const destination = await loadBrowserAccountDestination();
+      if (cancelled) return;
+      if (destination.type === "lookup_error") {
+        router.replace(`/${locale}/account-unavailable`);
+        return;
+      }
+      setCanExit(destination.type === "enter_app" || destination.type === "choose_salon");
+      if (freshStart) {
+        window.sessionStorage.removeItem("gleami:setup-idempotency:new");
+        router.replace(`/${locale}/setup?new=1`);
+        return;
+      }
+      if (startNew) {
+        setSetupId(null);
+        if (!clearedNewDraft.current) {
+          clearedNewDraft.current = true;
+          setStep(1);
+          setName("");
+          setWebsite("");
+          setSelected([]);
+          setTeamSize("");
+          setSoftware("");
+          setAddress({ street: "", city: "", postalCode: "", state: "", country: "Belgium", timezone: "Europe/Brussels" });
+          setHours(defaultHours);
+        }
+        return;
+      }
+      clearedNewDraft.current = false;
+      if (!draftId) {
+        if (destination.type === "resume_setup") {
+          router.replace(`/${locale}/setup?draft=${destination.setupId}`);
+        } else if (
+          destination.type === "choose_setup" ||
+          destination.type === "choose_salon" ||
+          (destination.type === "enter_app" && destination.drafts.length > 0)
+        ) {
+          router.replace(`/${locale}/workspaces`);
+        }
+        return;
+      }
+      const value = await loadSalonSetup(draftId);
+      if (cancelled) return;
+      if (!value) {
+        toast.error("That setup is no longer available");
+        router.replace(`/${locale}/workspaces`);
+        return;
+      }
+      setSetupId(value.id);
+      setName(value.businessName ?? "");
+      setWebsite(value.website ?? "");
+      setSelected(value.categories ?? []);
+      setTeamSize(value.teamSize ?? "");
+      setSoftware(value.currentSoftware ?? "");
+      setAddress((prev) => ({ ...prev, ...(value.address ?? {}) }));
+      setHours({ ...defaultHours, ...(value.openingHours ?? {}) } as Hours);
+      setStep(value.currentStep ?? 1);
+    };
+    load().catch((error) => toast.error(error instanceof Error ? error.message : "Could not load setup"));
+    return () => {
+      cancelled = true;
+    };
+  }, [draftId, freshStart, locale, router, startNew, user]);
+
+  const openSalon = useCallback(async (companyId: string) => {
+    const formData = new FormData();
+    formData.set("companyId", companyId);
+    formData.set("locale", locale);
+    await selectEstablishedCompany(formData);
+  }, [locale]);
 
   const save = useCallback(async (targetStep: number) => {
     setBusy(true);
@@ -59,12 +138,43 @@ export default function SalonSetupPage() {
         : targetStep === 4 ? { address }
         : targetStep === 5 ? { software }
         : { openingHours: hours };
-      await saveSalonSetup(targetStep, data);
-      if (targetStep === 6) router.replace(`/${locale}/calendar`);
-      else setStep(targetStep + 1);
+      const saved = await saveSalonSetup(targetStep, data, setupId, setupId ? null : idempotencyKey());
+      setSetupId(saved.id);
+      if (saved.status === "completed") {
+        window.sessionStorage.removeItem("gleami:setup-idempotency:new");
+        await openSalon(saved.companyId);
+        return;
+      }
+      if (!draftId || draftId !== saved.id) {
+        router.replace(`/${locale}/setup?draft=${saved.id}`);
+      }
+      setStep(targetStep + 1);
     } catch (error) { toast.error(error instanceof Error ? error.message : "Could not save setup"); }
     finally { setBusy(false); }
-  }, [address, hours, locale, name, router, selected, software, teamSize, website]);
+  }, [address, draftId, hours, locale, name, openSalon, router, selected, setupId, software, teamSize, website]);
+
+  const discard = useCallback(async () => {
+    if (!setupId) return;
+    setBusy(true);
+    try {
+      await discardSalonSetup(setupId);
+      window.sessionStorage.removeItem("gleami:setup-idempotency:new");
+      router.replace(canExit ? `/${locale}/workspaces` : `/${locale}/setup?new=1`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not discard this setup");
+    } finally {
+      setBusy(false);
+    }
+  }, [canExit, locale, router, setupId]);
+
+  const exitToSalon = useCallback(async () => {
+    const destination = await loadBrowserAccountDestination();
+    if (destination.type === "enter_app") {
+      await openSalon(destination.companyId);
+      return;
+    }
+    router.push(`/${locale}/workspaces`);
+  }, [locale, openSalon, router]);
 
   if (loading || !user) return <div className="grid min-h-screen place-items-center bg-[#F7F8FC] text-[#5B6480]">Loading…</div>;
   const title = ["What’s the name of your business?", "What services do you offer?", "How big is your team?", "Where is your business located?", "Which software do you use today?", "When are you open?"][step - 1];
@@ -81,6 +191,11 @@ export default function SalonSetupPage() {
               {Array.from({ length: 6 }, (_, index) => <span key={index} className={`h-1.5 w-8 rounded-full transition-colors ${index < step ? "bg-[#817BFA]" : "bg-[#E5E9F2]"}`} />)}
             </div>
             <span className="text-sm font-medium tabular-nums text-[#737989]">{step} <span className="text-[#B2B5BC]">/ 6</span></span>
+            {canExit && (
+              <button type="button" onClick={() => void exitToSalon()} className="text-sm font-semibold text-[#4361DB]">
+                Back to salon
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -145,6 +260,11 @@ export default function SalonSetupPage() {
 
       <footer className="fixed inset-x-0 bottom-0 z-10 border-t border-[#ECEDEF] bg-white/95 px-5 py-4 backdrop-blur sm:px-8">
         <div className="mx-auto flex max-w-[720px] items-center justify-between gap-4">
+          {setupId ? (
+            <button type="button" onClick={() => void discard()} disabled={busy} className="text-sm font-semibold text-[#737989] hover:text-[#101114]">
+              Discard draft
+            </button>
+          ) : <span />}
           <Button type="button" onClick={() => void save(step)} disabled={!canContinue} className="h-[58px] w-full rounded-full bg-[#071D43] text-[16px] font-semibold text-white shadow-none transition hover:bg-[#102958] disabled:bg-[#E5E9F2] disabled:text-[#737989] sm:ml-auto sm:w-[280px]">
             {busy ? <LoadingDots label="Saving" /> : <>{step === 6 ? "Finish setup" : "Continue"}<ArrowRight className="ml-2 h-4 w-4" /></>}
           </Button>

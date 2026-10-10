@@ -13,7 +13,8 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { LoadingDots } from "@/components/ui/loading-dots";
 import { createClient } from "@/lib/supabase/client";
 import { lookupAuthEmail, startEmailAuth, startSocialAuth } from "@/lib/api/auth/new-onboarding";
-import { loadMembershipSnapshot, type MembershipSupabase } from "@/lib/auth";
+import { accountDestinationPath } from "@/lib/auth/account-access";
+import { loadBrowserAccountDestination } from "@/lib/auth/account-client";
 
 function GoogleMark() {
   return <svg aria-hidden="true" viewBox="0 0 48 48" className="h-6 w-6"><path fill="#FFC107" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11a9.4 9.4 0 0 1-4.1 6.2v5.1h6.6c3.9-3.6 6.1-8.8 6.1-15Z"/><path fill="#FF3D00" d="M24 44c5.5 0 10.1-1.8 13.5-4.9l-6.6-5.1c-1.8 1.2-4.1 2-6.9 2-5.3 0-9.8-3.6-11.4-8.4H5.8v5.3A20 20 0 0 0 24 44Z"/><path fill="#4CAF50" d="M12.6 27.6a12 12 0 0 1 0-7.2v-5.3H5.8a20 20 0 0 0 0 17.8l6.8-5.3Z"/><path fill="#1976D2" d="M24 12c3 0 5.7 1 7.8 3.1l5.9-5.9C34.1 5.8 29.5 4 24 4A20 20 0 0 0 5.8 15.1l6.8 5.3C14.2 15.6 18.7 12 24 12Z"/></svg>;
@@ -57,13 +58,13 @@ export default function StartPage() {
     setResendSeconds(60);
   };
 
-  const routeAfterAuthentication = async (userId: string) => {
-    const supabase = createClient();
-    const membership = await loadMembershipSnapshot(
-      supabase as unknown as MembershipSupabase,
-      userId,
-    );
-    router.replace(nextPath ?? `/${locale}/${membership.companyIds.length > 0 ? "calendar" : "setup"}`);
+  const routeAfterAuthentication = async () => {
+    const destination = await loadBrowserAccountDestination(nextPath);
+    if (destination.type === "lookup_error") {
+      toast.error("Couldn't load your salons. Try again.");
+      return;
+    }
+    router.replace(accountDestinationPath(locale, destination));
   };
 
   const submit = async (event: React.FormEvent) => {
@@ -104,7 +105,7 @@ export default function StartPage() {
           return;
         }
         if (data.session && data.user) {
-          await routeAfterAuthentication(data.user.id);
+          await routeAfterAuthentication();
           return;
         }
         setVerificationKind("signup");
@@ -128,7 +129,7 @@ export default function StartPage() {
         setStep("verify");
         return;
       }
-      await routeAfterAuthentication(data.user.id);
+      await routeAfterAuthentication();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("error"));
     } finally {
@@ -148,7 +149,7 @@ export default function StartPage() {
       });
       if (error) throw error;
       if (!data.user) throw new Error(t("error"));
-      await routeAfterAuthentication(data.user.id);
+      await routeAfterAuthentication();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("error"));
     } finally {
@@ -182,7 +183,7 @@ export default function StartPage() {
   const social = async (provider: "google" | "apple") => {
     setBusy(true);
     try {
-      await startSocialAuth(provider, locale, nextPath ?? `/${locale}/setup`);
+      await startSocialAuth(provider, locale, nextPath ?? undefined);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("error"));
       setBusy(false);
@@ -195,6 +196,9 @@ export default function StartPage() {
         <div className="w-full max-w-[510px]">
           <div className="mb-8 text-center">
             <Image src="/gleami-wordmark.svg" alt="Gleami" width={142} height={48} priority className="mx-auto h-10 w-auto" />
+            {searchParams.get("error") === "confirm_email" && (
+              <p className="mt-6 rounded-2xl bg-[#F7F8FC] px-4 py-3 text-sm text-[#4F5667]">{common("auth.emailNotConfirmed")}</p>
+            )}
             <h1 className="mt-6 text-[30px] font-semibold leading-tight tracking-[-0.035em] sm:text-[34px]">
               {step === "verify" ? t("checkEmailTitle") : step === "password" ? (creatingAccount ? t("createPasswordTitle") : t("passwordTitle")) : t("startTitle")}
             </h1>

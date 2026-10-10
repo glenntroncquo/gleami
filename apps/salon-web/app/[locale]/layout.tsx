@@ -9,6 +9,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { notFound } from "next/navigation";
 import { locales } from "@/i18n/config";
 import { LayoutWrapper } from "@/components/layout-wrapper";
+import { enforceAccountGate, requestPathname, selectedCompanyId } from "@/lib/auth/account-resolver";
 
 const fontSans = Geist({
   variable: "--font-sans",
@@ -46,6 +47,9 @@ export default async function LocaleLayout({
     notFound();
   }
 
+  await enforceAccountGate(await requestPathname(), locale);
+  const initialCompanyId = await selectedCompanyId();
+
   // Load messages for the specific locale
   const messages = (await import(`../../messages/${locale}.json`)).default;
 
@@ -61,7 +65,7 @@ export default async function LocaleLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <AuthProvider>
+            <AuthProvider initialCompanyId={initialCompanyId}>
               <CalendarProvider>
                 <LayoutWrapper>{children}</LayoutWrapper>
               </CalendarProvider>

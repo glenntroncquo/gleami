@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
 import {
@@ -8,6 +8,7 @@ import {
   EMPTY_MEMBERSHIP_SNAPSHOT,
   fetchCompanyMembershipsWithToken,
   loadMembershipSnapshot,
+  scopeSnapshotToCompany,
   snapshotHasAnyPermission,
   snapshotHasCompanyPermission,
   snapshotHasPermission,
@@ -43,6 +44,7 @@ interface AuthContextType {
   showLocationSwitcher: boolean;
   permissionKeys: PermissionKey[];
   membershipReady: boolean;
+  membershipError: boolean;
   /** True after location rows have been fetched (or failed). Null selection after this is final. */
   locationsReady: boolean;
   hasPermission: (perm: PermissionKey, locationId?: string | null) => boolean;
@@ -66,7 +68,13 @@ function asMembershipClient() {
   return createClient() as unknown as MembershipSupabase;
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({
+  children,
+  initialCompanyId = null,
+}: {
+  children: React.ReactNode;
+  initialCompanyId?: string | null;
+}) {
   const [user, setUser] = useState<User | null>(null);
   const [membership, setMembership] = useState<MembershipSnapshot>(
     EMPTY_MEMBERSHIP_SNAPSHOT,
@@ -75,7 +83,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [locations, setLocations] = useState<LocationRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [membershipReady, setMembershipReady] = useState(false);
+  const [membershipError, setMembershipError] = useState(false);
   const [locationsReady, setLocationsReady] = useState(false);
+  const selectedCompanyRef = useRef(initialCompanyId);
+  selectedCompanyRef.current = initialCompanyId;
 
   useEffect(() => {
     let cancelled = false;
@@ -87,6 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSelectedLocationId(null);
       setLocations([]);
       setMembershipReady(false);
+      setMembershipError(false);
       setLocationsReady(false);
       setLoading(false);
     };
@@ -96,25 +108,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       userId: string,
       extras?: { primaryId?: string | null; accessibleIds?: string[] },
     ) => {
-      const accessibleIds = extras?.accessibleIds ?? snapshot.locationIds;
+      const scoped = scopeSnapshotToCompany(snapshot, selectedCompanyRef.current);
+      const companyChosen = Boolean(
+        selectedCompanyRef.current && snapshot.companyIds.includes(selectedCompanyRef.current),
+      );
+      const allowedLocations = new Set(scoped.locationIds);
+      const accessibleIds = (extras?.accessibleIds ?? scoped.locationIds).filter(
+        (id) => !companyChosen || snapshot.locationCompanies.length === 0 || allowedLocations.has(id),
+      );
       const nextLocationId = settleLocationSelection({
         userId,
         accessibleIds,
         persistedId: resolvePersistedLocationId(userId, accessibleIds),
-        fallbackId: snapshot.locationId,
+        fallbackId: scoped.locationId,
         primaryId: extras?.primaryId ?? null,
       });
       setMembership(
         accessibleIds.length > 0 &&
-          (accessibleIds.length !== snapshot.locationIds.length ||
-            accessibleIds.some((id) => !snapshot.locationIds.includes(id)))
+          (accessibleIds.length !== scoped.locationIds.length ||
+            accessibleIds.some((id) => !scoped.locationIds.includes(id)))
           ? {
-              ...snapshot,
+              ...scoped,
               locationIds: accessibleIds,
-              locationId: nextLocationId ?? snapshot.locationId,
+              locationId: nextLocationId ?? scoped.locationId,
             }
-          : snapshot,
+          : scoped,
       );
+      setMembershipError(false);
       setSelectedLocationId(nextLocationId);
       setMembershipReady(true);
       return nextLocationId;
@@ -241,6 +261,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           void hydrateLocationContext(applied, nextUser.id);
           hydrateCompletedFor = nextUser.id;
         } else {
+          setMembershipError(true);
           setMembershipReady(true);
           setLocationsReady(true);
           hydrateInFlightFor = null;
@@ -399,6 +420,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       showLocationSwitcher,
       permissionKeys: membership.permissionKeys,
       membershipReady,
+      membershipError,
       locationsReady,
       hasPermission,
       hasCompanyPermission,
@@ -411,6 +433,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       membership,
       membershipReady,
+      membershipError,
       locationsReady,
       companyId,
       locationId,

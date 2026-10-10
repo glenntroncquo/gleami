@@ -231,3 +231,39 @@ export function snapshotHasAnyPermission(
 ): boolean {
   return perms.some((perm) => snapshot.permissionKeys.includes(perm));
 }
+
+/**
+ * Keep the signed-in app on one chosen company. Location rows that belong
+ * to a different company stay out of the calendar until the person picks
+ * that company.
+ */
+export function scopeSnapshotToCompany(
+  snapshot: MembershipSnapshot,
+  companyId: string | null,
+): MembershipSnapshot {
+  if (!companyId || !snapshot.companyIds.includes(companyId)) return snapshot;
+  if (snapshot.locationCompanies.length === 0) {
+    return { ...snapshot, companyId };
+  }
+
+  const allowed = new Set(
+    snapshot.locationCompanies
+      .filter((row) => row.company_id === companyId)
+      .map((row) => row.id),
+  );
+  const locationIds = snapshot.locationIds.filter((id) => allowed.has(id));
+  return {
+    ...snapshot,
+    companyId,
+    locationIds,
+    locationId: locationIds.includes(snapshot.locationId ?? "")
+      ? snapshot.locationId
+      : (locationIds[0] ?? null),
+    locationMemberships: snapshot.locationMemberships.filter((row) =>
+      allowed.has(row.location_id),
+    ),
+    locationCompanies: snapshot.locationCompanies.filter(
+      (row) => row.company_id === companyId,
+    ),
+  };
+}

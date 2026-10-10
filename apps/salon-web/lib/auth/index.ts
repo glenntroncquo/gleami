@@ -11,6 +11,7 @@ export {
 } from "./membership-client";
 export type { MembershipSupabase } from "./membership-client";
 export {
+  scopeSnapshotToCompany,
   snapshotHasAnyPermission,
   snapshotHasCompanyPermission,
   snapshotHasPermission,

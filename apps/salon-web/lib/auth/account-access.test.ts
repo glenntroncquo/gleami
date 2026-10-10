@@ -2,7 +2,9 @@ import { EMPTY_MEMBERSHIP_SNAPSHOT } from "./membership-types";
 import { scopeSnapshotToCompany } from "./membership-resolve";
 import {
   accountDestinationPath,
+  destinationFromMembership,
   gateAccountPath,
+  isMissingAccountResolver,
   parseAccountSnapshot,
   resolveAccountDestination,
   type AccountSnapshot,
@@ -58,6 +60,45 @@ function run() {
     destination({ ok: false, reason: "unauthenticated" }).type,
     "unauthenticated",
     "a missing session is not an empty membership",
+  );
+  assertEqual(
+    destination({ ok: false, reason: "resolver_unavailable" }),
+    { type: "resolver_unavailable" },
+    "a missing account function is not a lookup error",
+  );
+  assertEqual(
+    isMissingAccountResolver({ status: 404, message: "Not Found" }),
+    true,
+    "an HTTP 404 from account_workspaces is a missing function",
+  );
+  assertEqual(
+    isMissingAccountResolver({ code: "PGRST202", message: "Could not find the function public.account_workspaces" }),
+    true,
+    "PostgREST schema-cache miss is a missing function",
+  );
+  assertEqual(
+    isMissingAccountResolver({ code: "42501", message: "permission denied" }),
+    false,
+    "a real database error is not a missing function",
+  );
+  assertEqual(
+    destinationFromMembership({ companyIds: [COMPANY_A], companyId: COMPANY_A }),
+    { type: "enter_app", companyId: COMPANY_A, drafts: [] },
+    "membership fallback opens the existing salon",
+  );
+  assertEqual(
+    destinationFromMembership({ companyIds: [], companyId: null }),
+    { type: "start_setup" },
+    "membership fallback with no salon starts setup",
+  );
+  assertEqual(
+    destinationFromMembership({
+      companyIds: [COMPANY_A],
+      companyId: COMPANY_A,
+      invitePath: "/nl/invite?token=abc",
+    }),
+    { type: "invite", path: "/nl/invite?token=abc" },
+    "membership fallback still prefers an invite",
   );
 
   assertEqual(
@@ -195,6 +236,15 @@ function run() {
     }),
     { redirect: null },
     "email verification stays on the login screen",
+  );
+  assertEqual(
+    gateAccountPath({
+      pathname: "/nl/calendar",
+      locale: "nl",
+      destination: { type: "resolver_unavailable" },
+    }),
+    { redirect: null },
+    "a missing account function does not block the calendar",
   );
 
   const scoped = scopeSnapshotToCompany(

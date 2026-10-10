@@ -5,6 +5,7 @@ import {
   COMPANY_COOKIE,
   gateAccountPath,
   isAnonymousRoute,
+  isMissingAccountResolver,
   parseAccountSnapshot,
   readCompanyCookieValue,
   resolveAccountDestination,
@@ -13,20 +14,22 @@ import {
   type AccountSnapshot,
 } from "@/lib/auth/account-access";
 
+type RpcError = { code?: string; message?: string; name?: string; status?: number };
+
 type RpcClient = {
   rpc: (
     fn: string,
     args?: Record<string, unknown>,
-  ) => PromiseLike<{ data: unknown; error: { message?: string; name?: string; status?: number } | null }>;
+  ) => PromiseLike<{ data: unknown; error: RpcError | null }>;
   auth: {
     getUser: () => PromiseLike<{
       data: { user: { id: string } | null };
-      error: { message?: string; name?: string; status?: number } | null;
+      error: RpcError | null;
     }>;
   };
 };
 
-function sessionMissing(error: { message?: string; name?: string; status?: number } | null): boolean {
+function sessionMissing(error: RpcError | null): boolean {
   if (!error) return false;
   const message = (error.message ?? "").toLowerCase();
   return (
@@ -53,7 +56,10 @@ export async function loadAccountSnapshot(existing?: RpcClient): Promise<Account
   if (!user) return { ok: false, reason: "unauthenticated" };
 
   const { data, error: rpcError } = await supabase.rpc("account_workspaces");
-  if (rpcError) return { ok: false, reason: "lookup_error" };
+  if (rpcError) {
+    if (isMissingAccountResolver(rpcError)) return { ok: false, reason: "resolver_unavailable" };
+    return { ok: false, reason: "lookup_error" };
+  }
   return parseAccountSnapshot(data);
 }
 

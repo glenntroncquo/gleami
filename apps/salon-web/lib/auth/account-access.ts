@@ -4,6 +4,8 @@
  * account with no memberships.
  */
 
+import { isMissingRpcError } from "./membership-resolve";
+
 export const COMPANY_COOKIE = "gleami_company_id";
 
 const UUID_RE =
@@ -23,7 +25,7 @@ export type AccountDraft = {
 };
 
 export type AccountSnapshot =
-  | { ok: false; reason: "unauthenticated" | "lookup_error" }
+  | { ok: false; reason: "unauthenticated" | "lookup_error" | "resolver_unavailable" }
   | {
       ok: true;
       emailConfirmed: boolean;
@@ -34,6 +36,7 @@ export type AccountSnapshot =
 export type AccountDestination =
   | { type: "unauthenticated" }
   | { type: "lookup_error" }
+  | { type: "resolver_unavailable" }
   | { type: "verify_email" }
   | { type: "invite"; path: string }
   | { type: "start_setup" }
@@ -129,6 +132,29 @@ export function safeInvitePath(path: string | null | undefined, locale: string):
   return path;
 }
 
+/**
+ * PostgREST returns 404 / PGRST202 when account_workspaces is not in the
+ * schema cache. That is not a failed membership read.
+ */
+export function isMissingAccountResolver(
+  error: { code?: string; message?: string; status?: number } | null,
+): boolean {
+  if (!error) return false;
+  if (error.status === 404) return true;
+  return isMissingRpcError(error);
+}
+
+/** Membership routing used when account_workspaces is not deployed yet. */
+export function destinationFromMembership(input: {
+  companyIds: string[];
+  companyId: string | null;
+  invitePath?: string | null;
+}): AccountDestination {
+  if (input.invitePath) return { type: "invite", path: input.invitePath };
+  if (input.companyIds.length === 0 || !input.companyId) return { type: "start_setup" };
+  return { type: "enter_app", companyId: input.companyId, drafts: [] };
+}
+
 export function resolveAccountDestination(input: {
   snapshot: AccountSnapshot;
   selectedCompanyId?: string | null;
@@ -136,9 +162,9 @@ export function resolveAccountDestination(input: {
 }): AccountDestination {
   const { snapshot } = input;
   if (!snapshot.ok) {
-    return snapshot.reason === "unauthenticated"
-      ? { type: "unauthenticated" }
-      : { type: "lookup_error" };
+    if (snapshot.reason === "unauthenticated") return { type: "unauthenticated" };
+    if (snapshot.reason === "resolver_unavailable") return { type: "resolver_unavailable" };
+    return { type: "lookup_error" };
   }
 
   if (input.invitePath) return { type: "invite", path: input.invitePath };
@@ -169,6 +195,8 @@ export function accountDestinationPath(locale: string, destination: AccountDesti
       return `/${locale}/login`;
     case "lookup_error":
       return `/${locale}/account-unavailable`;
+    case "resolver_unavailable":
+      return `/${locale}/calendar`;
     case "verify_email":
       return `/${locale}/login?error=confirm_email`;
     case "invite":
@@ -208,6 +236,8 @@ export function gateAccountPath(input: {
     if (isAnonymousRoute(route) || route === "/account-unavailable") return { redirect: null };
     return { redirect: `/${locale}/login` };
   }
+
+  if (destination.type === "resolver_unavailable") return { redirect: null };
 
   if (destination.type === "lookup_error") {
     if (route === "/account-unavailable") return { redirect: null };

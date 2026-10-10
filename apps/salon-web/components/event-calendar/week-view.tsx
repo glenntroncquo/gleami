@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
   addHours,
   areIntervalsOverlapping,
@@ -235,12 +235,24 @@ export function WeekView({
     currentDate,
     "week"
   );
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const didScrollToNow = useRef(false);
+
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    if (!scroller || !currentTimeVisible || didScrollToNow.current) return;
+    const top =
+      (currentTimePosition / 100) * scroller.scrollHeight -
+      scroller.clientHeight * 0.35;
+    scroller.scrollTop = Math.max(0, top);
+    didScrollToNow.current = true;
+  }, [currentTimePosition, currentTimeVisible]);
 
   const weekNumber = getWeek(currentDate, { weekStartsOn: 1 });
 
   return (
-    <div data-slot="week-view" className="flex h-full flex-col">
-      <div className="bg-background/80 border-border/70 sticky top-0 z-30 grid grid-cols-[2rem_1fr_1fr_1fr_1fr_1fr_1fr_1fr] border-y backdrop-blur-md uppercase">
+    <div data-slot="week-view" className="flex h-full min-h-0 flex-col">
+      <div className="bg-background border-border/70 z-30 grid shrink-0 grid-cols-[2rem_1fr_1fr_1fr_1fr_1fr_1fr_1fr] border-y uppercase">
         <div className="text-muted-foreground/70 py-2 text-center text-xs">
           W{weekNumber}
         </div>
@@ -259,7 +271,7 @@ export function WeekView({
       </div>
 
       {showAllDaySection && (
-        <div className="border-border/70 bg-muted/50 border-b">
+        <div className="border-border/70 bg-muted/50 shrink-0 border-b">
           <div className="grid grid-cols-[2rem_1fr_1fr_1fr_1fr_1fr_1fr_1fr]">
             <div className="border-border/70 relative border-r">
               <span className="text-muted-foreground/70 absolute bottom-0 left-0 h-6 w-8 max-w-full pe-1 text-right text-[10px] sm:pe-2 sm:text-xs">
@@ -323,7 +335,11 @@ export function WeekView({
         </div>
       )}
 
-      <div className="grid flex-1 grid-cols-[2rem_1fr_1fr_1fr_1fr_1fr_1fr_1fr] overflow-hidden">
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden"
+      >
+      <div className="grid grid-cols-[2rem_1fr_1fr_1fr_1fr_1fr_1fr_1fr]">
         <div className="border-border/70 border-r grid auto-cols-fr">
           {hours.map((hour, index) => (
             <div
@@ -345,6 +361,12 @@ export function WeekView({
             className="border-border/70 data-today:bg-accent relative border-r last:border-r-0 grid auto-cols-fr overflow-hidden"
             data-today={isToday(day) || undefined}
           >
+            {selectedStaffId && (
+              <div
+                aria-hidden
+                className="calendar-unavailable pointer-events-none absolute inset-0"
+              />
+            )}
             {/* Positioned events */}
             {(processedDayEvents[dayIndex] ?? []).map((positionedEvent) => (
               <div
@@ -388,22 +410,21 @@ export function WeekView({
               return (
                 <div
                   key={hour.toString()}
-                  className="border-border/70 relative min-h-[var(--week-cells-height)] border-b last:border-b-0"
+                  className="border-border/70 relative z-[1] min-h-[var(--week-cells-height)] border-b last:border-b-0 after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:z-10 after:h-px after:bg-border/70 after:content-[''] last:after:hidden"
                 >
                   {/* Quarter-hour intervals */}
                   {[0, 1, 2, 3].map((quarter) => {
                     const quarterHourTime = hourValue + quarter * 0.25;
                     const availabilityStatus = selectedStaffId
                       ? checkTimeSlot(day, quarterHourTime)
-                      : { isAvailable: false, isUnavailable: false };
+                      : null;
+                    const open = availabilityStatus?.isAvailable === true;
                     return (
                       <DroppableCell
                         key={`${hour.toString()}-${quarter}`}
                         id={`week-cell-${day.toISOString()}-${quarterHourTime}`}
                         date={day}
                         time={quarterHourTime}
-                        isAvailable={availabilityStatus.isAvailable}
-                        isUnavailable={availabilityStatus.isUnavailable}
                         className={cn(
                           "absolute h-[calc(var(--week-cells-height)/4)] w-full",
                           quarter === 0 && "top-0",
@@ -412,7 +433,8 @@ export function WeekView({
                           quarter === 2 &&
                             "top-[calc(var(--week-cells-height)/4*2)]",
                           quarter === 3 &&
-                            "top-[calc(var(--week-cells-height)/4*3)]"
+                            "top-[calc(var(--week-cells-height)/4*3)]",
+                          open && (isToday(day) ? "bg-accent" : "bg-background")
                         )}
                         onClick={() => {
                           const startTime = new Date(day);
@@ -428,6 +450,7 @@ export function WeekView({
             })}
           </div>
         ))}
+      </div>
       </div>
     </div>
   );

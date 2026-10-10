@@ -26,7 +26,7 @@ export interface Staff {
   image_path: string | null;
 }
 
-async function loadCalendarStaff(
+export async function loadCalendarStaff(
   companyId: string,
   locationId: string | null,
 ): Promise<Staff[]> {

@@ -132,7 +132,7 @@ export default function Component() {
   // Don't return early - let the calendar render with loading state
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col">
       <EventCalendar
         events={visibleEvents}
         onEventAdd={handleEventAdd}

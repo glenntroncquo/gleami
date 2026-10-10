@@ -11,8 +11,8 @@ export default function Page() {
     <ProtectedRoute>
       <CalendarProvider>
         <AppSidebar />
-        <SidebarInset>
-          <div className="flex flex-1 flex-col gap-4 p-2 pt-0">
+        <SidebarInset className="h-svh overflow-hidden md:h-[calc(100svh-1rem)]">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <BigCalendar />
           </div>
         </SidebarInset>

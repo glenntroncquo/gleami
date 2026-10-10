@@ -1,32 +1,26 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   addHours,
-  areIntervalsOverlapping,
-  differenceInMinutes,
   eachHourOfInterval,
   format,
-  getHours,
-  getMinutes,
   isSameDay,
   startOfDay,
-  endOfDay,
 } from "date-fns";
 
 import {
-  DraggableEvent,
-  DroppableCell,
   EventItem,
   isMultiDayEvent,
   useCurrentTimeIndicator,
-  WeekCellsHeight,
   type CalendarEvent,
 } from "@/components/event-calendar";
 import { StartHour, EndHour } from "@/components/event-calendar/constants";
-import { cn } from "@/lib/utils";
 import { useCalendarContext } from "@/components/event-calendar/calendar-context";
-import { useStaffAvailability } from "@/components/event-calendar/hooks/use-staff-availability";
+import { DayStaffColumn, DayStaffHeader } from "@/components/event-calendar/day-staff-column";
+import { loadCalendarStaff, type Staff } from "@/components/participants";
+import { useCompanyId, useLocationId } from "@/lib/company-util";
+import { useAuth } from "@/providers/auth-provider";
 
 interface DayViewProps {
   currentDate: Date;
@@ -35,22 +29,13 @@ interface DayViewProps {
   onEventCreate: (startTime: Date) => void;
 }
 
-interface PositionedEvent {
-  event: CalendarEvent;
-  top: number;
-  height: number;
-  left: number;
-  width: number;
-  zIndex: number;
-}
-
 export function DayView({
   currentDate,
   events,
   onEventSelect,
   onEventCreate,
 }: DayViewProps) {
-  const { getSelectedStaffId } = useCalendarContext();
+  const { visibleStaff } = useCalendarContext();
   const hours = useMemo(() => {
     const dayStart = startOfDay(currentDate);
     return eachHourOfInterval({
@@ -59,14 +44,35 @@ export function DayView({
     });
   }, [currentDate]);
 
-  const dayStart = useMemo(() => startOfDay(currentDate), [currentDate]);
-  const dayEnd = useMemo(() => endOfDay(currentDate), [currentDate]);
+  const companyId = useCompanyId();
+  const locationId = useLocationId();
+  const { membershipReady } = useAuth();
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const didScrollToNow = useRef(false);
 
-  const selectedStaffId = getSelectedStaffId();
-  const { checkTimeSlot } = useStaffAvailability(
-    selectedStaffId,
-    dayStart,
-    dayEnd
+  useEffect(() => {
+    if (!companyId || !membershipReady) return;
+    let cancelled = false;
+    loadCalendarStaff(companyId, locationId)
+      .then((rows) => {
+        if (!cancelled) setStaff(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setStaff([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [companyId, locationId, membershipReady]);
+
+  const columns = useMemo(
+    () =>
+      staff.filter(
+        (member) => visibleStaff.length === 0 || visibleStaff.includes(member.id),
+      ),
+    [staff, visibleStaff],
   );
 
   const dayEvents = useMemo(() => {
@@ -101,97 +107,6 @@ export function DayView({
     });
   }, [dayEvents]);
 
-  // Process events to calculate positions
-  const positionedEvents = useMemo(() => {
-    const result: PositionedEvent[] = [];
-    const dayStart = startOfDay(currentDate);
-
-    // Sort events by start time and duration
-    const sortedEvents = [...timeEvents].sort((a, b) => {
-      const aStart = new Date(a.start);
-      const bStart = new Date(b.start);
-      const aEnd = new Date(a.end);
-      const bEnd = new Date(b.end);
-
-      // First sort by start time
-      if (aStart < bStart) return -1;
-      if (aStart > bStart) return 1;
-
-      // If start times are equal, sort by duration (longer events first)
-      const aDuration = differenceInMinutes(aEnd, aStart);
-      const bDuration = differenceInMinutes(bEnd, bStart);
-      return bDuration - aDuration;
-    });
-
-    // Track columns for overlapping events
-    const columns: { event: CalendarEvent; end: Date }[][] = [];
-
-    sortedEvents.forEach((event) => {
-      const eventStart = new Date(event.start);
-      const eventEnd = new Date(event.end);
-
-      // Adjust start and end times if they're outside this day
-      const adjustedStart = isSameDay(currentDate, eventStart)
-        ? eventStart
-        : dayStart;
-      const adjustedEnd = isSameDay(currentDate, eventEnd)
-        ? eventEnd
-        : addHours(dayStart, 24);
-
-      // Calculate top position and height
-      const startHour =
-        getHours(adjustedStart) + getMinutes(adjustedStart) / 60;
-      const endHour = getHours(adjustedEnd) + getMinutes(adjustedEnd) / 60;
-      const top = (startHour - StartHour) * WeekCellsHeight;
-      const height = (endHour - startHour) * WeekCellsHeight;
-
-      // Find a column for this event
-      let columnIndex = 0;
-      let placed = false;
-
-      while (!placed) {
-        const col = columns[columnIndex] || [];
-        if (col.length === 0) {
-          columns[columnIndex] = col;
-          placed = true;
-        } else {
-          const overlaps = col.some((c) =>
-            areIntervalsOverlapping(
-              { start: adjustedStart, end: adjustedEnd },
-              { start: new Date(c.event.start), end: new Date(c.event.end) }
-            )
-          );
-          if (!overlaps) {
-            placed = true;
-          } else {
-            columnIndex++;
-          }
-        }
-      }
-
-      // Ensure column is initialized before pushing
-      const currentColumn = columns[columnIndex] || [];
-      columns[columnIndex] = currentColumn;
-      currentColumn.push({ event, end: adjustedEnd });
-
-      // First column takes full width, others are indented by 25% and take reduced width
-      const width =
-        columnIndex === 0 ? 1 : Math.max(0.5, 1 - columnIndex * 0.25);
-      const left = columnIndex === 0 ? 0 : columnIndex * 0.25;
-
-      result.push({
-        event,
-        top,
-        height,
-        left,
-        width,
-        zIndex: 10 + columnIndex, // Higher columns get higher z-index
-      });
-    });
-
-    return result;
-  }, [currentDate, timeEvents]);
-
   const handleEventClick = (event: CalendarEvent, e: React.MouseEvent) => {
     e.stopPropagation();
     onEventSelect(event);
@@ -203,10 +118,25 @@ export function DayView({
     "day"
   );
 
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    const grid = gridRef.current;
+    if (!scroller || !grid || !currentTimeVisible || didScrollToNow.current) return;
+    const top =
+      grid.offsetTop +
+      (currentTimePosition / 100) * grid.offsetHeight -
+      scroller.clientHeight * 0.35;
+    scroller.scrollTop = Math.max(0, top);
+    didScrollToNow.current = true;
+  }, [currentTimePosition, currentTimeVisible]);
+
+  const columnMembers: Array<Staff | null> = columns.length > 0 ? columns : [null];
+  const columnTemplate = `3rem repeat(${columnMembers.length}, minmax(9rem, 1fr))`;
+
   return (
-    <div data-slot="day-view" className="contents">
+    <div data-slot="day-view" className="flex h-full min-h-0 flex-1 flex-col">
       {showAllDaySection && (
-        <div className="border-border/70 bg-muted/50 border-t">
+        <div className="border-border/70 bg-muted/50 shrink-0 border-t">
           <div className="grid grid-cols-[2rem_1fr]">
             <div className="relative">
               <span className="text-muted-foreground/70 absolute bottom-0 left-0 h-6 w-8 max-w-full pe-1 text-right text-[10px] sm:pe-2 sm:text-xs">
@@ -239,15 +169,37 @@ export function DayView({
         </div>
       )}
 
-      <div className="border-border/70 grid flex-1 grid-cols-[2rem_1fr] border-t overflow-hidden">
-        <div>
+      <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-auto">
+        <div
+          className="sticky top-0 z-30 grid border-b border-border/70 bg-background"
+          style={{ gridTemplateColumns: columnTemplate }}
+        >
+          <div className="sticky left-0 z-30 border-r border-border/70 bg-background" />
+          {columnMembers.map((member) => (
+            <DayStaffHeader key={member?.id ?? "all"} member={member} />
+          ))}
+        </div>
+        <div ref={gridRef} className="relative">
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: columnTemplate }}
+        >
+        <div className="sticky left-0 z-20 border-r border-border/70 bg-background">
+          {currentTimeVisible && (
+            <div
+              className="pointer-events-none absolute right-0 z-30"
+              style={{ top: `${currentTimePosition}%` }}
+            >
+              <div className="absolute -right-1 size-2 -translate-y-1/2 rounded-full bg-red-500" />
+            </div>
+          )}
           {hours.map((hour, index) => (
             <div
               key={hour.toString()}
-              className="border-border/70 relative h-[var(--week-cells-height)] border-b last:border-b-0"
+              className="relative h-[var(--week-cells-height)] border-b border-border/70 last:border-b-0"
             >
               {index > 0 && (
-                <span className="bg-background text-muted-foreground/70 absolute -top-3 left-0 flex h-6 w-8 max-w-full items-center justify-end pe-1 text-[10px] sm:pe-2 sm:text-xs">
+                <span className="absolute -top-3 left-0 flex h-6 w-full items-center justify-end bg-background pe-1 text-[10px] text-muted-foreground/70 sm:pe-2 sm:text-xs">
                   {format(hour, "HH")}
                 </span>
               )}
@@ -255,89 +207,30 @@ export function DayView({
           ))}
         </div>
 
-        <div className="relative overflow-hidden">
-          {/* Positioned events */}
-          {positionedEvents.map((positionedEvent) => (
-            <div
-              key={positionedEvent.event.id}
-              className="absolute z-10 px-0.5"
-              style={{
-                top: `${positionedEvent.top}px`,
-                height: `${positionedEvent.height}px`,
-                left: `${positionedEvent.left * 100}%`,
-                width: `${positionedEvent.width * 100}%`,
-                zIndex: positionedEvent.zIndex,
-              }}
-            >
-              <div className="h-full w-full">
-                <DraggableEvent
-                  event={positionedEvent.event}
-                  view="day"
-                  onClick={(e) => handleEventClick(positionedEvent.event, e)}
-                  showTime
-                  height={positionedEvent.height}
-                />
-              </div>
-            </div>
-          ))}
-
-          {/* Current time indicator */}
-          {currentTimeVisible && (
-            <div
-              className="pointer-events-none absolute right-0 left-0 z-20"
-              style={{ top: `${currentTimePosition}%` }}
-            >
-              <div className="relative flex items-center">
-                <div className="bg-red-500 absolute -left-1 h-2 w-2 rounded-full"></div>
-                <div className="bg-red-500 h-[2px] w-full"></div>
-              </div>
-            </div>
-          )}
-
-          {/* Time grid */}
-          {hours.map((hour) => {
-            const hourValue = getHours(hour);
-            return (
-              <div
-                key={hour.toString()}
-                className="border-border/70 relative h-[var(--week-cells-height)] border-b last:border-b-0"
-              >
-                {/* Quarter-hour intervals */}
-                {[0, 1, 2, 3].map((quarter) => {
-                  const quarterHourTime = hourValue + quarter * 0.25;
-                  const availabilityStatus = selectedStaffId
-                    ? checkTimeSlot(currentDate, quarterHourTime)
-                    : { isAvailable: false, isUnavailable: false };
-                  return (
-                    <DroppableCell
-                      key={`${hour.toString()}-${quarter}`}
-                      id={`day-cell-${currentDate.toISOString()}-${quarterHourTime}`}
-                      date={currentDate}
-                      time={quarterHourTime}
-                      isAvailable={availabilityStatus.isAvailable}
-                      isUnavailable={availabilityStatus.isUnavailable}
-                      className={cn(
-                        "absolute h-[calc(var(--week-cells-height)/4)] w-full",
-                        quarter === 0 && "top-0",
-                        quarter === 1 &&
-                          "top-[calc(var(--week-cells-height)/4)]",
-                        quarter === 2 &&
-                          "top-[calc(var(--week-cells-height)/4*2)]",
-                        quarter === 3 &&
-                          "top-[calc(var(--week-cells-height)/4*3)]"
-                      )}
-                      onClick={() => {
-                        const startTime = new Date(currentDate);
-                        startTime.setHours(hourValue);
-                        startTime.setMinutes(quarter * 15);
-                        onEventCreate(startTime);
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            );
-          })}
+        {columnMembers.map((member) => (
+          <DayStaffColumn
+            key={member?.id ?? "all"}
+            member={member}
+            events={
+              member
+                ? timeEvents.filter((event) => event.staff?.id === member.id)
+                : timeEvents
+            }
+            hours={hours}
+          currentDate={currentDate}
+          onEventCreate={onEventCreate}
+            onEventSelect={onEventSelect}
+          />
+        ))}
+        </div>
+        {currentTimeVisible && (
+          <div
+            className="pointer-events-none absolute inset-x-0 z-20"
+            style={{ top: `${currentTimePosition}%` }}
+          >
+            <div className="ml-12 h-[2px] bg-red-500" />
+          </div>
+        )}
         </div>
       </div>
     </div>

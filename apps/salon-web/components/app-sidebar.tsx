@@ -38,7 +38,6 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
-import Participants from "@/components/participants";
 import SidebarCalendar from "@/components/sidebar-calendar";
 import { motion } from "framer-motion";
 import { NAV_PERMISSION, type PermissionKey } from "@/lib/auth";
@@ -382,14 +381,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             >
               <SidebarGroup className="px-1 mt-3 pt-4 border-t group-data-[collapsible=icon]:hidden">
                 <SidebarCalendar />
-              </SidebarGroup>
-              <SidebarGroup className="px-1 mt-3 pt-4 border-t group-data-[collapsible=icon]:hidden">
-                <SidebarGroupLabel className="uppercase text-muted-foreground/65">
-                  Participants
-                </SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <Participants />
-                </SidebarGroupContent>
               </SidebarGroup>
             </motion.div>
           )}

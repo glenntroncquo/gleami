@@ -259,7 +259,7 @@ export function EventCalendar({
 
   return (
     <div
-      className="flex has-data-[slot=month-view]:flex-1 flex-col rounded-lg"
+      className="flex h-full min-h-0 flex-1 flex-col"
       style={
         {
           "--event-height": `${EventHeight}px`,
@@ -271,7 +271,7 @@ export function EventCalendar({
       <CalendarDndProvider onEventUpdate={handleEventUpdate}>
         <div
           className={cn(
-            "flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-5 sm:px-4",
+            "flex shrink-0 flex-col sm:flex-row sm:items-center justify-between gap-2 py-5 sm:px-4",
             className
           )}
         >
@@ -372,7 +372,7 @@ export function EventCalendar({
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {loading && events.length === 0 ? (
             <div className="flex items-center justify-center h-64">
               <div className="text-center">

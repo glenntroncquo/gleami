@@ -585,8 +585,9 @@ function SidebarMenuButton({
       <TooltipContent
         side="right"
         align="center"
-        sideOffset={8}
+        sideOffset={12}
         hidden={state !== "collapsed" || isMobile}
+        className="rounded-full px-3 py-1.5 text-[13px] font-medium shadow-md"
         {...tooltip}
       />
     </Tooltip>

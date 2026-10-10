@@ -245,6 +245,16 @@ select {
   line-height: 1 !important;
 }
 
+.calendar-unavailable {
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0,
+    transparent 9px,
+    color-mix(in srgb, var(--muted-foreground) 14%, transparent) 9px,
+    color-mix(in srgb, var(--muted-foreground) 14%, transparent) 10px
+  );
+}
+
 @media (prefers-reduced-motion: reduce) {
   .gleami-loading-dot {
     animation: none;

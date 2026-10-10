@@ -154,9 +154,8 @@ export default function Participants() {
         return (
           <button
             key={member.id}
-            className={`relative z-${
-              10 - index
-            } ring-2 ring-background rounded-full transition-all hover:scale-110 hover:z-50 ${
+            style={{ zIndex: staff.length - index }}
+            className={`relative rounded-full ring-2 ring-background transition-transform hover:z-50 hover:scale-110 ${
               isSelected ? "ring-primary" : "ring-muted-foreground/20"
             }`}
             onClick={() => handleStaffToggle(member.id)}

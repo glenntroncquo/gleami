@@ -196,6 +196,42 @@ export function EventItem({
     // Use compact layout for short appointments (less than 45 minutes)
     const isShortAppointment = durationInMinutes < 45;
 
+    if (view === "week") {
+      return (
+        <EventWrapper
+          event={event}
+          isFirstDay={isFirstDay}
+          isLastDay={isLastDay}
+          isDragging={isDragging}
+          onClick={onClick}
+          className={cn("flex-col py-1 text-[10px] sm:text-[11px]", className)}
+          currentTime={currentTime}
+          dndListeners={dndListeners}
+          dndAttributes={dndAttributes}
+          onMouseDown={onMouseDown}
+          onTouchStart={onTouchStart}
+        >
+          <div className="flex h-full min-w-0 flex-col gap-0.5 overflow-hidden">
+            <div className="truncate font-semibold leading-tight">
+              {event.service?.name || event.title}
+            </div>
+            {event.client && (
+              <div className="truncate leading-tight opacity-80">
+                {event.client.first_name} {event.client.last_name}
+              </div>
+            )}
+            {showTime && (
+              <div className="truncate leading-tight opacity-70">
+                {isShortAppointment
+                  ? formatTimeWithOptionalMinutes(displayStart)
+                  : getEventTime()}
+              </div>
+            )}
+          </div>
+        </EventWrapper>
+      );
+    }
+
     return (
       <EventWrapper
         event={event}
@@ -203,11 +239,7 @@ export function EventItem({
         isLastDay={isLastDay}
         isDragging={isDragging}
         onClick={onClick}
-        className={cn(
-          "py-1 flex-col relative",
-          view === "week" ? "text-[10px] sm:text-[11px]" : "text-[11px]",
-          className
-        )}
+        className={cn("relative flex-col py-1 text-[11px]", className)}
         currentTime={currentTime}
         dndListeners={dndListeners}
         dndAttributes={dndAttributes}

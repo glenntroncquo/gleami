@@ -90,8 +90,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </Link>
           </div>
         </SidebarHeader>
+        <SidebarTrigger />
         <SidebarContent className="gap-0 mt-3 pt-3 border-t">
-          <SidebarTrigger />
           <SidebarGroup className="px-1">
             <SidebarGroupLabel className="uppercase text-muted-foreground/65">
               Navigation

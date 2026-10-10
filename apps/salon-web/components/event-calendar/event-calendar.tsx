@@ -271,59 +271,56 @@ export function EventCalendar({
       <CalendarDndProvider onEventUpdate={handleEventUpdate}>
         <div
           className={cn(
-            "flex shrink-0 flex-col sm:flex-row sm:items-center justify-between gap-2 py-5 sm:px-4",
+            "flex shrink-0 flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-4 sm:py-4",
             className
           )}
         >
-          <div className="flex sm:flex-col max-sm:items-center justify-between gap-1.5">
-            <div className="flex items-center gap-1.5">
-              <div className="flex items-center gap-2">
-                <h2 className="font-semibold text-xl lg:peer-data-[state=invisible]:-translate-x-7.5 transition-transform ease-in-out duration-300">
-                  {viewTitle}
-                </h2>
-                {loading && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                    <span>Loading...</span>
-                  </div>
-                )}
-              </div>
+          <div className="flex min-w-0 items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <h2 className="truncate text-xl font-semibold">{viewTitle}</h2>
+              {loading && (
+                <div className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground">
+                  <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-primary"></div>
+                  <span className="sr-only">Loading...</span>
+                </div>
+              )}
             </div>
-            <Participants />
+            <div className="shrink-0 sm:hidden">
+              <Participants />
+            </div>
           </div>
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center sm:gap-2 max-sm:order-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="max-sm:size-8"
-                  onClick={handlePrevious}
-                  aria-label="Previous"
-                >
-                  <ChevronLeftIcon size={16} aria-hidden="true" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="max-sm:size-8"
-                  onClick={handleNext}
-                  aria-label="Next"
-                >
-                  <ChevronRightIcon size={16} aria-hidden="true" />
-                </Button>
-              </div>
-              <Button
-                className="max-sm:h-8 max-sm:px-2.5!"
-                onClick={handleToday}
-              >
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+            <div className="hidden shrink-0 sm:block">
+              <Participants />
+            </div>
+            <div className="flex shrink-0 items-center gap-0.5">
+              <Button size="sm" onClick={handleToday}>
                 {t("calendar.today")}
               </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                onClick={handlePrevious}
+                aria-label="Previous"
+              >
+                <ChevronLeftIcon size={16} aria-hidden="true" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                onClick={handleNext}
+                aria-label="Next"
+              >
+                <ChevronRightIcon size={16} aria-hidden="true" />
+              </Button>
             </div>
-            <div className="flex items-center justify-between gap-2">
+            <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:ml-0">
               <Button
                 variant="outline"
-                className="max-sm:h-8 max-sm:px-2.5!"
+                size="sm"
+                className="min-w-0 overflow-hidden"
                 onClick={() => {
                   openAppointmentSheet({
                     id: "",
@@ -334,17 +331,14 @@ export function EventCalendar({
                   });
                 }}
               >
-                {t("calendar.newEvent")}
+                <span className="truncate">{t("calendar.newEvent")}</span>
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="gap-1.5 max-sm:h-8 max-sm:px-2! max-sm:gap-1"
-                  >
+                  <Button variant="outline" size="sm" className="shrink-0 gap-1 px-2.5">
                     <span className="capitalize">{view}</span>
                     <ChevronDownIcon
-                      className="-me-1 opacity-60"
+                      className="-me-0.5 opacity-60"
                       size={16}
                       aria-hidden="true"
                     />

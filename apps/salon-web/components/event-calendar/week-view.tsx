@@ -34,6 +34,8 @@ import { cn } from "@/lib/utils";
 import { useCalendarContext } from "@/components/event-calendar/calendar-context";
 import { useStaffAvailability } from "@/components/event-calendar/hooks/use-staff-availability";
 
+const WEEK_GRID = "2.75rem repeat(7, minmax(0, 1fr))";
+
 interface WeekViewProps {
   currentDate: Date;
   events: CalendarEvent[];
@@ -204,22 +206,22 @@ export function WeekView({
         columns[columnIndex] = currentColumn;
         currentColumn.push({ event, end: adjustedEnd });
 
-        // Calculate width and left position based on number of columns
-        const width =
-          columnIndex === 0 ? 1 : Math.max(0.5, 1 - columnIndex * 0.25);
-        const left = columnIndex === 0 ? 0 : columnIndex * 0.25;
-
         positionedEvents.push({
           event,
           top,
           height,
-          left,
-          width,
-          zIndex: 10 + columnIndex, // Higher columns get higher z-index
+          left: columnIndex,
+          width: 1,
+          zIndex: 10 + columnIndex,
         });
       });
 
-      return positionedEvents;
+      const laneCount = Math.max(columns.length, 1);
+      return positionedEvents.map((item) => ({
+        ...item,
+        left: item.left / laneCount,
+        width: 1 / laneCount,
+      }));
     });
 
     return result;
@@ -236,13 +238,16 @@ export function WeekView({
     "week"
   );
   const scrollRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
   const didScrollToNow = useRef(false);
 
   useEffect(() => {
     const scroller = scrollRef.current;
-    if (!scroller || !currentTimeVisible || didScrollToNow.current) return;
+    const grid = gridRef.current;
+    if (!scroller || !grid || !currentTimeVisible || didScrollToNow.current) return;
     const top =
-      (currentTimePosition / 100) * scroller.scrollHeight -
+      grid.offsetTop +
+      (currentTimePosition / 100) * grid.offsetHeight -
       scroller.clientHeight * 0.35;
     scroller.scrollTop = Math.max(0, top);
     didScrollToNow.current = true;
@@ -252,29 +257,43 @@ export function WeekView({
 
   return (
     <div data-slot="week-view" className="flex h-full min-h-0 flex-col">
-      <div className="bg-background border-border/70 z-30 grid shrink-0 grid-cols-[2rem_1fr_1fr_1fr_1fr_1fr_1fr_1fr] border-y uppercase">
-        <div className="text-muted-foreground/70 py-2 text-center text-xs">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
+      <div
+        className="sticky top-0 z-30 grid border-b border-border/70 bg-background"
+        style={{ gridTemplateColumns: WEEK_GRID }}
+      >
+        <div className="sticky left-0 z-40 flex items-end justify-center border-r border-border/70 bg-background pb-2 text-[10px] font-medium tabular-nums text-muted-foreground">
           W{weekNumber}
         </div>
         {days.map((day) => (
           <div
             key={day.toString()}
-            className="data-today:bg-accent data-today:text-foreground text-muted-foreground/70 py-2 text-center text-xs data-today:font-medium"
+            className="flex flex-col items-center gap-1 border-r border-border/70 py-1.5 last:border-r-0 data-today:bg-accent/50"
             data-today={isToday(day) || undefined}
           >
-            <span className="sm:hidden" aria-hidden="true">
-              {formatDate(day, "E")[0]} {formatDate(day, "d")}
+            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <span className="sm:hidden">{formatDate(day, "E")[0]}</span>
+              <span className="hidden sm:inline">{formatDate(day, "EEE")}</span>
             </span>
-            <span className="max-sm:hidden">{formatDate(day, "EEE dd")}</span>
+            <span
+              className={cn(
+                "flex size-7 items-center justify-center rounded-full text-xs tabular-nums",
+                isToday(day)
+                  ? "bg-primary font-semibold text-primary-foreground"
+                  : "text-foreground"
+              )}
+            >
+              {format(day, "d")}
+            </span>
           </div>
         ))}
       </div>
 
       {showAllDaySection && (
-        <div className="border-border/70 bg-muted/50 shrink-0 border-b">
-          <div className="grid grid-cols-[2rem_1fr_1fr_1fr_1fr_1fr_1fr_1fr]">
-            <div className="border-border/70 relative border-r">
-              <span className="text-muted-foreground/70 absolute bottom-0 left-0 h-6 w-8 max-w-full pe-1 text-right text-[10px] sm:pe-2 sm:text-xs">
+        <div className="border-border/70 bg-muted/50 border-b">
+          <div className="grid" style={{ gridTemplateColumns: WEEK_GRID }}>
+            <div className="sticky left-0 z-20 border-border/70 relative border-r bg-muted/50">
+              <span className="text-muted-foreground/70 absolute inset-x-0 bottom-1 px-0.5 text-right text-[9px] leading-tight">
                 All day
               </span>
             </div>
@@ -336,18 +355,18 @@ export function WeekView({
       )}
 
       <div
-        ref={scrollRef}
-        className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden"
+        ref={gridRef}
+        className="grid"
+        style={{ gridTemplateColumns: WEEK_GRID }}
       >
-      <div className="grid grid-cols-[2rem_1fr_1fr_1fr_1fr_1fr_1fr_1fr]">
-        <div className="border-border/70 border-r grid auto-cols-fr">
+        <div className="sticky left-0 z-20 border-r border-border/70 bg-background">
           {hours.map((hour, index) => (
             <div
               key={hour.toString()}
-              className="border-border/70 relative min-h-[var(--week-cells-height)] border-b last:border-b-0"
+              className="relative h-[var(--week-cells-height)] border-b border-border/70 last:border-b-0"
             >
               {index > 0 && (
-                <span className="bg-background text-muted-foreground/70 absolute -top-3 left-0 flex h-6 w-8 max-w-full items-center justify-end pe-1 text-[10px] sm:pe-2 sm:text-xs">
+                <span className="pointer-events-none absolute inset-x-0 top-0 z-10 flex -translate-y-1/2 items-center justify-end bg-background pe-1.5 text-[10px] tabular-nums leading-none text-muted-foreground sm:text-xs">
                   {format(hour, "HH")}
                 </span>
               )}
@@ -358,7 +377,7 @@ export function WeekView({
         {days.map((day, dayIndex) => (
           <div
             key={day.toString()}
-            className="border-border/70 data-today:bg-accent relative border-r last:border-r-0 grid auto-cols-fr overflow-hidden"
+            className="relative flex flex-col overflow-hidden border-r border-border/70 last:border-r-0 data-today:bg-accent/40"
             data-today={isToday(day) || undefined}
           >
             {selectedStaffId && (
@@ -400,8 +419,8 @@ export function WeekView({
                 style={{ top: `${currentTimePosition}%` }}
               >
                 <div className="relative flex items-center">
-                  <div className="bg-red-500 absolute -left-1 h-2 w-2 rounded-full"></div>
-                  <div className="bg-red-500 h-[2px] w-full"></div>
+                  <div className="absolute left-0 size-2 rounded-full bg-red-500"></div>
+                  <div className="h-[2px] w-full bg-red-500"></div>
                 </div>
               </div>
             )}
@@ -410,7 +429,7 @@ export function WeekView({
               return (
                 <div
                   key={hour.toString()}
-                  className="border-border/70 relative z-[1] min-h-[var(--week-cells-height)] border-b last:border-b-0 after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:z-10 after:h-px after:bg-border/70 after:content-[''] last:after:hidden"
+                  className="relative z-[1] h-[var(--week-cells-height)] border-b border-border/70 last:border-b-0"
                 >
                   {/* Quarter-hour intervals */}
                   {[0, 1, 2, 3].map((quarter) => {

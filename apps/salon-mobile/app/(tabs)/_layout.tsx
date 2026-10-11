@@ -3,6 +3,7 @@ import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import React from 'react';
 
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 // Real OS-rendered tab bar (UITabBarController on iOS, Material Tabs on
@@ -22,6 +23,9 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 export default function TabLayout() {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
+  const { hasPermission } = useAuth();
+  const canSeeCalendar = hasPermission('calendar:manage');
+  const canSeeClients = hasPermission('clients:manage');
 
   return (
     <NativeTabs
@@ -31,20 +35,20 @@ export default function TabLayout() {
       disableTransparentOnScrollEdge
       labelVisibilityMode="unlabeled"
       disableIndicator>
-      <NativeTabs.Trigger name="index" disableAutomaticContentInsets>
+      {canSeeCalendar ? <NativeTabs.Trigger name="index" disableAutomaticContentInsets>
         <NativeTabs.Trigger.Icon
           sf="calendar"
           src={<NativeTabs.Trigger.VectorIcon family={MaterialIcons} name="calendar-today" />}
         />
         <NativeTabs.Trigger.Label hidden />
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="list" disableAutomaticContentInsets>
+      </NativeTabs.Trigger> : null}
+      {canSeeClients ? <NativeTabs.Trigger name="list" disableAutomaticContentInsets>
         <NativeTabs.Trigger.Icon
           sf="person.2"
           src={<NativeTabs.Trigger.VectorIcon family={MaterialIcons} name="people-outline" />}
         />
         <NativeTabs.Trigger.Label hidden />
-      </NativeTabs.Trigger>
+      </NativeTabs.Trigger> : null}
       <NativeTabs.Trigger name="more" disableAutomaticContentInsets>
         <NativeTabs.Trigger.Icon
           sf="square.grid.2x2"

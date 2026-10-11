@@ -11,7 +11,7 @@ export type InviteRoleOption = {
 
 const ROLE_ORDER: Record<InviteScope, readonly string[]> = {
   company: ["admin", "owner"],
-  location: ["manager", "stylist", "staff", "freelancer"],
+  location: ["manager", "stylist", "freelancer"],
 };
 
 function roleRank(scope: InviteScope, name: string): number {

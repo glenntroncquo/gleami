@@ -31,12 +31,12 @@ function run() {
       { id: STYLIST, name: "stylist" },
     ]),
     STYLIST,
-    "stylist wins over staff/manager",
+    "stylist wins over manager",
   );
   assertEqual(
     pickLocationStaffRoleId([{ id: MANAGER, name: "manager" }, { id: STAFF, name: "staff" }]),
-    STAFF,
-    "staff is used when stylist is absent",
+    MANAGER,
+    "without stylist the first remaining location role is used",
   );
   assertEqual(
     pickLocationStaffRoleId([{ id: MANAGER, name: "manager" }]),

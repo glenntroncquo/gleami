@@ -40,7 +40,8 @@ export default function DayScreen() {
   const { prepareCheckout } = useCheckout();
   const appointmentsById = React.useRef(new Map<string, AppointmentRow>());
   const { date, staffId: staffIdParam } = useLocalSearchParams<{ date: string; staffId?: string }>();
-  const { companyId } = useAuth();
+  const { companyId, hasPermission } = useAuth();
+  const canCheckout = hasPermission('pos:manage');
   const { locationId } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
@@ -172,12 +173,12 @@ export default function DayScreen() {
             return (
             <SwipeActionRow
               key={event.appointmentId}
-              actionDisabled={paid}
+              actionDisabled={paid || !canCheckout}
               actionLabel={t('checkout.title')}
               icon="pointOfSale"
               onPress={() => router.push({ pathname: '/appointment/[id]', params: { id: event.appointmentId } })}
               onAction={() => {
-                if (paid) return;
+                if (paid || !canCheckout) return;
                 const appointment = appointmentsById.current.get(event.appointmentId);
                 if (appointment) prepareCheckout(appointment);
                 router.push({ pathname: '/checkout/[appointmentId]', params: { appointmentId: event.appointmentId } });

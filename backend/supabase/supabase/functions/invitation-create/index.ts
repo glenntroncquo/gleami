@@ -72,7 +72,7 @@ async function defaultLocationStaffRoleId(
     .eq("is_system", true);
   if (error) throw error;
   const roles = data ?? [];
-  for (const name of ["stylist", "staff"]) {
+  for (const name of ["stylist"]) {
     const match = roles.find((role) => role.name === name);
     if (match?.id) return match.id as string;
   }
@@ -271,7 +271,7 @@ Deno.serve(async (req) => {
         companyId,
         locationId: pendingScope === "company" ? null : requestedLocationId,
       });
-      if (!perms.has("invites:manage")) {
+      if (!perms.has("staff:manage")) {
         return jsonResponse({ success: false, error: "invitation_forbidden" }, 403, origin);
       }
       const nowIso = new Date().toISOString();

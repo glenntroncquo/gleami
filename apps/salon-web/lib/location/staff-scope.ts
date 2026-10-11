@@ -1,8 +1,8 @@
-/** Location-scoped system roles used for shop staff (not owner/admin). */
-export const LOCATION_STAFF_ROLE_NAMES = ["stylist", "staff"] as const;
+/** Location-scoped system role used for shop staff (not owner/admin). */
+export const LOCATION_STAFF_ROLE_NAMES = ["stylist"] as const;
 
 /**
- * Prefer stylist, then staff, then any other location-scoped system role.
+ * Prefer stylist, then any other location-scoped system role.
  */
 export function pickLocationStaffRoleId(
   roles: readonly { id: string; name: string }[],

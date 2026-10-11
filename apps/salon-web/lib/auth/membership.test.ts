@@ -48,20 +48,16 @@ const USER = "user-1";
 
 const ownerPermissions = [
   "billing:manage",
-  "calendar:read",
-  "calendar:write",
-  "catalog:manage",
+  "calendar:manage",
   "clients:manage",
-  "clients:read",
-  "invites:manage",
-  "locations:manage",
-  "locations:read",
+  "dashboard:read",
+  "marketing:manage",
+  "orders:manage",
   "pos:manage",
-  "pos:read",
-  "pos:refund",
-  "schedule:manage",
+  "products:manage",
   "settings:manage",
   "staff:manage",
+  "treatments:manage",
 ] as const;
 
 function run() {
@@ -158,10 +154,13 @@ function run() {
   }));
 
   const stylistRolePermissions = [
-    { role_id: STYLIST_ROLE, permission_key: "calendar:read" },
-    { role_id: STYLIST_ROLE, permission_key: "calendar:write" },
-    { role_id: STYLIST_ROLE, permission_key: "clients:read" },
-    { role_id: STYLIST_ROLE, permission_key: "pos:read" },
+    { role_id: STYLIST_ROLE, permission_key: "calendar:manage" },
+    { role_id: STYLIST_ROLE, permission_key: "staff:manage" },
+    { role_id: STYLIST_ROLE, permission_key: "clients:manage" },
+    { role_id: STYLIST_ROLE, permission_key: "treatments:manage" },
+    { role_id: STYLIST_ROLE, permission_key: "pos:manage" },
+    { role_id: STYLIST_ROLE, permission_key: "products:manage" },
+    { role_id: STYLIST_ROLE, permission_key: "marketing:manage" },
   ];
 
   assertEqual(
@@ -197,11 +196,11 @@ function run() {
   };
 
   assertTrue(
-    snapshotHasPermission(ownerSnapshot, "calendar:read"),
-    "owner calendar:read via session keys",
+    snapshotHasPermission(ownerSnapshot, "calendar:manage"),
+    "owner calendar:manage via session keys",
   );
   assertTrue(
-    snapshotHasPermission(ownerSnapshot, "calendar:write", LOCATION_A),
+    snapshotHasPermission(ownerSnapshot, "calendar:manage", LOCATION_A),
     "owner inherits location permission through company_membership",
   );
   assertTrue(
@@ -209,22 +208,22 @@ function run() {
     "owner settings:manage via company role",
   );
   assertTrue(
-    snapshotHasAnyPermission(ownerSnapshot, ["pos:read", "pos:manage"]),
+    snapshotHasAnyPermission(ownerSnapshot, ["pos:manage"]),
     "owner keeps POS nav",
   );
 
   assertTrue(
     evaluateHasPermission({
-      perm: "calendar:write",
+      perm: "calendar:manage",
       locationId: LOCATION_A,
       snapshot: ownerSnapshot,
       rolePermissions: ownerRolePermissions,
     }),
-    "has_permission(calendar:write, location) true for owner",
+    "has_permission(calendar:manage, location) true for owner",
   );
   assertFalse(
     evaluateHasPermission({
-      perm: "calendar:write",
+      perm: "calendar:manage",
       locationId: LOCATION_B,
       snapshot: ownerSnapshot,
       rolePermissions: ownerRolePermissions,
@@ -261,16 +260,24 @@ function run() {
   };
 
   assertTrue(
-    snapshotHasPermission(stylistSnapshot, "calendar:read", LOCATION_A),
-    "stylist can read calendar at their location",
+    snapshotHasPermission(stylistSnapshot, "calendar:manage", LOCATION_A),
+    "stylist can manage calendar at their location",
+  );
+  assertTrue(
+    snapshotHasPermission(stylistSnapshot, "staff:manage", LOCATION_A),
+    "stylist can manage staff at their location",
   );
   assertFalse(
     snapshotHasCompanyPermission(stylistSnapshot, "settings:manage"),
     "stylist does not get company settings:manage",
   );
   assertFalse(
-    snapshotHasPermission(stylistSnapshot, "staff:manage"),
-    "stylist does not get staff:manage nav",
+    snapshotHasPermission(stylistSnapshot, "dashboard:read"),
+    "stylist does not get the dashboard",
+  );
+  assertFalse(
+    snapshotHasPermission(stylistSnapshot, "orders:manage"),
+    "stylist does not get orders",
   );
 
   const companyOnly = assembleMembershipSnapshot({

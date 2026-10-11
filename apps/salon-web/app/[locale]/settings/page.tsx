@@ -99,9 +99,7 @@ export default function SettingsPage() {
   const companyId = useCompanyId();
   const { hasCompanyPermission, membershipReady } = useAuth();
   const canManageLocations =
-    !membershipReady ||
-    hasCompanyPermission("locations:manage") ||
-    hasCompanyPermission("settings:manage");
+    !membershipReady || hasCompanyPermission("settings:manage");
   const supabase = useMemo(() => createClient(), []);
   const { theme, setTheme } = useTheme();
   const { currentLocale, switchLocale } = useLocaleNavigation();

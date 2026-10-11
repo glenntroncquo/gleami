@@ -54,8 +54,7 @@ export function MarketplaceSettings() {
   const { hasCompanyPermission, membershipReady, showLocationSwitcher } = useAuth();
   const supabase = useMemo(() => asLocationClient(createClient()) as MarketplaceClient, []);
 
-  const canManage =
-    hasCompanyPermission("locations:manage") || hasCompanyPermission("settings:manage");
+  const canManage = hasCompanyPermission("settings:manage");
 
   const [loading, setLoading] = useState(true);
   const [locationName, setLocationName] = useState("");

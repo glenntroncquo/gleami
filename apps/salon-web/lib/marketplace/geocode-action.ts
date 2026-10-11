@@ -49,11 +49,8 @@ export async function geocodeMarketplaceAddress(input: {
   if (!user) return { ok: false, reason: "unauthorized" };
 
   const membership = supabase as unknown as MembershipSupabase;
-  const [locations, settings] = await Promise.all([
-    rpcHasCompanyPermission(membership, "locations:manage", companyId),
-    rpcHasCompanyPermission(membership, "settings:manage", companyId),
-  ]);
-  if (locations !== true && settings !== true) {
+  const settings = await rpcHasCompanyPermission(membership, "settings:manage", companyId);
+  if (settings !== true) {
     return { ok: false, reason: "unauthorized" };
   }
 

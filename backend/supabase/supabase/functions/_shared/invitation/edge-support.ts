@@ -12,7 +12,7 @@ export function roleIsGrantable(
   callerPermissions: ReadonlySet<string>,
   rolePermissions: readonly string[],
 ): boolean {
-  if (!callerPermissions.has("invites:manage")) return false;
+  if (!callerPermissions.has("staff:manage")) return false;
   return rolePermissions.every((permission) => callerPermissions.has(permission));
 }
 

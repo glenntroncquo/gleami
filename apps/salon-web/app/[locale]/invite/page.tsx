@@ -19,7 +19,7 @@ import { acceptInvitation, previewInvitation, type InvitationPreview } from "@/l
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/auth-provider";
 
-const ROLE_LABELS = new Set(["owner", "admin", "manager", "stylist", "staff", "freelancer"]);
+const ROLE_LABELS = new Set(["owner", "admin", "manager", "stylist", "freelancer"]);
 
 function InviteContent() {
   const t = useTranslations();

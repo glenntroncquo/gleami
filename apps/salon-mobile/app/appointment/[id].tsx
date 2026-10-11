@@ -40,7 +40,8 @@ export default function AppointmentDetailScreen() {
   const router = useRouter();
   const { prepareCheckout } = useCheckout();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { companyId } = useAuth();
+  const { companyId, hasPermission } = useAuth();
+  const canCheckout = hasPermission('pos:manage');
   const { locationId, loading: locationLoading } = useLocation();
   const currentPayment = useAppointmentPayments(companyId, id ? [id] : []);
   const paid = currentPayment[id]?.status === 'paid';
@@ -200,7 +201,7 @@ export default function AppointmentDetailScreen() {
             </HeaderButton>
           ),
           unstable_headerRightItems: () =>
-            event && appointment && !canceled ? paid ? [{
+            canCheckout && event && appointment && !canceled ? paid ? [{
               type: 'custom',
               hidesSharedBackground: true,
               element: <HeaderButton disabled accessibilityLabel={t('order.status.paid')} style={{ backgroundColor: theme.successSurface }}><AppIcon name="pointOfSale" size={22} color={theme.success} /></HeaderButton>,
@@ -217,7 +218,7 @@ export default function AppointmentDetailScreen() {
               },
             ] : [],
           headerRight: () =>
-            event && appointment && !canceled ? (
+            canCheckout && event && appointment && !canceled ? (
               <HeaderButton
                 disabled={paid}
                 accessibilityLabel={paid ? t('order.status.paid') : t('checkout.title')}

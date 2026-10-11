@@ -24,13 +24,13 @@ Deno.serve(async (req) => {
 
     requireShopAccess(authContext, validatedInput.companyId, validatedInput.locationId);
     // Membership alone must not open the service-role booking path: the
-    // caller needs calendar:write at the effective location (the handler
+    // caller needs calendar:manage at the effective location (the handler
     // falls back to the company's primary location when none is given).
     const bookingLocation = await resolveBookingLocation(
       validatedInput.companyId,
       validatedInput.locationId ?? undefined,
     );
-    await requireLocationPermission(authContext, bookingLocation.locationId, "calendar:write");
+    await requireLocationPermission(authContext, bookingLocation.locationId, "calendar:manage");
 
     const result = await createStaffAppointmentHandler(validatedInput);
 

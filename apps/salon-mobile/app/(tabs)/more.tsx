@@ -35,7 +35,7 @@ export default function MoreScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
-  const { user, companyId, signOut } = useAuth();
+  const { user, companyId, signOut, hasPermission } = useAuth();
   const { privacyUrl, termsUrl } = useLegalUrls();
   const hasLegalLinks = Boolean(privacyUrl || termsUrl);
   const [profile, setProfile] = React.useState<StaffProfile | null>(null);
@@ -163,39 +163,53 @@ export default function MoreScreen() {
         </View>
       </View>
 
+      {(hasPermission('staff:manage') || hasPermission('treatments:manage') || hasPermission('orders:manage') || hasPermission('products:manage') || hasPermission('dashboard:read') || hasPermission('settings:manage')) ? (
       <View style={styles.section}>
         <ThemedText style={styles.sectionLabel}>{t('more.manage')}</ThemedText>
+        {hasPermission('staff:manage') ? (
         <Pressable accessibilityRole="button" style={styles.manageRow} onPress={() => router.push('/staff')}>
           <AppIcon name="groups" size={21} color={theme.text} />
           <ThemedText style={styles.manageRowText}>{t('more.staff')}</ThemedText>
           <AppIcon name="chevronRight" size={15} color={theme.muted} />
         </Pressable>
+        ) : null}
+        {hasPermission('treatments:manage') ? (
         <Pressable accessibilityRole="button" style={styles.manageRow} onPress={() => router.push('/services')}>
           <AppIcon name="cut" size={21} color={theme.text} />
           <ThemedText style={styles.manageRowText}>{t('more.services')}</ThemedText>
           <AppIcon name="chevronRight" size={15} color={theme.muted} />
         </Pressable>
+        ) : null}
+        {hasPermission('orders:manage') ? (
         <Pressable accessibilityRole="button" style={styles.manageRow} onPress={() => router.push('/orders')}>
           <AppIcon name="orders" size={21} color={theme.text} />
           <ThemedText style={styles.manageRowText}>{t('more.orders')}</ThemedText>
           <AppIcon name="chevronRight" size={15} color={theme.muted} />
         </Pressable>
+        ) : null}
+        {hasPermission('products:manage') ? (
         <Pressable accessibilityRole="button" style={styles.manageRow} onPress={() => router.push('/products')}>
           <AppIcon name="inventory" size={21} color={theme.text} />
           <ThemedText style={styles.manageRowText}>{t('more.products')}</ThemedText>
           <AppIcon name="chevronRight" size={15} color={theme.muted} />
         </Pressable>
+        ) : null}
+        {hasPermission('dashboard:read') ? (
         <Pressable accessibilityRole="button" style={styles.manageRow} onPress={() => router.push('/dashboard')}>
           <AppIcon name="dashboard" size={21} color={theme.text} />
           <ThemedText style={styles.manageRowText}>{t('more.dashboard')}</ThemedText>
           <AppIcon name="chevronRight" size={15} color={theme.muted} />
         </Pressable>
+        ) : null}
+        {hasPermission('settings:manage') ? (
         <Pressable accessibilityRole="button" style={styles.manageRow} onPress={() => router.push('/settings')}>
           <AppIcon name="settings" size={21} color={theme.text} />
           <ThemedText style={styles.manageRowText}>{t('more.settings')}</ThemedText>
           <AppIcon name="chevronRight" size={15} color={theme.muted} />
         </Pressable>
+        ) : null}
       </View>
+      ) : null}
 
       {hasLegalLinks ? (
         <View style={styles.section}>

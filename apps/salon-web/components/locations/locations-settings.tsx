@@ -88,9 +88,7 @@ export function LocationsSettings() {
   const [form, setForm] = useState<LocationForm>(emptyForm);
   const [saving, setSaving] = useState(false);
 
-  const canManage =
-    hasCompanyPermission("locations:manage") ||
-    hasCompanyPermission("settings:manage");
+  const canManage = hasCompanyPermission("settings:manage");
   const activeCount = rows.filter((row) => row.is_active).length;
 
   const load = async () => {

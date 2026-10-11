@@ -794,8 +794,8 @@ export default function StaffPage() {
 
   const canInviteStaff = Boolean(
     companyId &&
-      (hasCompanyPermission("invites:manage", companyId) ||
-        (locationId ? hasPermission("invites:manage", locationId) : false)),
+      (hasCompanyPermission("staff:manage", companyId) ||
+        (locationId ? hasPermission("staff:manage", locationId) : false)),
   );
 
   const columns = createColumns(

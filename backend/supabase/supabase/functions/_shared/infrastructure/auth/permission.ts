@@ -121,7 +121,7 @@ export async function userHasLocationPermission(
     (await roleHasPermission(companyMembership.role_id, permission));
 }
 
-/** Location access plus a location-scoped permission (e.g. calendar:write). */
+/** Location access plus a location-scoped permission (e.g. calendar:manage). */
 export async function requireLocationPermission(
   context: AuthContext,
   locationId: string,

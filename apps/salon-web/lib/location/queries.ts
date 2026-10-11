@@ -140,7 +140,7 @@ export async function createLocation(
   }
 
   // Live prod INSERT RLS returns 42501 for table writes even when the
-  // owner has locations:manage. The SECURITY DEFINER RPC is the write path.
+  // owner has settings:manage. The SECURITY DEFINER RPC is the write path.
   const { data, error } = await supabase
     .from("location")
     .insert({

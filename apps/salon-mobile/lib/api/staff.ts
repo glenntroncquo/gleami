@@ -10,7 +10,6 @@ const live = supabase as any;
  * `kvhinnhnwgvdpzggdnxs` (never mutate system roles).
  */
 const SYSTEM_LOCATION_ROLE_STYLIST = '09ea05b0-3ec1-4481-a6b8-21bc4bfa2a44';
-const SYSTEM_LOCATION_ROLE_STAFF = '7a2a1bc5-5cce-4a9e-94d1-2ec39e4d78c6';
 
 export type Staff = {
   id: string;
@@ -48,13 +47,11 @@ async function resolveNewStaffRoleId(): Promise<string> {
     .select('id, name')
     .eq('is_system', true)
     .eq('scope', 'location')
-    .in('name', ['stylist', 'staff']);
+    .eq('name', 'stylist');
 
   const rows = (Array.isArray(data) ? data : []) as { id?: string; name?: string }[];
   const stylist = rows.find((row) => row.name === 'stylist' && typeof row.id === 'string');
   if (stylist?.id) return stylist.id;
-  const staff = rows.find((row) => row.name === 'staff' && typeof row.id === 'string');
-  if (staff?.id) return staff.id;
   return SYSTEM_LOCATION_ROLE_STYLIST;
 }
 
@@ -85,19 +82,7 @@ async function insertLocationMembershipForStaff(
   }
 
   const { error } = await live.from('location_membership').insert(row);
-  if (!error) return;
-  if (isMissingMembershipUserIdError(error)) throw error;
-
-  // Retry with the staff catalog role if the stylist id is stale.
-  if (roleId === SYSTEM_LOCATION_ROLE_STYLIST) {
-    const retry = await live.from('location_membership').insert({
-      ...row,
-      role_id: SYSTEM_LOCATION_ROLE_STAFF,
-    });
-    if (!retry.error) return;
-    throw retry.error;
-  }
-  throw error;
+  if (error) throw error;
 }
 
 export async function fetchAllStaff(companyId: string): Promise<Staff[]> {

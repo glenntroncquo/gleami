@@ -46,7 +46,7 @@ export type InvitableStaff = {
 };
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const KNOWN_ROLES = new Set(["owner", "admin", "manager", "stylist", "staff", "freelancer"]);
+const KNOWN_ROLES = new Set(["owner", "admin", "manager", "stylist", "freelancer"]);
 
 export function InviteExistingStaffDialog({
   staff,

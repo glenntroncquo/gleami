@@ -1,6 +1,7 @@
 import type { Session, User } from '@supabase/supabase-js';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
+import { fetchPermissionKeys, type PermissionKey } from '@/lib/auth/permissions';
 import { hydrateCompanyIds, jwtCompanyIds, pickPreferredId } from '@/lib/api/memberships';
 import { clearSessionPreferences, readPreferredCompanyId, writePreferredCompanyId } from '@/lib/preferences';
 import { supabase } from '@/lib/supabase';
@@ -11,6 +12,8 @@ interface AuthContextType {
   loading: boolean;
   companyId: string | null;
   companyIds: string[];
+  permissionKeys: readonly PermissionKey[];
+  hasPermission: (perm: PermissionKey) => boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
@@ -31,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [companyIds, setCompanyIds] = useState<string[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [membershipReady, setMembershipReady] = useState(false);
+  const [permissionKeys, setPermissionKeys] = useState<PermissionKey[]>([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: next } }) => {
@@ -53,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) {
       setCompanyId(null);
       setCompanyIds([]);
+      setPermissionKeys([]);
       setMembershipReady(true);
       return;
     }
@@ -71,12 +76,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setCompanyIds(jwtIds.length > 0 ? jwtIds : seed ? [seed] : []);
       }
 
-      const membershipIds = await hydrateCompanyIds(jwtIds);
+      const [membershipIds, keys] = await Promise.all([
+        hydrateCompanyIds(jwtIds),
+        fetchPermissionKeys().catch(() => [] as PermissionKey[]),
+      ]);
       const picked = pickPreferredId(membershipIds, stored);
       if (cancelled) return;
 
       setCompanyIds(membershipIds);
       setCompanyId(picked);
+      setPermissionKeys(keys);
       if (picked) {
         void writePreferredCompanyId(picked);
       }
@@ -86,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const fallback = pickPreferredId(jwtIds, null) ?? jwtIds[0] ?? null;
       setCompanyIds(jwtIds);
       setCompanyId(fallback);
+      setPermissionKeys([]);
       setMembershipReady(true);
     });
 
@@ -111,10 +121,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading: sessionLoading || (!!session && !membershipReady),
       companyId,
       companyIds,
+      permissionKeys,
+      hasPermission: (perm: PermissionKey) => permissionKeys.includes(perm),
       signIn,
       signOut,
     }),
-    [session, sessionLoading, membershipReady, companyId, companyIds]
+    [session, sessionLoading, membershipReady, companyId, companyIds, permissionKeys]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

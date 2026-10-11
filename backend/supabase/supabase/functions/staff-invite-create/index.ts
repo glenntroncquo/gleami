@@ -83,8 +83,7 @@ async function getAuthContext(req) {
 }
 async function userHasInvitePermission(userId, companyId) {
   const perms = [
-    "staff:manage",
-    "invites:manage"
+    "staff:manage"
   ];
   const { data: cm, error: cmErr } = await supabaseAdmin.from("company_membership").select("role_id").eq("user_id", userId).eq("company_id", companyId);
   if (cmErr) throw cmErr;
@@ -115,7 +114,7 @@ async function requireInviteAccess(userId, companyIds, companyId) {
   }
   const allowed = await userHasInvitePermission(userId, companyId);
   if (!allowed) {
-    throw Object.assign(new Error("Missing staff:manage or invites:manage permission"), {
+    throw Object.assign(new Error("Missing staff:manage permission"), {
       status: 403
     });
   }

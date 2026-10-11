@@ -1,23 +1,19 @@
 /**
  * Global permission catalog (public.permission).
- * Matches Phase 2 seed keys. Companies do not create keys.
+ * One key per screen. Companies do not create keys.
  */
 export const PERMISSION_KEYS = [
   "billing:manage",
-  "calendar:read",
-  "calendar:write",
-  "catalog:manage",
+  "calendar:manage",
   "clients:manage",
-  "clients:read",
-  "invites:manage",
-  "locations:manage",
-  "locations:read",
+  "dashboard:read",
+  "marketing:manage",
+  "orders:manage",
   "pos:manage",
-  "pos:read",
-  "pos:refund",
-  "schedule:manage",
+  "products:manage",
   "settings:manage",
   "staff:manage",
+  "treatments:manage",
 ] as const;
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
@@ -26,17 +22,17 @@ export function isPermissionKey(value: string): value is PermissionKey {
   return (PERMISSION_KEYS as readonly string[]).includes(value);
 }
 
-/** Nav / feature gates that used to assume JWT company access. */
+/** Nav / feature gates. Each screen has exactly one key. */
 export const NAV_PERMISSION = {
-  dashboard: ["calendar:read", "pos:read"],
-  calendar: ["calendar:read"],
+  dashboard: ["dashboard:read"],
+  calendar: ["calendar:manage"],
   staff: ["staff:manage"],
-  client: ["clients:read"],
-  catalog: ["catalog:manage"],
-  pos: ["pos:read"],
-  orders: ["pos:read"],
-  products: ["catalog:manage", "pos:manage"],
-  marketing: ["settings:manage", "clients:manage"],
+  client: ["clients:manage"],
+  catalog: ["treatments:manage"],
+  pos: ["pos:manage"],
+  orders: ["orders:manage"],
+  products: ["products:manage"],
+  marketing: ["marketing:manage"],
   billing: ["billing:manage"],
   settings: ["settings:manage"],
 } as const satisfies Record<string, readonly PermissionKey[]>;

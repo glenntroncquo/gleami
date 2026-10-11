@@ -13,6 +13,7 @@ import { useLocationId } from "@/lib/company-util";
 export default function Component() {
   const t = useTranslations();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
   const { isStaffVisible } = useCalendarContext();
   const locationId = useLocationId();
 
@@ -42,7 +43,14 @@ export default function Component() {
   };
 
   useEffect(() => {
-    fetchAppointments();
+    let cancelled = false;
+    setLoading(true);
+    fetchAppointments().finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locationId]);
 
@@ -139,7 +147,7 @@ export default function Component() {
         onEventUpdate={handleEventUpdate}
         onEventDelete={handleEventDelete}
         initialView="week"
-        loading={false}
+        loading={loading}
         onRefresh={fetchAppointments}
       />
     </div>

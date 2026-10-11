@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useLayoutEffect, useMemo, useRef } from "react";
 import {
   addHours,
   areIntervalsOverlapping,
@@ -29,12 +29,12 @@ import {
   WeekCellsHeight,
   type CalendarEvent,
 } from "@/components/event-calendar";
-import { StartHour, EndHour } from "@/components/event-calendar/constants";
+import { StartHour, EndHour, WeekGridColumns } from "@/components/event-calendar/constants";
 import { cn } from "@/lib/utils";
 import { useCalendarContext } from "@/components/event-calendar/calendar-context";
 import { useStaffAvailability } from "@/components/event-calendar/hooks/use-staff-availability";
 
-const WEEK_GRID = "2.75rem repeat(7, minmax(0, 1fr))";
+const WEEK_GRID = WeekGridColumns;
 
 interface WeekViewProps {
   currentDate: Date;
@@ -241,7 +241,7 @@ export function WeekView({
   const gridRef = useRef<HTMLDivElement>(null);
   const didScrollToNow = useRef(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const scroller = scrollRef.current;
     const grid = gridRef.current;
     if (!scroller || !grid || !currentTimeVisible || didScrollToNow.current) return;
@@ -259,7 +259,7 @@ export function WeekView({
     <div data-slot="week-view" className="flex h-full min-h-0 flex-col">
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
       <div
-        className="sticky top-0 z-30 grid border-b border-border/70 bg-background"
+        className="sticky top-0 z-30 grid h-14 border-b border-border/70 bg-background"
         style={{ gridTemplateColumns: WEEK_GRID }}
       >
         <div className="sticky left-0 z-40 flex items-end justify-center border-r border-border/70 bg-background pb-2 text-[10px] font-medium tabular-nums text-muted-foreground">
@@ -268,10 +268,10 @@ export function WeekView({
         {days.map((day) => (
           <div
             key={day.toString()}
-            className="flex flex-col items-center gap-1 border-r border-border/70 py-1.5 last:border-r-0 data-today:bg-accent/50"
+            className="flex h-14 flex-col items-center justify-center gap-0.5 border-r border-border/70 last:border-r-0 data-today:bg-accent/50"
             data-today={isToday(day) || undefined}
           >
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <span className="text-[10px] leading-none font-medium uppercase tracking-wide text-muted-foreground">
               <span className="sm:hidden">{formatDate(day, "E")[0]}</span>
               <span className="hidden sm:inline">{formatDate(day, "EEE")}</span>
             </span>

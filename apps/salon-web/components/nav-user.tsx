@@ -31,8 +31,9 @@ import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 
 export function NavUser() {
-  const { user, signOut, hasAnyPermission, membershipReady } = useAuth();
-  const canSeeSettings = !membershipReady || hasAnyPermission(NAV_PERMISSION.settings);
+  const { user, signOut, hasAnyPermission, membershipReady, permissionKeys } = useAuth();
+  const canSeeSettings =
+    !membershipReady || permissionKeys.length === 0 || hasAnyPermission(NAV_PERMISSION.settings);
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const { currentLocale } = useLocaleNavigation();

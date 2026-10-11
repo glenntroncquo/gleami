@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useLayoutEffect, useMemo, useRef } from "react";
 import {
   addHours,
   eachHourOfInterval,
@@ -18,9 +18,8 @@ import {
 import { StartHour, EndHour } from "@/components/event-calendar/constants";
 import { useCalendarContext } from "@/components/event-calendar/calendar-context";
 import { DayStaffColumn, DayStaffHeader } from "@/components/event-calendar/day-staff-column";
-import { loadCalendarStaff, type Staff } from "@/components/participants";
-import { useCompanyId, useLocationId } from "@/lib/company-util";
-import { useAuth } from "@/providers/auth-provider";
+import type { Staff } from "@/components/participants";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface DayViewProps {
   currentDate: Date;
@@ -35,7 +34,7 @@ export function DayView({
   onEventSelect,
   onEventCreate,
 }: DayViewProps) {
-  const { visibleStaff } = useCalendarContext();
+  const { visibleStaff, staff, staffReady } = useCalendarContext();
   const hours = useMemo(() => {
     const dayStart = startOfDay(currentDate);
     return eachHourOfInterval({
@@ -44,28 +43,9 @@ export function DayView({
     });
   }, [currentDate]);
 
-  const companyId = useCompanyId();
-  const locationId = useLocationId();
-  const { membershipReady } = useAuth();
-  const [staff, setStaff] = useState<Staff[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const didScrollToNow = useRef(false);
-
-  useEffect(() => {
-    if (!companyId || !membershipReady) return;
-    let cancelled = false;
-    loadCalendarStaff(companyId, locationId)
-      .then((rows) => {
-        if (!cancelled) setStaff(rows);
-      })
-      .catch(() => {
-        if (!cancelled) setStaff([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [companyId, locationId, membershipReady]);
 
   const columns = useMemo(
     () =>
@@ -118,7 +98,7 @@ export function DayView({
     "day"
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const scroller = scrollRef.current;
     const grid = gridRef.current;
     if (!scroller || !grid || !currentTimeVisible || didScrollToNow.current) return;
@@ -130,7 +110,11 @@ export function DayView({
     didScrollToNow.current = true;
   }, [currentTimePosition, currentTimeVisible]);
 
-  const columnMembers: Array<Staff | null> = columns.length > 0 ? columns : [null];
+  const columnMembers: Array<Staff | null> = !staffReady
+    ? Array.from({ length: 4 }, () => null)
+    : columns.length > 0
+      ? columns
+      : [null];
   const columnTemplate = `3rem repeat(${columnMembers.length}, minmax(9rem, 1fr))`;
 
   return (
@@ -175,9 +159,20 @@ export function DayView({
           style={{ gridTemplateColumns: columnTemplate }}
         >
           <div className="sticky left-0 z-30 border-r border-border/70 bg-background" />
-          {columnMembers.map((member) => (
-            <DayStaffHeader key={member?.id ?? "all"} member={member} />
-          ))}
+          {columnMembers.map((member, index) =>
+            staffReady ? (
+              <DayStaffHeader key={member?.id ?? "all"} member={member} />
+            ) : (
+              <div
+                key={`placeholder-${index}`}
+                className="flex min-h-[4.5rem] flex-col items-center justify-center gap-1.5 border-r border-border/70 bg-background px-3 py-2.5"
+              >
+                <Skeleton className="size-10 rounded-full" />
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-2.5 w-12" />
+              </div>
+            ),
+          )}
         </div>
         <div ref={gridRef} className="relative">
         <div
@@ -207,14 +202,16 @@ export function DayView({
           ))}
         </div>
 
-        {columnMembers.map((member) => (
+        {columnMembers.map((member, index) => (
           <DayStaffColumn
-            key={member?.id ?? "all"}
-            member={member}
+            key={member?.id ?? `placeholder-${index}`}
+            member={staffReady ? member : null}
             events={
-              member
-                ? timeEvents.filter((event) => event.staff?.id === member.id)
-                : timeEvents
+              !staffReady
+                ? []
+                : member
+                  ? timeEvents.filter((event) => event.staff?.id === member.id)
+                  : timeEvents
             }
             hours={hours}
           currentDate={currentDate}

@@ -8,6 +8,7 @@ import React, {
   useState,
   type ReactNode,
 } from "react";
+import type { Staff } from "@/components/participants";
 
 interface CalendarContextType {
   // Date management
@@ -16,6 +17,9 @@ interface CalendarContextType {
 
   // Staff visibility management
   visibleStaff: string[];
+  staff: Staff[];
+  staffReady: boolean;
+  setCalendarStaff: (staff: Staff[]) => void;
   toggleStaffVisibility: (staffId: string) => void;
   isStaffVisible: (staffId: string | undefined) => boolean;
   isStaffSelected: (staffId: string | undefined) => boolean;
@@ -46,6 +50,8 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
 
   // Initialize with all staff visible by default - will be populated when staff data loads
   const [visibleStaff, setVisibleStaff] = useState<string[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [staffReady, setStaffReady] = useState(false);
 
   const toggleStaffVisibility = useCallback((staffId: string) => {
     setVisibleStaff((prev) => {
@@ -77,6 +83,11 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
     setVisibleStaff(staffIds);
   }, []);
 
+  const setCalendarStaff = useCallback((next: Staff[]) => {
+    setStaff(next);
+    setStaffReady(true);
+  }, []);
+
   const getSelectedStaffId = useCallback(() => {
     if (visibleStaff.length === 1) {
       return visibleStaff[0];
@@ -89,6 +100,9 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
       currentDate,
       setCurrentDate,
       visibleStaff,
+      staff,
+      staffReady,
+      setCalendarStaff,
       toggleStaffVisibility,
       isStaffVisible,
       isStaffSelected,
@@ -98,6 +112,9 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
     [
       currentDate,
       visibleStaff,
+      staff,
+      staffReady,
+      setCalendarStaff,
       toggleStaffVisibility,
       isStaffVisible,
       isStaffSelected,

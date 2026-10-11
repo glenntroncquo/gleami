@@ -123,16 +123,27 @@ export function AuthProvider({
         fallbackId: scoped.locationId,
         primaryId: extras?.primaryId ?? null,
       });
-      setMembership(
+      const nextSnapshot =
         accessibleIds.length > 0 &&
-          (accessibleIds.length !== scoped.locationIds.length ||
-            accessibleIds.some((id) => !scoped.locationIds.includes(id)))
+        (accessibleIds.length !== scoped.locationIds.length ||
+          accessibleIds.some((id) => !scoped.locationIds.includes(id)))
           ? {
               ...scoped,
               locationIds: accessibleIds,
               locationId: nextLocationId ?? scoped.locationId,
             }
-          : scoped,
+          : scoped;
+      // The lock-free company fetch resolves before role permissions.
+      // Replacing a full snapshot with that empty one hides the nav, then
+      // the real snapshot puts it back and the sidebar calendar drops.
+      setMembership((current) =>
+        nextSnapshot.permissionKeys.length === 0 && current.permissionKeys.length > 0
+          ? {
+              ...nextSnapshot,
+              permissionKeys: current.permissionKeys,
+              rolePermissions: current.rolePermissions,
+            }
+          : nextSnapshot,
       );
       setMembershipError(false);
       setSelectedLocationId(nextLocationId);

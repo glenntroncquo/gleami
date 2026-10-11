@@ -50,11 +50,11 @@ export function MobileTabBar() {
   const pathname = usePathname();
   const { currentLocale } = useLocaleNavigation();
   const t = useTranslations();
-  const { hasAnyPermission, membershipReady } = useAuth();
+  const { hasAnyPermission, membershipReady, permissionKeys } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
 
   const canSee = (perms: readonly PermissionKey[]) =>
-    !membershipReady || hasAnyPermission(perms);
+    !membershipReady || permissionKeys.length === 0 || hasAnyPermission(perms);
 
   const primary: TabItem[] = [
     {

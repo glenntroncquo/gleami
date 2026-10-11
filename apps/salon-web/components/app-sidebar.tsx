@@ -48,9 +48,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { currentLocale } = useLocaleNavigation();
   const t = useTranslations();
   const { setOpenMobile, isMobile, openMobile } = useSidebar();
-  const { hasAnyPermission, membershipReady } = useAuth();
+  const { hasAnyPermission, membershipReady, permissionKeys } = useAuth();
   const canSee = (perms: readonly PermissionKey[]) =>
-    !membershipReady || hasAnyPermission(perms);
+    !membershipReady || permissionKeys.length === 0 || hasAnyPermission(perms);
 
   const handleNavClick = () => {
     if (isMobile || openMobile) {
@@ -373,16 +373,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarGroupContent>
           </SidebarGroup>
           {pathname === `/${currentLocale}/calendar` && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-            >
-              <SidebarGroup className="px-1 mt-3 pt-4 border-t group-data-[collapsible=icon]:hidden">
-                <SidebarCalendar />
-              </SidebarGroup>
-            </motion.div>
+            <SidebarGroup className="px-1 mt-3 pt-4 border-t group-data-[collapsible=icon]:hidden">
+              <SidebarCalendar />
+            </SidebarGroup>
           )}
         </SidebarContent>
         <SidebarFooter>

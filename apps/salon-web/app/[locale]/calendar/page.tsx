@@ -3,12 +3,13 @@
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset } from "@/components/ui/sidebar";
 import BigCalendar from "@/components/calendar/big-calendar";
+import { CalendarShellSkeleton } from "@/components/calendar/calendar-skeleton";
 import { ProtectedRoute } from "@/components/protected-route";
 import { CalendarProvider } from "@/components/event-calendar/calendar-context";
 
 export default function Page() {
   return (
-    <ProtectedRoute>
+    <ProtectedRoute fallback={<CalendarShellSkeleton />}>
       <CalendarProvider>
         <AppSidebar />
         <SidebarInset className="h-svh overflow-hidden md:h-[calc(100svh-1rem)]">

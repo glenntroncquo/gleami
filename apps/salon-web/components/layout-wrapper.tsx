@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { CalendarShellSkeleton } from "@/components/calendar/calendar-skeleton";
 import { SetupResumeBanner } from "@/components/onboarding/setup-resume-banner";
 import { useAuth } from "@/providers/auth-provider";
 
@@ -61,7 +62,10 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (checkingCompanyMembership) return null;
+  if (checkingCompanyMembership) {
+    if (route.startsWith("/calendar")) return <CalendarShellSkeleton />;
+    return null;
+  }
 
   if (isAuthPage || isPublicPage) {
     return <>{children}</>;

@@ -36,6 +36,7 @@ import {
   WeekView,
 } from "@/components/event-calendar";
 import { AppointmentSheet } from "@/components/appointment-sheet";
+import { WeekGridSkeleton } from "@/components/calendar/calendar-skeleton";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -278,12 +279,6 @@ export function EventCalendar({
           <div className="flex min-w-0 items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
               <h2 className="truncate text-xl font-semibold">{viewTitle}</h2>
-              {loading && (
-                <div className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground">
-                  <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-primary"></div>
-                  <span className="sr-only">Loading...</span>
-                </div>
-              )}
             </div>
             <div className="shrink-0 sm:hidden">
               <Participants />
@@ -368,12 +363,7 @@ export function EventCalendar({
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {loading && events.length === 0 ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-                <p className="text-muted-foreground">Loading appointments...</p>
-              </div>
-            </div>
+            <WeekGridSkeleton />
           ) : (
             <>
               {view === "month" && (

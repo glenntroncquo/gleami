@@ -69,6 +69,7 @@ export default function Participants() {
   const {
     isStaffSelected,
     initializeStaffSelection,
+    setCalendarStaff,
     toggleStaffVisibility,
   } = useCalendarContext();
   const companyId = useCompanyId();
@@ -87,6 +88,7 @@ export default function Participants() {
     if (!companyId) {
       if (membershipReady) {
         setStaff([]);
+        setCalendarStaff([]);
         setIsLoading(false);
         return;
       }
@@ -103,11 +105,15 @@ export default function Participants() {
           const rows = await loadCalendarStaff(companyId, locationId);
           if (isCancelled()) return;
           setStaff(rows);
+          setCalendarStaff(rows);
           initializeStaffSelection(rows.map((member) => member.id));
         } catch (error) {
           console.error("Error fetching staff:", error);
           toast.error("Failed to fetch staff");
-          if (!isCancelled()) setStaff([]);
+          if (!isCancelled()) {
+            setStaff([]);
+            setCalendarStaff([]);
+          }
         }
       },
       { label: "calendar-staff" },
@@ -123,12 +129,9 @@ export default function Participants() {
 
   if (isLoading && staff.length === 0) {
     return (
-      <div className="space-y-3">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="flex items-center gap-3">
-            <Skeleton className="h-10 w-10 rounded-full" />
-            <Skeleton className="h-4 w-20" />
-          </div>
+      <div className="flex -space-x-1" aria-hidden>
+        {[0, 1].map((i) => (
+          <Skeleton key={i} className="size-6 rounded-full ring-2 ring-background" />
         ))}
       </div>
     );

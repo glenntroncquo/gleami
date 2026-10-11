@@ -25,7 +25,6 @@ import {
   ChevronRightIcon,
   ChevronUpIcon,
   CircleXIcon,
-  EllipsisIcon,
   GripVerticalIcon,
   ListFilterIcon,
   PlusIcon,
@@ -60,13 +59,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -157,9 +149,11 @@ const multiColumnFilterFn: FilterFn<Treatment> = (
 // Sortable row component
 function SortableTableRow({
   treatment,
+  onClick,
   children,
 }: {
   treatment: Treatment;
+  onClick: (treatment: Treatment) => void;
   children: React.ReactNode;
 }) {
   const {
@@ -182,15 +176,17 @@ function SortableTableRow({
       style={style}
       data-state={isDragging && "dragging"}
       className={cn(
-        "hover:bg-muted/50 select-none",
+        "cursor-pointer select-none",
         isDragging && "opacity-50 z-50"
       )}
+      onClick={() => onClick(treatment)}
     >
       {children}
       <TableCell className="w-10 p-0">
         <div
           {...attributes}
           {...listeners}
+          onClick={(event) => event.stopPropagation()}
           className="flex items-center justify-center p-2 cursor-grab active:cursor-grabbing"
         >
           <GripVerticalIcon className="h-4 w-4 text-muted-foreground" />
@@ -203,9 +199,6 @@ function SortableTableRow({
 // Move columns inside the component to access translations
 const createColumns = (
   t: ReturnType<typeof useTranslations>,
-  onRowClick: (treatment: Treatment) => void,
-  onEdit: (treatment: Treatment) => void,
-  onDelete: (treatment: Treatment) => void
 ): ColumnDef<Treatment>[] => [
   {
     header: t("common.name"),
@@ -214,10 +207,7 @@ const createColumns = (
       const treatment = row.original;
 
       return (
-        <div
-          className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded-md transition-colors select-none"
-          onClick={() => onRowClick(treatment)}
-        >
+        <div className="flex items-center space-x-3 select-none">
           <div
             className="h-6 w-6 rounded-full flex-shrink-0"
             style={{
@@ -291,20 +281,6 @@ const createColumns = (
         </span>
       );
     },
-  },
-  {
-    id: "actions",
-    header: () => <span className="sr-only">{t("common.actions")}</span>,
-    cell: ({ row }) => (
-      <RowActions
-        t={t}
-        treatment={row.original}
-        onEdit={onEdit}
-        onDelete={onDelete}
-      />
-    ),
-    size: 60,
-    enableHiding: false,
   },
 ];
 
@@ -622,12 +598,7 @@ export default function TreatmentPage() {
     setActiveId(null);
   };
 
-  const columns = createColumns(
-    t,
-    handleRowClick,
-    handleRowClick,
-    handleDelete
-  );
+  const columns = createColumns(t);
 
   const refreshTreatmentData = async (
     showLoading = true,
@@ -1057,6 +1028,7 @@ export default function TreatmentPage() {
                               <SortableTableRow
                                 key={row.id}
                                 treatment={row.original}
+                                onClick={handleRowClick}
                               >
                                 {row.getVisibleCells().map((cell) => (
                                   <TableCell
@@ -1248,45 +1220,3 @@ export default function TreatmentPage() {
   );
 }
 
-function RowActions({
-  t,
-  treatment,
-  onEdit,
-  onDelete,
-}: {
-  t: ReturnType<typeof useTranslations>;
-  treatment: Treatment;
-  onEdit: (treatment: Treatment) => void;
-  onDelete: (treatment: Treatment) => void;
-}) {
-  return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <div className="flex justify-end">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="shadow-none"
-              aria-label={t("common.actions")}
-            >
-              <EllipsisIcon size={16} aria-hidden="true" />
-            </Button>
-          </div>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => onEdit(treatment)}>
-            <span>{t("treatments.actions.editDetailsShort")}</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="text-destructive focus:text-destructive"
-            onClick={() => onDelete(treatment)}
-          >
-            <span>{t("treatments.actions.deleteTreatmentShort")}</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </>
-  );
-}

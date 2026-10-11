@@ -11,6 +11,9 @@ export const EventGap = 4;
 // Increased to provide more space for short appointments (45min blocks now have ~72px height)
 export const WeekCellsHeight = 86;
 
+// Time gutter plus seven day columns. Shared by the week view and its skeleton.
+export const WeekGridColumns = "2.75rem repeat(7, minmax(0, 1fr))";
+
 // Number of days to show in the agenda view
 export const AgendaDaysToShow = 30;
 

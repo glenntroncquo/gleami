@@ -454,6 +454,315 @@ where key in (
 );
 
 -- ---------------------------------------------------------------------------
+-- Policies the first pass left on retired keys. The check below rejects
+-- the migration while any of these names remain.
+-- calendar:write -> calendar:manage
+-- catalog:manage on the treatment catalog -> treatments:manage
+-- catalog:manage on products -> products:manage
+-- schedule:manage and invites:manage -> staff:manage
+-- locations:manage on location read -> settings:manage
+-- ---------------------------------------------------------------------------
+drop policy if exists "appointment insert (permission)" on public.appointment;
+create policy "appointment insert (permission)"
+  on public.appointment for insert to authenticated
+  with check (private.has_permission('calendar:manage', location_id));
+
+drop policy if exists "appointment update (permission)" on public.appointment;
+create policy "appointment update (permission)"
+  on public.appointment for update to authenticated
+  using (private.has_permission('calendar:manage', location_id))
+  with check (private.has_permission('calendar:manage', location_id));
+
+drop policy if exists "appointment delete (permission)" on public.appointment;
+create policy "appointment delete (permission)"
+  on public.appointment for delete to authenticated
+  using (private.has_permission('calendar:manage', location_id));
+
+drop policy if exists "appointment_segment insert (permission)" on public.appointment_segment;
+create policy "appointment_segment insert (permission)"
+  on public.appointment_segment for insert to authenticated
+  with check (private.has_permission('calendar:manage', location_id));
+
+drop policy if exists "appointment_segment update (permission)" on public.appointment_segment;
+create policy "appointment_segment update (permission)"
+  on public.appointment_segment for update to authenticated
+  using (private.has_permission('calendar:manage', location_id))
+  with check (private.has_permission('calendar:manage', location_id));
+
+drop policy if exists "appointment_segment delete (permission)" on public.appointment_segment;
+create policy "appointment_segment delete (permission)"
+  on public.appointment_segment for delete to authenticated
+  using (private.has_permission('calendar:manage', location_id));
+
+drop policy if exists "appointment_segment_phase insert (permission)" on public.appointment_segment_phase;
+create policy "appointment_segment_phase insert (permission)"
+  on public.appointment_segment_phase for insert to authenticated
+  with check (private.has_permission('calendar:manage', location_id));
+
+drop policy if exists "appointment_segment_phase update (permission)" on public.appointment_segment_phase;
+create policy "appointment_segment_phase update (permission)"
+  on public.appointment_segment_phase for update to authenticated
+  using (private.has_permission('calendar:manage', location_id))
+  with check (private.has_permission('calendar:manage', location_id));
+
+drop policy if exists "appointment_segment_phase delete (permission)" on public.appointment_segment_phase;
+create policy "appointment_segment_phase delete (permission)"
+  on public.appointment_segment_phase for delete to authenticated
+  using (private.has_permission('calendar:manage', location_id));
+
+drop policy if exists "company_membership insert (permission)" on public.company_membership;
+create policy "company_membership insert (permission)"
+  on public.company_membership for insert to authenticated
+  with check (private.has_permission_for_company('staff:manage', company_id));
+
+drop policy if exists "company_membership update (permission)" on public.company_membership;
+create policy "company_membership update (permission)"
+  on public.company_membership for update to authenticated
+  using (private.has_permission_for_company('staff:manage', company_id))
+  with check (private.has_permission_for_company('staff:manage', company_id));
+
+drop policy if exists "company_membership delete (permission)" on public.company_membership;
+create policy "company_membership delete (permission)"
+  on public.company_membership for delete to authenticated
+  using (private.has_permission_for_company('staff:manage', company_id));
+
+drop policy if exists "location_membership insert (permission)" on public.location_membership;
+create policy "location_membership insert (permission)"
+  on public.location_membership for insert to authenticated
+  with check (
+    private.has_permission('staff:manage', location_id)
+    or private.has_permission_for_company('staff:manage', (
+      select loc.company_id from public.location loc where loc.id = location_id
+    ))
+  );
+
+drop policy if exists "location_membership update (permission)" on public.location_membership;
+create policy "location_membership update (permission)"
+  on public.location_membership for update to authenticated
+  using (
+    private.has_permission('staff:manage', location_id)
+    or private.has_permission_for_company('staff:manage', (
+      select loc.company_id from public.location loc where loc.id = location_id
+    ))
+  )
+  with check (
+    private.has_permission('staff:manage', location_id)
+    or private.has_permission_for_company('staff:manage', (
+      select loc.company_id from public.location loc where loc.id = location_id
+    ))
+  );
+
+drop policy if exists "location_membership delete (permission)" on public.location_membership;
+create policy "location_membership delete (permission)"
+  on public.location_membership for delete to authenticated
+  using (
+    private.has_permission('staff:manage', location_id)
+    or private.has_permission_for_company('staff:manage', (
+      select loc.company_id from public.location loc where loc.id = location_id
+    ))
+  );
+
+drop policy if exists "location select (membership)" on public.location;
+create policy "location select (membership)"
+  on public.location for select to authenticated
+  using (
+    id in (select private.location_ids_for_user())
+    or private.has_company_permission('settings:manage', company_id)
+  );
+
+drop policy if exists "deposit_policy insert (permission)" on public.deposit_policy;
+create policy "deposit_policy insert (permission)"
+  on public.deposit_policy for insert to authenticated
+  with check (private.has_permission_for_company('treatments:manage', company_id));
+
+drop policy if exists "deposit_policy update (permission)" on public.deposit_policy;
+create policy "deposit_policy update (permission)"
+  on public.deposit_policy for update to authenticated
+  using (private.has_permission_for_company('treatments:manage', company_id))
+  with check (private.has_permission_for_company('treatments:manage', company_id));
+
+drop policy if exists "deposit_policy delete (permission)" on public.deposit_policy;
+create policy "deposit_policy delete (permission)"
+  on public.deposit_policy for delete to authenticated
+  using (private.has_permission_for_company('treatments:manage', company_id));
+
+drop policy if exists "service insert (permission)" on public.service;
+create policy "service insert (permission)"
+  on public.service for insert to authenticated
+  with check (private.has_permission_for_company('treatments:manage', company_id));
+
+drop policy if exists "service update (permission)" on public.service;
+create policy "service update (permission)"
+  on public.service for update to authenticated
+  using (private.has_permission_for_company('treatments:manage', company_id))
+  with check (private.has_permission_for_company('treatments:manage', company_id));
+
+drop policy if exists "service delete (permission)" on public.service;
+create policy "service delete (permission)"
+  on public.service for delete to authenticated
+  using (private.has_permission_for_company('treatments:manage', company_id));
+
+drop policy if exists "service_variant insert (permission)" on public.service_variant;
+create policy "service_variant insert (permission)"
+  on public.service_variant for insert to authenticated
+  with check (private.has_permission_for_company('treatments:manage', company_id));
+
+drop policy if exists "service_variant update (permission)" on public.service_variant;
+create policy "service_variant update (permission)"
+  on public.service_variant for update to authenticated
+  using (private.has_permission_for_company('treatments:manage', company_id))
+  with check (private.has_permission_for_company('treatments:manage', company_id));
+
+drop policy if exists "service_variant delete (permission)" on public.service_variant;
+create policy "service_variant delete (permission)"
+  on public.service_variant for delete to authenticated
+  using (private.has_permission_for_company('treatments:manage', company_id));
+
+drop policy if exists "service_variant_phase insert (permission)" on public.service_variant_phase;
+create policy "service_variant_phase insert (permission)"
+  on public.service_variant_phase for insert to authenticated
+  with check (private.has_permission_for_company('treatments:manage', company_id));
+
+drop policy if exists "service_variant_phase update (permission)" on public.service_variant_phase;
+create policy "service_variant_phase update (permission)"
+  on public.service_variant_phase for update to authenticated
+  using (private.has_permission_for_company('treatments:manage', company_id))
+  with check (private.has_permission_for_company('treatments:manage', company_id));
+
+drop policy if exists "service_variant_phase delete (permission)" on public.service_variant_phase;
+create policy "service_variant_phase delete (permission)"
+  on public.service_variant_phase for delete to authenticated
+  using (private.has_permission_for_company('treatments:manage', company_id));
+
+drop policy if exists "location_service insert (permission)" on public.location_service;
+create policy "location_service insert (permission)"
+  on public.location_service for insert to authenticated
+  with check (private.has_permission('treatments:manage', location_id));
+
+drop policy if exists "location_service update (permission)" on public.location_service;
+create policy "location_service update (permission)"
+  on public.location_service for update to authenticated
+  using (private.has_permission('treatments:manage', location_id))
+  with check (private.has_permission('treatments:manage', location_id));
+
+drop policy if exists "location_service delete (permission)" on public.location_service;
+create policy "location_service delete (permission)"
+  on public.location_service for delete to authenticated
+  using (private.has_permission('treatments:manage', location_id));
+
+drop policy if exists "staff_service insert (permission)" on public.staff_service;
+create policy "staff_service insert (permission)"
+  on public.staff_service for insert to authenticated
+  with check (private.has_permission('treatments:manage', location_id));
+
+drop policy if exists "staff_service update (permission)" on public.staff_service;
+create policy "staff_service update (permission)"
+  on public.staff_service for update to authenticated
+  using (private.has_permission('treatments:manage', location_id))
+  with check (private.has_permission('treatments:manage', location_id));
+
+drop policy if exists "staff_service delete (permission)" on public.staff_service;
+create policy "staff_service delete (permission)"
+  on public.staff_service for delete to authenticated
+  using (private.has_permission('treatments:manage', location_id));
+
+drop policy if exists "staff_service_variant insert (permission)" on public.staff_service_variant;
+create policy "staff_service_variant insert (permission)"
+  on public.staff_service_variant for insert to authenticated
+  with check (private.has_permission('treatments:manage', location_id));
+
+drop policy if exists "staff_service_variant update (permission)" on public.staff_service_variant;
+create policy "staff_service_variant update (permission)"
+  on public.staff_service_variant for update to authenticated
+  using (private.has_permission('treatments:manage', location_id))
+  with check (private.has_permission('treatments:manage', location_id));
+
+drop policy if exists "staff_service_variant delete (permission)" on public.staff_service_variant;
+create policy "staff_service_variant delete (permission)"
+  on public.staff_service_variant for delete to authenticated
+  using (private.has_permission('treatments:manage', location_id));
+
+drop policy if exists "product insert (permission)" on public.product;
+create policy "product insert (permission)"
+  on public.product for insert to authenticated
+  with check (private.has_permission_for_company('products:manage', company_id));
+
+drop policy if exists "product update (permission)" on public.product;
+create policy "product update (permission)"
+  on public.product for update to authenticated
+  using (private.has_permission_for_company('products:manage', company_id))
+  with check (private.has_permission_for_company('products:manage', company_id));
+
+drop policy if exists "product delete (permission)" on public.product;
+create policy "product delete (permission)"
+  on public.product for delete to authenticated
+  using (private.has_permission_for_company('products:manage', company_id));
+
+drop policy if exists "product_category insert (permission)" on public.product_category;
+create policy "product_category insert (permission)"
+  on public.product_category for insert to authenticated
+  with check (private.has_permission_for_company('products:manage', company_id));
+
+drop policy if exists "product_category update (permission)" on public.product_category;
+create policy "product_category update (permission)"
+  on public.product_category for update to authenticated
+  using (private.has_permission_for_company('products:manage', company_id))
+  with check (private.has_permission_for_company('products:manage', company_id));
+
+drop policy if exists "product_category delete (permission)" on public.product_category;
+create policy "product_category delete (permission)"
+  on public.product_category for delete to authenticated
+  using (private.has_permission_for_company('products:manage', company_id));
+
+drop policy if exists "product_line insert (permission)" on public.product_line;
+create policy "product_line insert (permission)"
+  on public.product_line for insert to authenticated
+  with check (private.has_permission_for_company('products:manage', company_id));
+
+drop policy if exists "product_line update (permission)" on public.product_line;
+create policy "product_line update (permission)"
+  on public.product_line for update to authenticated
+  using (private.has_permission_for_company('products:manage', company_id))
+  with check (private.has_permission_for_company('products:manage', company_id));
+
+drop policy if exists "product_line delete (permission)" on public.product_line;
+create policy "product_line delete (permission)"
+  on public.product_line for delete to authenticated
+  using (private.has_permission_for_company('products:manage', company_id));
+
+drop policy if exists "staff_schedule_rule insert (permission)" on public.staff_schedule_rule;
+create policy "staff_schedule_rule insert (permission)"
+  on public.staff_schedule_rule for insert to authenticated
+  with check (private.has_permission('staff:manage', location_id));
+
+drop policy if exists "staff_schedule_rule update (permission)" on public.staff_schedule_rule;
+create policy "staff_schedule_rule update (permission)"
+  on public.staff_schedule_rule for update to authenticated
+  using (private.has_permission('staff:manage', location_id))
+  with check (private.has_permission('staff:manage', location_id));
+
+drop policy if exists "staff_schedule_rule delete (permission)" on public.staff_schedule_rule;
+create policy "staff_schedule_rule delete (permission)"
+  on public.staff_schedule_rule for delete to authenticated
+  using (private.has_permission('staff:manage', location_id));
+
+drop policy if exists "staff_schedule_exception insert (permission)" on public.staff_schedule_exception;
+create policy "staff_schedule_exception insert (permission)"
+  on public.staff_schedule_exception for insert to authenticated
+  with check (private.has_permission('staff:manage', location_id));
+
+drop policy if exists "staff_schedule_exception update (permission)" on public.staff_schedule_exception;
+create policy "staff_schedule_exception update (permission)"
+  on public.staff_schedule_exception for update to authenticated
+  using (private.has_permission('staff:manage', location_id))
+  with check (private.has_permission('staff:manage', location_id));
+
+drop policy if exists "staff_schedule_exception delete (permission)" on public.staff_schedule_exception;
+create policy "staff_schedule_exception delete (permission)"
+  on public.staff_schedule_exception for delete to authenticated
+  using (private.has_permission('staff:manage', location_id));
+
+-- ---------------------------------------------------------------------------
 -- Apply-time verification
 -- ---------------------------------------------------------------------------
 do $$

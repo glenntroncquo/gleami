@@ -8,6 +8,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "build:ios": "npx eas-cli build --profile production --platform ios",
+    "deploy:ios": "npx eas-cli submit --profile production --platform ios --latest",
     "upload:sourcemaps": "sentry-expo-upload-sourcemaps dist",
     "eas-build-on-success": "node ./scripts/sentry-eas-on-success.js"
   },

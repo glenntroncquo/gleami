@@ -4,7 +4,6 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { CalendarShellSkeleton } from "@/components/calendar/calendar-skeleton";
-import { SetupResumeBanner } from "@/components/onboarding/setup-resume-banner";
 import { useAuth } from "@/providers/auth-provider";
 
 const AUTH_ROUTES = [
@@ -72,9 +71,6 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <SidebarProvider>
-      <SetupResumeBanner />
-      {children}
-    </SidebarProvider>
+    <SidebarProvider>{children}</SidebarProvider>
   );
 }

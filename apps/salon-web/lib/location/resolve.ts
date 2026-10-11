@@ -56,6 +56,31 @@ export function shouldShowLocationSwitcher(input: {
   return input.accessibleCount > 1;
 }
 
+/**
+ * Locations an owner or admin can open: every active location of each
+ * company they lead, plus any location they belong to directly.
+ */
+export function locationPickerRows<
+  T extends { id: string; company_id: string; is_active: boolean },
+>(input: {
+  locations: readonly T[];
+  leaderCompanyIds: readonly string[];
+  memberLocationIds: readonly string[];
+}): T[] {
+  const leaders = new Set(input.leaderCompanyIds);
+  const members = new Set(input.memberLocationIds);
+  const seen = new Set<string>();
+  const rows: T[] = [];
+  for (const row of input.locations) {
+    if (!row.is_active) continue;
+    if (!leaders.has(row.company_id) && !members.has(row.id)) continue;
+    if (seen.has(row.id)) continue;
+    seen.add(row.id);
+    rows.push(row);
+  }
+  return rows;
+}
+
 export function companyIdForLocation(
   locations: Pick<LocationRecord, "id" | "company_id">[],
   locationId: string | null,

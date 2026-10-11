@@ -4,6 +4,7 @@ import {
   mergeAccessibleLocationIds,
   pickSelectedLocationId,
   primaryOrSoleLocationId,
+  locationPickerRows,
   shouldShowLocationSwitcher,
   shouldWaitForLocationPick,
 } from "./resolve";
@@ -126,6 +127,34 @@ function run() {
   assertTrue(
     shouldShowLocationSwitcher({ accessibleCount: 2 }),
     "two accessible locations show the switcher",
+  );
+
+  const LOCATION_C = "33333333-3333-3333-3333-333333333333";
+  assertEqual(
+    locationPickerRows({
+      locations: [
+        { id: LOCATION_A, company_id: COMPANY_A, is_active: true },
+        { id: LOCATION_B, company_id: COMPANY_A, is_active: true },
+        { id: LOCATION_C, company_id: COMPANY_B, is_active: true },
+        { id: "44444444-4444-4444-4444-444444444444", company_id: COMPANY_B, is_active: false },
+      ],
+      leaderCompanyIds: [COMPANY_A, COMPANY_B],
+      memberLocationIds: [],
+    }).map((row) => row.id),
+    [LOCATION_A, LOCATION_B, LOCATION_C],
+    "an owner or admin sees every active location of each company",
+  );
+  assertEqual(
+    locationPickerRows({
+      locations: [
+        { id: LOCATION_A, company_id: COMPANY_A, is_active: true },
+        { id: LOCATION_B, company_id: COMPANY_A, is_active: true },
+      ],
+      leaderCompanyIds: [],
+      memberLocationIds: [LOCATION_A],
+    }).map((row) => row.id),
+    [LOCATION_A],
+    "a location member does not inherit the rest of the company",
   );
 
   assertEqual(

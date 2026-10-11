@@ -6,6 +6,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -20,19 +22,22 @@ export function LocationSwitcher() {
   const t = useTranslations("locations");
   const {
     showLocationSwitcher,
-    locations,
+    switcherLocations,
+    companyNames,
     locationId,
-    locationIds,
     setLocationId,
   } = useAuth();
   const { state } = useSidebar();
 
   if (!showLocationSwitcher) return null;
 
-  const options = locations.filter(
-    (row) => row.is_active && locationIds.includes(row.id),
-  );
+  const options = [...switcherLocations].sort((a, b) => a.name.localeCompare(b.name));
   if (options.length <= 1) return null;
+
+  const companyIds = [...new Set(options.map((row) => row.company_id))].sort((a, b) =>
+    (companyNames[a] ?? "").localeCompare(companyNames[b] ?? ""),
+  );
+  const grouped = companyIds.length > 1;
 
   const current = options.find((row) => row.id === locationId) ?? options[0];
   const collapsed = state === "collapsed";
@@ -66,24 +71,37 @@ export function LocationSwitcher() {
             align={collapsed ? "center" : "start"}
             sideOffset={8}
           >
-            {options.map((location) => (
-              <DropdownMenuItem
-                key={location.id}
-                className="cursor-pointer gap-3 focus:bg-sidebar-accent"
-                onClick={() => setLocationId(location.id)}
-              >
-                <RiMapPinLine
-                  size={18}
-                  className="size-4 text-muted-foreground/80"
-                />
-                <span className="flex-1 truncate">{location.name}</span>
-                {location.id === locationId && (
-                  <span className="text-xs text-muted-foreground">
-                    {t("current")}
-                  </span>
-                )}
-              </DropdownMenuItem>
-            ))}
+            {companyIds.flatMap((companyId, index) => {
+              const rows = options.filter((location) => location.company_id === companyId);
+              return [
+                grouped && index > 0 ? (
+                  <DropdownMenuSeparator key={`${companyId}-sep`} />
+                ) : null,
+                grouped ? (
+                  <DropdownMenuLabel key={`${companyId}-label`}>
+                    {companyNames[companyId] || t("unknown")}
+                  </DropdownMenuLabel>
+                ) : null,
+                ...rows.map((location) => (
+                  <DropdownMenuItem
+                    key={location.id}
+                    className="cursor-pointer gap-3 focus:bg-sidebar-accent"
+                    onClick={() => setLocationId(location.id)}
+                  >
+                    <RiMapPinLine
+                      size={18}
+                      className="size-4 text-muted-foreground/80"
+                    />
+                    <span className="flex-1 truncate">{location.name}</span>
+                    {location.id === locationId && (
+                      <span className="text-xs text-muted-foreground">
+                        {t("current")}
+                      </span>
+                    )}
+                  </DropdownMenuItem>
+                )),
+              ];
+            })}
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

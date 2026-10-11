@@ -66,6 +66,22 @@ export async function fetchLocationsById(
   return data;
 }
 
+/** Every location the caller can open, across the companies they belong to. */
+export async function fetchAccessibleLocations(
+  supabase: LocationSupabase,
+): Promise<LocationRecord[]> {
+  const rpc = await supabase.rpc("my_locations");
+  if (rpc.error) {
+    if (!isMissingRpc(rpc.error) && !isMissingSchemaError(rpc.error)) {
+      console.warn("my_locations failed", rpc.error);
+    }
+    return [];
+  }
+  return normalizeLocationList(rpc.data).sort(
+    (a, b) => Number(b.is_primary) - Number(a.is_primary) || a.name.localeCompare(b.name),
+  );
+}
+
 export async function fetchCompanyLocations(
   supabase: LocationSupabase,
   companyId: string,

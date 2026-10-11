@@ -3,6 +3,7 @@ export { asLocationClient, locationClient } from "./client";
 export type { LocationQueryError, LocationSupabase } from "./client";
 export {
   companyIdForLocation,
+  locationPickerRows,
   mergeAccessibleLocationIds,
   pickSelectedLocationId,
   primaryOrSoleLocationId,
@@ -28,6 +29,7 @@ export {
   buildLocationServiceCopies,
   copyPrimaryLocationServices,
   createLocation,
+  fetchAccessibleLocations,
   fetchClientIdsForCompany,
   fetchClientIdsForLocation,
   fetchCompanyLocations,

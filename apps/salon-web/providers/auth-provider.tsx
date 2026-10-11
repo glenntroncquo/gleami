@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
@@ -16,11 +17,14 @@ import {
   type MembershipSupabase,
   type PermissionKey,
 } from "@/lib/auth";
+import { rememberSelectedCompany } from "@/lib/auth/select-company";
 import {
   asLocationClient,
   companyIdForLocation,
+  fetchAccessibleLocations,
   fetchCompanyLocations,
   fetchLocationsById,
+  locationPickerRows,
   mergeAccessibleLocationIds,
   primaryOrSoleLocationId,
   resolvePersistedLocationId,
@@ -40,6 +44,8 @@ interface AuthContextType {
   locationId: string | null;
   locationIds: string[];
   locations: LocationRecord[];
+  switcherLocations: LocationRecord[];
+  companyNames: Record<string, string>;
   currentLocation: LocationRecord | null;
   showLocationSwitcher: boolean;
   permissionKeys: PermissionKey[];
@@ -68,6 +74,53 @@ function asMembershipClient() {
   return createClient() as unknown as MembershipSupabase;
 }
 
+async function loadSwitcherCatalog(
+  snapshot: MembershipSnapshot,
+  known: LocationRecord[],
+): Promise<{ locations: LocationRecord[]; companyNames: Record<string, string> }> {
+  const locClient = asLocationClient(createClient());
+  const leaderCompanyIds = snapshot.companyMemberships.map((row) => row.company_id);
+  let rows = known;
+  try {
+    const accessible = await fetchAccessibleLocations(locClient);
+    const byId = new Map(known.map((row) => [row.id, row]));
+    for (const row of accessible) byId.set(row.id, row);
+    if (accessible.length === 0 && leaderCompanyIds.length > 0) {
+      const lists = await Promise.all(
+        leaderCompanyIds.map((companyId) =>
+          fetchCompanyLocations(locClient, companyId).catch(() => [] as LocationRecord[]),
+        ),
+      );
+      for (const list of lists) {
+        for (const row of list) byId.set(row.id, row);
+      }
+    }
+    rows = [...byId.values()];
+  } catch (error) {
+    console.warn("accessible locations failed", error);
+  }
+
+  const locations = locationPickerRows({
+    locations: rows,
+    leaderCompanyIds,
+    memberLocationIds: snapshot.locationMemberships
+      .filter((row) => row.is_active)
+      .map((row) => row.location_id),
+  });
+  const companyIds = [...new Set(locations.map((row) => row.company_id))];
+  if (companyIds.length === 0) return { locations, companyNames: {} };
+
+  const { data } = await createClient()
+    .from("company")
+    .select("id, name")
+    .in("id", companyIds);
+  const companyNames: Record<string, string> = {};
+  for (const row of data ?? []) {
+    companyNames[row.id] = row.name ?? "";
+  }
+  return { locations, companyNames };
+}
+
 export function AuthProvider({
   children,
   initialCompanyId = null,
@@ -81,12 +134,19 @@ export function AuthProvider({
   );
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [locations, setLocations] = useState<LocationRecord[]>([]);
+  const [switcherLocations, setSwitcherLocations] = useState<LocationRecord[]>([]);
+  const [companyNames, setCompanyNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [membershipReady, setMembershipReady] = useState(false);
   const [membershipError, setMembershipError] = useState(false);
   const [locationsReady, setLocationsReady] = useState(false);
+  const router = useRouter();
   const selectedCompanyRef = useRef(initialCompanyId);
-  selectedCompanyRef.current = initialCompanyId;
+  const fullSnapshotRef = useRef(EMPTY_MEMBERSHIP_SNAPSHOT);
+
+  useEffect(() => {
+    selectedCompanyRef.current = initialCompanyId;
+  }, [initialCompanyId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,6 +157,9 @@ export function AuthProvider({
       setMembership(EMPTY_MEMBERSHIP_SNAPSHOT);
       setSelectedLocationId(null);
       setLocations([]);
+      setSwitcherLocations([]);
+      setCompanyNames({});
+      fullSnapshotRef.current = EMPTY_MEMBERSHIP_SNAPSHOT;
       setMembershipReady(false);
       setMembershipError(false);
       setLocationsReady(false);
@@ -108,6 +171,7 @@ export function AuthProvider({
       userId: string,
       extras?: { primaryId?: string | null; accessibleIds?: string[] },
     ) => {
+      fullSnapshotRef.current = snapshot;
       const scoped = scopeSnapshotToCompany(snapshot, selectedCompanyRef.current);
       const companyChosen = Boolean(
         selectedCompanyRef.current && snapshot.companyIds.includes(selectedCompanyRef.current),
@@ -190,7 +254,13 @@ export function AuthProvider({
           snapshot.locationIds,
           locationRows,
         );
-        setLocations(locationRows);
+        const catalog = await loadSwitcherCatalog(snapshot, locationRows);
+        if (cancelled) return;
+        const merged = new Map(locationRows.map((row) => [row.id, row]));
+        for (const row of catalog.locations) merged.set(row.id, row);
+        setLocations([...merged.values()]);
+        setSwitcherLocations(catalog.locations);
+        setCompanyNames(catalog.companyNames);
         applySnapshot(snapshot, userId, {
           primaryId: primaryOrSoleLocationId(locationRows),
           accessibleIds,
@@ -359,7 +429,12 @@ export function AuthProvider({
       locationIds: accessibleIds.length > 0 ? accessibleIds : snapshot.locationIds,
       locationId: nextLocationId ?? snapshot.locationId,
     });
-    setLocations(locationRows);
+    const catalog = await loadSwitcherCatalog(snapshot, locationRows);
+    const merged = new Map(locationRows.map((row) => [row.id, row]));
+    for (const row of catalog.locations) merged.set(row.id, row);
+    setLocations([...merged.values()]);
+    setSwitcherLocations(catalog.locations);
+    setCompanyNames(catalog.companyNames);
     setSelectedLocationId(nextLocationId);
     setMembershipReady(true);
     setLocationsReady(true);
@@ -367,17 +442,41 @@ export function AuthProvider({
 
   const setLocationId = useCallback(
     (nextLocationId: string) => {
+      const picked =
+        switcherLocations.find((row) => row.id === nextLocationId) ??
+        locations.find((row) => row.id === nextLocationId);
       const allowed = new Set([
         ...membership.locationIds,
         ...locations.map((row) => row.id),
+        ...switcherLocations.map((row) => row.id),
       ]);
-      if (!allowed.has(nextLocationId)) return;
+      if (!picked || !allowed.has(nextLocationId)) return;
       setSelectedLocationId(nextLocationId);
       if (user) {
         writePersistedLocationId(user.id, nextLocationId);
       }
+      if (picked.company_id === selectedCompanyRef.current) return;
+
+      selectedCompanyRef.current = picked.company_id;
+      setMembership((current) => {
+        const scoped = scopeSnapshotToCompany(fullSnapshotRef.current, picked.company_id);
+        const next = scoped.locationIds.includes(nextLocationId)
+          ? { ...scoped, locationId: nextLocationId }
+          : scoped;
+        if (next.permissionKeys.length === 0 && current.permissionKeys.length > 0) {
+          return {
+            ...next,
+            permissionKeys: current.permissionKeys,
+            rolePermissions: current.rolePermissions,
+          };
+        }
+        return next;
+      });
+      void rememberSelectedCompany(picked.company_id).then(() => {
+        router.refresh();
+      });
     },
-    [locations, membership.locationIds, user],
+    [locations, membership.locationIds, router, switcherLocations, user],
   );
 
   const locationId = selectedLocationId;
@@ -390,14 +489,8 @@ export function AuthProvider({
     locationId,
     membership.companyId,
   );
-  const accessibleActiveCount =
-    locations.length > 0
-      ? locations.filter(
-          (row) => row.is_active && membership.locationIds.includes(row.id),
-        ).length
-      : membership.locationIds.length;
   const showLocationSwitcher = shouldShowLocationSwitcher({
-    accessibleCount: accessibleActiveCount,
+    accessibleCount: switcherLocations.length,
   });
 
   const hasPermission = useCallback(
@@ -427,6 +520,8 @@ export function AuthProvider({
       locationId,
       locationIds: membership.locationIds,
       locations,
+      switcherLocations,
+      companyNames,
       currentLocation,
       showLocationSwitcher,
       permissionKeys: membership.permissionKeys,
@@ -449,6 +544,8 @@ export function AuthProvider({
       companyId,
       locationId,
       locations,
+      switcherLocations,
+      companyNames,
       currentLocation,
       showLocationSwitcher,
       signOut,

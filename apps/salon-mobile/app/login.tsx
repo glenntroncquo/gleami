@@ -46,8 +46,8 @@ export default function LoginScreen() {
       <ScreenScrollView contentContainerStyle={styles.container}>
         <Image
           source={colorScheme === 'dark'
-            ? require('@/assets/images/gleami-logo-white.svg')
-            : require('@/assets/images/gleami-logo.svg')}
+            ? require('@/assets/images/gleami-wordmark-white.svg')
+            : require('@/assets/images/gleami-wordmark.svg')}
           style={styles.logo}
           contentFit="contain"
           accessibilityLabel="Gleami"
@@ -128,8 +128,8 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: '100%',
-    maxWidth: 280,
-    height: 101,
+    maxWidth: 196,
+    height: 56,
     alignSelf: 'center',
     marginBottom: 12,
   },

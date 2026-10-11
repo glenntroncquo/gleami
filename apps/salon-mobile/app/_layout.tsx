@@ -180,7 +180,7 @@ function RootLayoutInner() {
   return (
     <NavThemeProvider value={colorScheme === 'dark' ? AppDarkTheme : AppLightTheme}>
       <RootNavigator />
-      <StatusBar style="auto" />
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
     </NavThemeProvider>
   );
 }

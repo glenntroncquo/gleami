@@ -7,7 +7,7 @@ import {
   type PhaseDraft,
   type PhaseType,
 } from '@/lib/api/services';
-import { COLOR_BG_MAP, COLOR_MAP, COLOR_TEXT_MAP, mapTreatmentColorToEventColor } from '@/lib/treatment-colors';
+import { eventChipColors, mapTreatmentColorToEventColor } from '@/lib/treatment-colors';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -80,9 +80,10 @@ export function PhaseBlockEditor({ phases, onChange, serviceColor, theme }: Prop
   const [notice, setNotice] = React.useState<string | null>(null);
 
   const eventColor = mapTreatmentColorToEventColor(serviceColor);
-  const busyColor = COLOR_MAP[eventColor];
-  const freeFill = COLOR_BG_MAP[eventColor];
-  const freeText = COLOR_TEXT_MAP[eventColor];
+  const chip = eventChipColors(eventColor, theme.background === Colors.dark.background ? 'dark' : 'light');
+  const busyColor = chip.accent;
+  const freeFill = chip.bg;
+  const freeText = chip.text;
   const bufferFill = withAlpha(busyColor, 0.16);
   const bufferStripe = withAlpha(busyColor, 0.45);
 

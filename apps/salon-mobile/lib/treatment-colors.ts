@@ -79,6 +79,47 @@ export const COLOR_TEXT_MAP: Record<TreatmentColor, string> = {
   purple: '#581C87',
 };
 
+// Dark chips match salon-web `dark:bg-{color}-400/25` blended onto the navy
+// card, with `dark:text-{color}-200`.
+export const COLOR_BG_DARK_MAP: Record<TreatmentColor, string> = {
+  blue: '#2A466D',
+  orange: '#5C4030',
+  violet: '#413E6D',
+  rose: '#5C3648',
+  emerald: '#1C554E',
+  cyan: '#165569',
+  lime: '#405B2E',
+  pink: '#5A3657',
+  indigo: '#353E6D',
+  amber: '#5C4F29',
+  teal: '#1A565A',
+  purple: '#493C6E',
+};
+
+export const COLOR_TEXT_DARK_MAP: Record<TreatmentColor, string> = {
+  blue: '#BFDBFE',
+  orange: '#FED7AA',
+  violet: '#DDD6FE',
+  rose: '#FECDD3',
+  emerald: '#A7F3D0',
+  cyan: '#A5F3FC',
+  lime: '#D9F99D',
+  pink: '#FBCFE8',
+  indigo: '#C7D2FE',
+  amber: '#FDE68A',
+  teal: '#99F6E4',
+  purple: '#E9D5FF',
+};
+
+export type ColorSchemeName = 'light' | 'dark';
+
+export function eventChipColors(color: EventColor, scheme: ColorSchemeName = 'light') {
+  if (scheme === 'dark') {
+    return { bg: COLOR_BG_DARK_MAP[color], text: COLOR_TEXT_DARK_MAP[color], accent: COLOR_MAP[color] };
+  }
+  return { bg: COLOR_BG_MAP[color], text: COLOR_TEXT_MAP[color], accent: COLOR_MAP[color] };
+}
+
 export function mapTreatmentColorToEventColor(
   treatmentColor: string | null,
   treatmentName?: string

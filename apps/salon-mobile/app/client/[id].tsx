@@ -79,7 +79,7 @@ export default function ClientDetailScreen() {
       ]);
       setClient(clientData);
       setNotes(notesData);
-      const historyEvents = appointmentsData.map(appointmentToEvent);
+      const historyEvents = appointmentsData.map((appointment) => appointmentToEvent(appointment, colorScheme));
       setHistory(historyEvents);
       setError(null);
     } catch (err) {
@@ -87,7 +87,7 @@ export default function ClientDetailScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id, companyId, locationId, locationLoading, t]);
+  }, [id, companyId, locationId, locationLoading, t, colorScheme]);
 
   useFocusEffect(
     React.useCallback(() => {

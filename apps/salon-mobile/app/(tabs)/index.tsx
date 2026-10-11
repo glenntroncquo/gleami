@@ -196,7 +196,8 @@ export default function CalendarScreen() {
         const data = await fetchAppointmentsForMonth(companyId, locationId, year, monthIndex);
         if (scopeEpochRef.current !== epoch) return;
         monthDataRef.current.set(key, data);
-        monthEventsCacheRef.current.delete(key);
+        monthEventsCacheRef.current.delete(`${key}:light`);
+        monthEventsCacheRef.current.delete(`${key}:dark`);
         setError(null);
       } catch (err) {
         if (scopeEpochRef.current !== epoch) return;
@@ -311,24 +312,25 @@ export default function CalendarScreen() {
     (offset: number): MonthData => {
       const { year, monthIndex, key } = monthKeyForOffset(offset);
       const monthAppointments = monthDataRef.current.get(key) ?? [];
-      const eventsByDateKey = groupAppointmentsByDateKey(monthAppointments, staffFilterId);
+      const eventsByDateKey = groupAppointmentsByDateKey(monthAppointments, staffFilterId, colorScheme);
       return buildMonthData(year, monthIndex, eventsByDateKey);
     },
-    [monthKeyForOffset, staffFilterId, calendarEpoch]
+    [monthKeyForOffset, staffFilterId, calendarEpoch, colorScheme]
   );
 
   const getMonthEventsByDateKey = React.useCallback(
     (offset: number): Record<string, EventItem[]> => {
       const { key } = monthKeyForOffset(offset);
-      let cached = monthEventsCacheRef.current.get(key);
+      const cacheKey = `${key}:${colorScheme}`;
+      let cached = monthEventsCacheRef.current.get(cacheKey);
       if (!cached) {
         const monthAppointments = monthDataRef.current.get(key) ?? [];
-        cached = groupAppointmentsByDateKey(monthAppointments, null);
-        monthEventsCacheRef.current.set(key, cached);
+        cached = groupAppointmentsByDateKey(monthAppointments, null, colorScheme);
+        monthEventsCacheRef.current.set(cacheKey, cached);
       }
       return cached;
     },
-    [monthKeyForOffset, calendarEpoch]
+    [monthKeyForOffset, calendarEpoch, colorScheme]
   );
 
   const applyAppointmentChange = React.useCallback(

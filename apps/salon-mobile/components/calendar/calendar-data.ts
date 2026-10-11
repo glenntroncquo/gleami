@@ -1,7 +1,7 @@
 import i18n from '@/lib/i18n';
 import { isAppointmentCanceled } from '@/lib/api/appointment-status';
 import type { AppointmentRow, AppointmentSegmentPhaseRow, AppointmentSegmentRow } from '@/lib/api/calendar';
-import { COLOR_BG_MAP, COLOR_MAP, COLOR_TEXT_MAP, mapTreatmentColorToEventColor } from '@/lib/treatment-colors';
+import { eventChipColors, mapTreatmentColorToEventColor, type ColorSchemeName } from '@/lib/treatment-colors';
 
 import {
   formatSalonWallClock,
@@ -51,11 +51,12 @@ function headerVisitMinutes(appointment: AppointmentRow, phases: EventPhase[]): 
 }
 
 /** Combined appointment view — visit header is naive appointment.start/end. */
-export function appointmentToEvent(appointment: AppointmentRow): EventItem {
+export function appointmentToEvent(appointment: AppointmentRow, scheme: ColorSchemeName = 'light'): EventItem {
   const segments = appointment.appointment_segment ?? [];
   const services = segments.map((segment) => segment.service).filter(Boolean);
   const label = services.map((service) => service!.name).join(', ') || i18n.t('calendar.untitledAppointment');
   const eventColor = mapTreatmentColorToEventColor(services[0]?.color ?? null, services[0]?.name);
+  const chip = eventChipColors(eventColor, scheme);
   const first = segments[0];
   const staff = first?.staff ?? appointment.staff;
   const staffIds = [
@@ -75,9 +76,9 @@ export function appointmentToEvent(appointment: AppointmentRow): EventItem {
     id: appointment.id,
     appointmentId: appointment.id,
     label,
-    color: COLOR_MAP[eventColor],
-    bgColor: COLOR_BG_MAP[eventColor],
-    textColor: COLOR_TEXT_MAP[eventColor],
+    color: chip.accent,
+    bgColor: chip.bg,
+    textColor: chip.text,
     clientName: clientLabel(appointment.client),
     clientId: appointment.client?.id ?? appointment.client_id ?? null,
     staffName: staffLabel(staff),
@@ -93,8 +94,8 @@ export function appointmentToEvent(appointment: AppointmentRow): EventItem {
 }
 
 /** One calendar event per visit. Height comes from appointment.start/end, not segment buffer. */
-export function appointmentToEvents(appointment: AppointmentRow): EventItem[] {
-  return [appointmentToEvent(appointment)];
+export function appointmentToEvents(appointment: AppointmentRow, scheme: ColorSchemeName = 'light'): EventItem[] {
+  return [appointmentToEvent(appointment, scheme)];
 }
 
 export const PX_PER_VISIT_MINUTE = 1.4;
@@ -152,9 +153,10 @@ export function upsertAppointmentInMonthCache(
 
 export function groupAppointmentsByDateKey(
   appointments: AppointmentRow[],
-  staffFilterId: string | null
+  staffFilterId: string | null,
+  scheme: ColorSchemeName = 'light'
 ): Record<string, EventItem[]> {
-  const events = appointments.flatMap(appointmentToEvents);
+  const events = appointments.flatMap((appointment) => appointmentToEvents(appointment, scheme));
   const filtered = staffFilterId
     ? events.filter((event) => event.staffIds.includes(staffFilterId) || event.staffId === staffFilterId)
     : events;

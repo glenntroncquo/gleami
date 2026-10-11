@@ -62,11 +62,11 @@ export default function DayScreen() {
       fetchStaff(companyId, locationId),
     ]);
     appointmentsById.current = new Map(appointments.map((appointment) => [appointment.id, appointment]));
-    const byDateKey = groupAppointmentsByDateKey(appointments, staffIdParam || null);
+    const byDateKey = groupAppointmentsByDateKey(appointments, staffIdParam || null, colorScheme);
     setEvents(byDateKey[date] ?? []);
     setStaffImageById(new Map(staff.map((member) => [member.id, member.image_path])));
     setLoading(false);
-  }, [date, companyId, locationId, staffIdParam]);
+  }, [date, companyId, locationId, staffIdParam, colorScheme]);
 
   const applyAppointmentChange = React.useCallback(
     async (appointmentId?: string) => {
@@ -91,10 +91,10 @@ export default function DayScreen() {
       setEvents((prev) => {
         const without = prev.filter((event) => event.appointmentId !== appointmentId);
         if (!stillOnThisDay || !row) return without;
-        return [...without, appointmentToEvent(row)].sort((a, b) => a.startISO.localeCompare(b.startISO));
+        return [...without, appointmentToEvent(row, colorScheme)].sort((a, b) => a.startISO.localeCompare(b.startISO));
       });
     },
-    [companyId, date, load, locationId, staffIdParam]
+    [companyId, date, load, locationId, staffIdParam, colorScheme]
   );
 
   React.useEffect(() => {

@@ -74,7 +74,7 @@ export default function AppointmentDetailScreen() {
         setError(t('client.failedToLoad'));
         return;
       }
-      const nextEvent = appointmentToEvent(appointment);
+      const nextEvent = appointmentToEvent(appointment, colorScheme);
       setAppointment(appointment);
       setEvent(nextEvent);
 
@@ -87,7 +87,7 @@ export default function AppointmentDetailScreen() {
         ]);
         setClient(clientData);
         setNotes(notesData);
-        const historyEvents = appointmentsData.map(appointmentToEvent).filter((item) => item.appointmentId !== nextEvent.appointmentId);
+        const historyEvents = appointmentsData.map((row) => appointmentToEvent(row, colorScheme)).filter((item) => item.appointmentId !== nextEvent.appointmentId);
         setHistory(historyEvents);
       }
       setError(null);
@@ -96,7 +96,7 @@ export default function AppointmentDetailScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id, companyId, locationId, locationLoading, t]);
+  }, [id, companyId, locationId, locationLoading, t, colorScheme]);
 
   React.useEffect(() => {
     load();

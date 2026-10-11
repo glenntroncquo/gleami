@@ -90,7 +90,7 @@ export default function StaffScheduleScreen() {
         if (cancelled) return;
         setAvailability(availabilityData);
         setUnavailability(unavailabilityData);
-        setEventsByDateKey(groupAppointmentsByDateKey(appointments, null));
+        setEventsByDateKey(groupAppointmentsByDateKey(appointments, null, colorScheme));
         setError(null);
       })
       .catch((err) => {
@@ -102,7 +102,7 @@ export default function StaffScheduleScreen() {
     return () => {
       cancelled = true;
     };
-  }, [id, companyId, locationId, weekStart, t]);
+  }, [id, companyId, locationId, weekStart, t, colorScheme]);
 
   const todayKey = toDateKey(new Date());
 

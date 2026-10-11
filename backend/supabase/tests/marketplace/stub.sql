@@ -27,6 +27,13 @@ create or replace function private.has_company_permission(perm text, company_id 
 returns boolean language sql stable security definer as $$ select false $$;
 create or replace function private.has_permission_for_company(perm text, company_id uuid)
 returns boolean language sql stable security definer as $$ select false $$;
+create or replace function private.company_ids_for_user()
+returns setof uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$ select null::uuid where false $$;
 
 create schema if not exists storage;
 create table if not exists storage.buckets (

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { FreshaHome } from "@/components/marketplace/FreshaHome";
+import { ConsumerHome } from "@/components/consumer-home/ConsumerHome";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { createPageMetadata } from "@/lib/seo";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/structured-data";
@@ -18,7 +18,7 @@ export default function RootPage() {
   return (
     <>
       <JsonLd data={[organizationJsonLd(), websiteJsonLd("nl-be")]} />
-      <FreshaHome />
+      <ConsumerHome />
     </>
   );
 }

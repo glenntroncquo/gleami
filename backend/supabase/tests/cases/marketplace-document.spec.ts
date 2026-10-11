@@ -16,7 +16,6 @@ function service(overrides: Partial<ServiceSource> = {}): ServiceSource {
     isActive: true,
     isDeleted: false,
     isMarketplaceVisible: true,
-    categoryIds: [categoryKeratin],
     variants: [
       {
         id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
@@ -51,6 +50,7 @@ function source(overrides: Partial<LocationSource> = {}): LocationSource {
     isActive: true,
     hasCoordinates: true,
     likeCount: 4,
+    categoryIds: [categoryKeratin],
     services: [service()],
     categories: [
       { id: categoryKeratin, name: "Keratine" },
@@ -91,6 +91,7 @@ describe("buildMarketplaceSearchDocument", () => {
 
   it("drops hidden services, services with no live variant, and inactive categories", () => {
     const document = buildMarketplaceSearchDocument(source({
+      categoryIds: ["00000000-0000-4000-8000-000000000099", categoryNails],
       services: [
         service({ isMarketplaceVisible: false, name: "Hidden" }),
         service({
@@ -102,12 +103,10 @@ describe("buildMarketplaceSearchDocument", () => {
           id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
           name: "No variant",
           variants: [{ id: "ffffffff-ffff-4fff-8fff-ffffffffffff", displayOrder: 0, isActive: false, isDeleted: false }],
-          categoryIds: [categoryNails],
         }),
         service({
           id: "99999999-9999-4999-8999-999999999999",
           name: "Nagels",
-          categoryIds: ["00000000-0000-4000-8000-000000000099", categoryNails],
           variants: [{ id: "88888888-8888-4888-8888-888888888888", displayOrder: null, isActive: null, isDeleted: null }],
         }),
       ],
@@ -117,6 +116,16 @@ describe("buildMarketplaceSearchDocument", () => {
     expect(document?.categoryIds).toEqual([categoryNails]);
     expect(document?.searchText).toContain("nagels");
     expect(document?.searchText).not.toContain("hidden");
+  });
+
+  it("keeps the salon's categories when no service is tagged", () => {
+    const document = buildMarketplaceSearchDocument(source({
+      categoryIds: [categoryNails, categoryKeratin],
+      services: [],
+    }));
+    expect(document?.categoryIds).toEqual([categoryKeratin, categoryNails]);
+    expect(document?.treatments).toEqual([]);
+    expect(document?.searchText).toBe("salon noord antwerpen keratine nagels");
   });
 
   it("orders default variants by display_order then id", () => {

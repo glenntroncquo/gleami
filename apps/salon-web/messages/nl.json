@@ -245,7 +245,8 @@
           "slug": "Publieke link",
           "address": "Adres (straat, postcode en plaats)",
           "coordinates": "Coördinaten",
-          "service": "Minstens één zichtbare dienst met een categorie",
+          "category": "Minstens één categorie",
+          "service": "Minstens één zichtbare dienst",
           "photo": "Minstens één foto"
         }
       },
@@ -271,16 +272,16 @@
         "geocodeNeedsAddress": "Vul straat, postcode en plaats in om te zoeken.",
         "geocodeFound": "Coördinaten gevonden. Sla het profiel op om ze te bewaren.",
         "invalidCoordinates": "Breedtegraad moet tussen -90 en 90 liggen, lengtegraad tussen -180 en 180.",
-        "save": "Profiel opslaan"
+        "save": "Profiel opslaan",
+        "categories": "Categorieën",
+        "categoriesHint": "Waar deze locatie om bekendstaat. Bezoekers zoeken hiermee een salon."
       },
       "services": {
         "title": "Diensten",
-        "hint": "Verberg een dienst of koppel marketplace-categorieën.",
+        "hint": "Kies welke diensten in de marketplace verschijnen.",
         "empty": "Deze locatie heeft nog geen diensten.",
         "visible": "Zichtbaar in de marketplace",
-        "inactive": "Inactief",
-        "categories": "Categorieën",
-        "noCatalogPermission": "Je hebt catalogusrechten nodig om categorieën te wijzigen."
+        "inactive": "Inactief"
       },
       "photos": {
         "title": "Foto's",

@@ -173,9 +173,9 @@ begin
   end;
 
   begin
-    insert into public.service_marketplace_category (service_id, marketplace_category_id)
+    insert into public.location_marketplace_category (location_id, marketplace_category_id)
     values (
-      'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+      'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
       '01900000-0000-4000-8000-000000000001'
     );
     raise exception 'anon inserted a category mapping';
@@ -297,7 +297,8 @@ begin
 end
 $$;
 
--- Owner can map their service and upload media. The other company cannot.
+-- Owner can assign a category to their location, including one that is not listed.
+-- The other company cannot.
 do $$
 declare
   n int;
@@ -305,9 +306,9 @@ begin
   perform set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111111', true);
   perform set_config('role', 'authenticated', true);
 
-  insert into public.service_marketplace_category (service_id, marketplace_category_id)
+  insert into public.location_marketplace_category (location_id, marketplace_category_id)
   values (
-    'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+    'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
     '01900000-0000-4000-8000-000000000001'
   );
 
@@ -334,12 +335,12 @@ begin
   perform set_config('role', 'authenticated', true);
 
   begin
-    insert into public.service_marketplace_category (service_id, marketplace_category_id)
+    insert into public.location_marketplace_category (location_id, marketplace_category_id)
     values (
-      'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+      'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
       '01900000-0000-4000-8000-000000000002'
     );
-    raise exception 'other company mapped a service it does not own';
+    raise exception 'other company assigned a category to a location it does not own';
   exception when insufficient_privilege then null;
   end;
 
@@ -374,8 +375,8 @@ begin
   end if;
 
   select count(*) into n
-  from public.service_marketplace_category
-  where service_id = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+  from public.location_marketplace_category
+  where location_id = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
   if n <> 1 then
     raise exception 'expected 1 mapping, found %', n;
   end if;

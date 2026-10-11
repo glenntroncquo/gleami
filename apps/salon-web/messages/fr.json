@@ -245,7 +245,8 @@
           "slug": "Lien public",
           "address": "Adresse (rue, code postal et ville)",
           "coordinates": "Coordonnées",
-          "service": "Au moins un service visible avec une catégorie",
+          "category": "Au moins une catégorie",
+          "service": "Au moins un service visible",
           "photo": "Au moins une photo"
         }
       },
@@ -271,16 +272,16 @@
         "geocodeNeedsAddress": "Saisissez la rue, le code postal et la ville pour chercher.",
         "geocodeFound": "Coordonnées trouvées. Enregistrez le profil pour les conserver.",
         "invalidCoordinates": "La latitude doit être entre -90 et 90, la longitude entre -180 et 180.",
-        "save": "Enregistrer le profil"
+        "save": "Enregistrer le profil",
+        "categories": "Catégories",
+        "categoriesHint": "Ce pour quoi cet établissement est connu. Les visiteurs s'en servent pour trouver un salon."
       },
       "services": {
         "title": "Services",
-        "hint": "Masquez un service ou associez des catégories marketplace.",
+        "hint": "Choisissez quels services apparaissent sur la marketplace.",
         "empty": "Cet établissement n'a pas encore de services.",
         "visible": "Visible sur la marketplace",
-        "inactive": "Inactif",
-        "categories": "Catégories",
-        "noCatalogPermission": "Il faut le droit catalogue pour modifier les catégories."
+        "inactive": "Inactif"
       },
       "photos": {
         "title": "Photos",

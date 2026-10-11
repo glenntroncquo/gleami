@@ -57,6 +57,7 @@ function listedLocation(services: unknown[]) {
     is_active: true,
     has_coordinates: true,
     like_count: 1,
+    category_ids: [categoryKeratin],
     services,
     categories: [{ id: categoryKeratin, name: "Keratine" }],
   };
@@ -77,7 +78,6 @@ describe("rebuildMarketplaceSearchLocation treatments bind", () => {
         isActive: true,
         isDeleted: false,
         isMarketplaceVisible: true,
-        categoryIds: [categoryKeratin],
         variants: [{
           id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
           displayOrder: 1,

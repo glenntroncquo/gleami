@@ -1,0 +1,153 @@
+import type { Appointment, Category, Tone, Venue } from "./types";
+
+export const categories: Array<"All" | Category> = [
+  "All",
+  "Hair",
+  "Barbers",
+  "Nails",
+  "Massage",
+  "Skin",
+];
+
+export const popularSearches = ["Balayage", "Gel manicure", "Skin fade", "Deep tissue"];
+
+export const venues: Venue[] = [
+  {
+    id: "atelier-nord",
+    name: "Atelier Nord",
+    category: "Hair",
+    area: "Shoreditch",
+    distance: "0.4 mi",
+    rating: 4.9,
+    reviews: 1284,
+    image: "/41516bd9-574f-493e-acc1-579654a23fe1.jpg",
+    imagePosition: "center",
+    priceFrom: 45,
+    nextSlot: "Today, 14:30",
+    address: "18 Redchurch Street, London E2",
+    services: [
+      { id: "cut", name: "Cut & blow-dry", duration: 60, price: 58, description: "Consultation, wash, precision cut and finish." },
+      { id: "balayage", name: "Balayage", duration: 180, price: 165, description: "Hand-painted, sun-kissed colour with toner." },
+      { id: "gloss", name: "Gloss treatment", duration: 45, price: 45, description: "Adds shine and refreshes tone between colours." },
+      { id: "blowout", name: "Signature blowout", duration: 45, price: 48, description: "Smooth, voluminous finish that lasts days." },
+    ],
+  },
+  {
+    id: "fade-fellow",
+    name: "Fade & Fellow",
+    category: "Barbers",
+    area: "Hackney",
+    distance: "1.1 mi",
+    rating: 4.8,
+    reviews: 932,
+    image: "/56e085b8-b2d4-409b-a815-4ef0215cef0f.jpg",
+    imagePosition: "center",
+    priceFrom: 28,
+    nextSlot: "Today, 16:00",
+    address: "204 Mare Street, London E8",
+    services: [
+      { id: "skin-fade", name: "Skin fade", duration: 45, price: 32, description: "Clean fade finished with a straight-razor line-up." },
+      { id: "classic", name: "Classic cut", duration: 30, price: 28, description: "Scissor or clipper cut, styled to finish." },
+      { id: "beard", name: "Beard sculpt", duration: 30, price: 22, description: "Shape, hot towel and oil." },
+      { id: "full", name: "Cut & beard", duration: 60, price: 48, description: "The full refresh, top to chin." },
+    ],
+  },
+  {
+    id: "lilac-nail-bar",
+    name: "Lilac Nail Bar",
+    category: "Nails",
+    area: "Islington",
+    distance: "1.6 mi",
+    rating: 4.9,
+    reviews: 2108,
+    image: "/31cea9cd-73f8-4cb5-9da9-2ff34cf724dc.jpg",
+    imagePosition: "center",
+    priceFrom: 30,
+    nextSlot: "Today, 17:15",
+    address: "41 Upper Street, London N1",
+    services: [
+      { id: "gel-mani", name: "Gel manicure", duration: 45, price: 35, description: "Shape, cuticle care and long-wear gel colour." },
+      { id: "biab", name: "BIAB overlay", duration: 60, price: 48, description: "Builder gel for strength and natural growth." },
+      { id: "pedi", name: "Spa pedicure", duration: 50, price: 42, description: "Soak, scrub, massage and polish." },
+      { id: "removal", name: "Gel removal", duration: 20, price: 12, description: "Gentle soak-off with nourishing oil." },
+    ],
+  },
+  {
+    id: "stillwater",
+    name: "Stillwater Spa",
+    category: "Massage",
+    area: "Clerkenwell",
+    distance: "2.0 mi",
+    rating: 5.0,
+    reviews: 611,
+    image: "/58c8e78d-4390-4ff6-ab33-1e5d41f236ce.jpg",
+    imagePosition: "center",
+    priceFrom: 65,
+    nextSlot: "Tomorrow, 10:00",
+    address: "9 St John Street, London EC1",
+    services: [
+      { id: "deep", name: "Deep tissue massage", duration: 60, price: 85, description: "Firm pressure focused on lasting tension." },
+      { id: "swedish", name: "Swedish massage", duration: 60, price: 75, description: "Long, flowing strokes to fully unwind." },
+      { id: "hot-stone", name: "Hot stone ritual", duration: 90, price: 115, description: "Warm basalt stones melt muscle tension." },
+      { id: "back", name: "Back, neck & shoulders", duration: 30, price: 65, description: "A targeted reset for desk-bound shoulders." },
+    ],
+  },
+  {
+    id: "dermis",
+    name: "Dermis Clinic",
+    category: "Skin",
+    area: "Marylebone",
+    distance: "3.2 mi",
+    rating: 4.8,
+    reviews: 447,
+    image: "/753092fa-2782-44ed-87bc-3dcfcafa8498.jpg",
+    imagePosition: "center",
+    priceFrom: 80,
+    nextSlot: "Thu, 11:30",
+    address: "62 Marylebone High Street, London W1",
+    services: [
+      { id: "hydrafacial", name: "HydraFacial", duration: 60, price: 140, description: "Cleanse, extract and hydrate in one session." },
+      { id: "peel", name: "Light chemical peel", duration: 45, price: 95, description: "Brightens tone and smooths texture." },
+      { id: "consult", name: "Skin consultation", duration: 30, price: 80, description: "Analysis and a personalised routine." },
+      { id: "led", name: "LED light therapy", duration: 30, price: 60, description: "Calms redness and supports repair." },
+    ],
+  },
+  {
+    id: "quiet-room",
+    name: "The Quiet Room",
+    category: "Massage",
+    area: "Bloomsbury",
+    distance: "2.6 mi",
+    rating: 4.9,
+    reviews: 803,
+    image: "/58c8e78d-4390-4ff6-ab33-1e5d41f236ce.jpg",
+    imagePosition: "left center",
+    priceFrom: 60,
+    nextSlot: "Today, 19:00",
+    address: "27 Lamb’s Conduit Street, London WC1",
+    services: [
+      { id: "aroma", name: "Aromatherapy massage", duration: 60, price: 78, description: "Blended essential oils for deep calm." },
+      { id: "reflex", name: "Reflexology", duration: 45, price: 60, description: "Pressure-point work through the feet." },
+      { id: "prenatal", name: "Pregnancy massage", duration: 60, price: 80, description: "Side-lying comfort, tailored to each trimester." },
+      { id: "deep-qr", name: "Deep tissue massage", duration: 90, price: 110, description: "Extended session for stubborn knots." },
+    ],
+  },
+];
+
+export const staff: Array<{ name: string; tone: Tone }> = [
+  { name: "Maya", tone: "teal" },
+  { name: "Jordan", tone: "green" },
+  { name: "Priya", tone: "orchid" },
+];
+
+export const appointments: Appointment[] = [
+  { id: "a1", staff: 0, start: 9, duration: 1, title: "Cut & blow-dry", client: "Ella R.", tone: "teal" },
+  { id: "a2", staff: 0, start: 10.5, duration: 2, title: "Balayage", client: "Sofia M.", tone: "teal" },
+  { id: "a3", staff: 1, start: 9.5, duration: 0.75, title: "Skin fade", client: "Tom H.", tone: "green" },
+  { id: "a4", staff: 1, start: 11, duration: 1, title: "Cut & beard", client: "Ravi P.", tone: "green" },
+  { id: "a5", staff: 1, start: 12.5, duration: 1, title: "Lunch break", client: "Blocked", tone: "amber" },
+  { id: "a6", staff: 2, start: 9, duration: 1.5, title: "Gloss treatment", client: "Ana L.", tone: "orchid" },
+  { id: "a7", staff: 2, start: 11.5, duration: 1, title: "Signature blowout", client: "Kate W.", tone: "orchid" },
+];
+
+export const weeklyRevenue = [42, 58, 51, 66, 74, 88, 70];

@@ -14,7 +14,8 @@ const empty = {
   postalCode: null,
   city: null,
   hasCoordinates: false,
-  visibleCategorisedServiceCount: 0,
+  categoryCount: 0,
+  visibleServiceCount: 0,
   photoCount: 0,
 };
 
@@ -22,12 +23,12 @@ function run() {
   const missing = buildPublishChecklist(empty);
   assertEqual(
     missing.map((item) => item.id),
-    ["slug", "address", "coordinates", "service", "photo"],
+    ["slug", "address", "coordinates", "category", "service", "photo"],
     "checklist order",
   );
   assertEqual(
     missing.map((item) => item.blocking),
-    [true, false, false, false, false],
+    [true, false, false, false, false, false],
     "only the slug blocks publishing",
   );
   assertEqual(
@@ -74,7 +75,8 @@ function run() {
     postalCode: "9000",
     city: " Gent ",
     hasCoordinates: true,
-    visibleCategorisedServiceCount: 2,
+    categoryCount: 2,
+    visibleServiceCount: 2,
     photoCount: 3,
   });
   assertEqual(
@@ -85,17 +87,27 @@ function run() {
   assertEqual(canListLocation(ready), true, "complete profile can list");
 
   assertEqual(
-    buildPublishChecklist({ ...empty, slug: "studio", visibleCategorisedServiceCount: 0 })[3]?.done,
+    buildPublishChecklist({ ...empty, slug: "studio", categoryCount: 0 })[3]?.done,
     false,
-    "a service without a category does not count",
+    "a salon without a category stays a warning",
   );
   assertEqual(
-    buildPublishChecklist({ ...empty, slug: "studio", visibleCategorisedServiceCount: 1 })[3]?.done,
+    buildPublishChecklist({ ...empty, slug: "studio", categoryCount: 1 })[3]?.done,
     true,
-    "one visible categorised service is enough",
+    "one category is enough",
   );
   assertEqual(
-    buildPublishChecklist({ ...empty, slug: "studio", photoCount: 1 })[4]?.done,
+    buildPublishChecklist({ ...empty, slug: "studio", visibleServiceCount: 0 })[4]?.done,
+    false,
+    "a salon without a visible service stays a warning",
+  );
+  assertEqual(
+    buildPublishChecklist({ ...empty, slug: "studio", visibleServiceCount: 1 })[4]?.done,
+    true,
+    "one visible service is enough",
+  );
+  assertEqual(
+    buildPublishChecklist({ ...empty, slug: "studio", photoCount: 1 })[5]?.done,
     true,
     "one photo is enough",
   );

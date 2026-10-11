@@ -4,6 +4,7 @@ export const PUBLISH_CHECKLIST_IDS = [
   "slug",
   "address",
   "coordinates",
+  "category",
   "service",
   "photo",
 ] as const;
@@ -23,8 +24,10 @@ export type PublishChecklistInput = {
   postalCode: string | null;
   city: string | null;
   hasCoordinates: boolean;
-  /** Active, marketplace-visible services that have at least one category. */
-  visibleCategorisedServiceCount: number;
+  /** Categories the salon presents itself as. */
+  categoryCount: number;
+  /** Active services that are visible on the marketplace. */
+  visibleServiceCount: number;
   photoCount: number;
 };
 
@@ -35,13 +38,15 @@ function filled(value: string | null | undefined): boolean {
 export function buildPublishChecklist(input: PublishChecklistInput): PublishChecklistItem[] {
   const slugDone = normalizeSlug(input.slug ?? "").length > 0;
   const addressDone = filled(input.street) && filled(input.postalCode) && filled(input.city);
-  const serviceDone = input.visibleCategorisedServiceCount >= 1;
+  const categoryDone = input.categoryCount >= 1;
+  const serviceDone = input.visibleServiceCount >= 1;
   const photoDone = input.photoCount >= 1;
 
   return [
     { id: "slug", done: slugDone, blocking: true },
     { id: "address", done: addressDone, blocking: false },
     { id: "coordinates", done: input.hasCoordinates, blocking: false },
+    { id: "category", done: categoryDone, blocking: false },
     { id: "service", done: serviceDone, blocking: false },
     { id: "photo", done: photoDone, blocking: false },
   ];

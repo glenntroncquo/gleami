@@ -47,9 +47,9 @@ export function targetsFromWebhook(body: unknown): WebhookTarget {
     return serviceId ? { kind: "service", serviceId } : { kind: "ignore" };
   }
 
-  if (table === "service_marketplace_category") {
-    const serviceId = readUuid(record, "service_id") ?? readUuid(previous, "service_id");
-    return serviceId ? { kind: "service", serviceId } : { kind: "ignore" };
+  if (table === "location_marketplace_category") {
+    const locationId = readUuid(record, "location_id") ?? readUuid(previous, "location_id");
+    return locationId ? { kind: "locations", locationIds: [locationId] } : { kind: "ignore" };
   }
 
   return { kind: "ignore" };

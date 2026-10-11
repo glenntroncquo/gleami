@@ -62,13 +62,15 @@ export type MarketplacePanelProps = {
   checklist: PublishChecklistItem[];
   services: MarketplaceService[];
   categories: MarketplaceCategory[];
+  categoryIds: string[];
   photos: MarketplacePhoto[];
-  canEditCategories: boolean;
+  canManage: boolean;
   savingListing: boolean;
   savingProfile: boolean;
   findingCoordinates: boolean;
   uploading: boolean;
   busyServiceId: string | null;
+  busyCategoryId: string | null;
   onListedChange: (next: boolean) => void;
   onSlugChange: (value: string) => void;
   onSlugBlur: () => void;
@@ -84,7 +86,7 @@ export type MarketplacePanelProps = {
   onFindCoordinates: () => void;
   onSaveProfile: () => void;
   onToggleService: (serviceId: string, visible: boolean) => void;
-  onToggleCategory: (serviceId: string, categoryId: string, checked: boolean) => void;
+  onToggleCategory: (categoryId: string, checked: boolean) => void;
   onUpload: (files: FileList) => void;
   onReorderPhotos: (orderedIds: string[]) => void;
   onDeletePhoto: (id: string) => void;
@@ -326,6 +328,33 @@ export function MarketplacePanel(props: MarketplacePanelProps) {
             </Button>
           </div>
         </div>
+
+        <div className="space-y-2">
+          <p className="text-sm font-medium">{t("profile.categories")}</p>
+          <p className="text-muted-foreground text-xs">{t("profile.categoriesHint")}</p>
+          <div className="flex flex-wrap gap-2">
+            {props.categories.map((category) => {
+              const checked = props.categoryIds.includes(category.id);
+              return (
+                <label
+                  key={category.id}
+                  className={cn(
+                    "flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs",
+                    checked && "border-primary/40 bg-primary/5",
+                    !props.canManage && "opacity-80",
+                  )}
+                >
+                  <Checkbox
+                    checked={checked}
+                    disabled={!props.canManage || props.busyCategoryId === category.id}
+                    onCheckedChange={(value) => props.onToggleCategory(category.id, value === true)}
+                  />
+                  {category.name}
+                </label>
+              );
+            })}
+          </div>
+        </div>
       </section>
 
       <Separator />
@@ -335,15 +364,12 @@ export function MarketplacePanel(props: MarketplacePanelProps) {
           <h3 className="text-base font-semibold">{t("services.title")}</h3>
           <p className="text-muted-foreground text-sm">{t("services.hint")}</p>
         </div>
-        {!props.canEditCategories && (
-          <p className="text-muted-foreground text-xs">{t("services.noCatalogPermission")}</p>
-        )}
         {props.services.length === 0 ? (
           <p className="text-muted-foreground text-sm">{t("services.empty")}</p>
         ) : (
           <ul className="space-y-3">
             {props.services.map((service) => (
-              <li key={service.id} className="space-y-3 rounded-lg border p-4">
+              <li key={service.id} className="rounded-lg border p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium">{service.name}</p>
@@ -361,33 +387,6 @@ export function MarketplacePanel(props: MarketplacePanelProps) {
                       disabled={props.busyServiceId === service.id}
                       onCheckedChange={(checked) => props.onToggleService(service.id, checked)}
                     />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-muted-foreground text-xs">{t("services.categories")}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {props.categories.map((category) => {
-                      const checked = service.categoryIds.includes(category.id);
-                      return (
-                        <label
-                          key={category.id}
-                          className={cn(
-                            "flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs",
-                            checked && "border-primary/40 bg-primary/5",
-                            !props.canEditCategories && "opacity-80",
-                          )}
-                        >
-                          <Checkbox
-                            checked={checked}
-                            disabled={!props.canEditCategories || props.busyServiceId === service.id}
-                            onCheckedChange={(value) =>
-                              props.onToggleCategory(service.id, category.id, value === true)
-                            }
-                          />
-                          {category.name}
-                        </label>
-                      );
-                    })}
                   </div>
                 </div>
               </li>

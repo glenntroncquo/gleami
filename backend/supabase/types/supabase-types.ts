@@ -1061,6 +1061,39 @@ export type Database = {
           },
         ]
       }
+      location_marketplace_category: {
+        Row: {
+          created_at: string
+          location_id: string
+          marketplace_category_id: string
+        }
+        Insert: {
+          created_at?: string
+          location_id: string
+          marketplace_category_id: string
+        }
+        Update: {
+          created_at?: string
+          location_id?: string
+          marketplace_category_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_marketplace_category_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "location"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_marketplace_category_marketplace_category_id_fkey"
+            columns: ["marketplace_category_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_category"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketplace_category: {
         Row: {
           created_at: string
@@ -1943,39 +1976,6 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "company"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      service_marketplace_category: {
-        Row: {
-          created_at: string
-          marketplace_category_id: string
-          service_id: string
-        }
-        Insert: {
-          created_at?: string
-          marketplace_category_id: string
-          service_id: string
-        }
-        Update: {
-          created_at?: string
-          marketplace_category_id?: string
-          service_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "service_marketplace_category_marketplace_category_id_fkey"
-            columns: ["marketplace_category_id"]
-            isOneToOne: false
-            referencedRelation: "marketplace_category"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "service_marketplace_category_service_id_fkey"
-            columns: ["service_id"]
-            isOneToOne: false
-            referencedRelation: "service"
             referencedColumns: ["id"]
           },
         ]

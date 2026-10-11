@@ -109,14 +109,9 @@ export async function getMarketplaceLocation(
         from public.marketplace_category c
         where c.is_active
           and c.id in (
-            select smc.marketplace_category_id
-            from public.location_service ls
-            join public.service s on s.id = ls.service_id
-            join public.service_marketplace_category smc on smc.service_id = s.id
-            where ls.location_id = l.id
-              and coalesce(s.is_deleted, false) = false
-              and coalesce(s.is_active, true) = true
-              and s.is_marketplace_visible
+            select lmc.marketplace_category_id
+            from public.location_marketplace_category lmc
+            where lmc.location_id = l.id
           )
       ), '[]'::json) as categories,
       coalesce((

@@ -8,6 +8,8 @@ Apply, in order, on SalonFlow (there is no staging). Do not apply from CI.
 2. `supabase/migrations/20260924184500_marketplace_suggest_name_gist.sql`
 3. `supabase/migrations/20260924190000_marketplace_sync_schedule.sql`
 
+`supabase/migrations/20261011161500_location_marketplace_category.sql` moves categories from each service onto the salon location. Substitute `__MARKETPLACE_WEBHOOK_SECRET__` in that file the same way as file 3. It backfills `location_marketplace_category` from the old service tags, then drops `service_marketplace_category`. After it is applied, call `marketplace-reindex` once so `category_ids` come from the location.
+
 In file 3, replace every `__MARKETPLACE_WEBHOOK_SECRET__` before apply. Set the same value as the edge secret `MARKETPLACE_WEBHOOK_SECRET`. Set the edge secret `MARKETPLACE_DATABASE_URL` to the session pooler URL. `getMarketplaceDb` reads that first and falls back to `SUPABASE_DB_URL`. The direct database host is IPv6-only and unreachable from many edge runtimes, so the pooler session URL is the one that works. The transaction pooler is a poor fit for these statements.
 
 `marketplace-reindex` is not on the cron. Call it with the service-role JWT when you want a full rebuild (backfill).
@@ -61,11 +63,11 @@ The plan document was not in the repo. These weights are the ones the API ships.
 `rebuildMarketplaceSearchLocation(locationId)` in `_shared/marketplace/rebuild.ts`:
 
 1. Read the location, its `location_service` rows, services, variants, category ids, active category names, and `count(*)` of likes.
-2. Build `category_ids`, `search_text`, and `treatments` in TypeScript. `treatments` is `[{serviceId, serviceVariantId, name}]`. `serviceVariantId` is the first active variant (lowest `display_order`, then lowest id). Services that are hidden, inactive, deleted, or have no active variant are omitted. Display only — search does not filter on it.
+2. Build `category_ids`, `search_text`, and `treatments` in TypeScript. `category_ids` are the active categories selected on the location (`location_marketplace_category`), not a union of service tags. Inactive catalog ids are dropped. `treatments` is `[{serviceId, serviceVariantId, name}]`. `serviceVariantId` is the first active variant (lowest `display_order`, then lowest id). Services that are hidden, inactive, deleted, or have no active variant are omitted from `treatments` and from the service names in `search_text`. Display only — search does not filter on treatments. A treatment name in `q` still matches `search_text`.
 3. Delete the projection row when the location is not indexable. Otherwise upsert. `rating` / `review_count` are left null / 0 on insert and are not overwritten on update.
 4. If the location is listed and `marketplace_published_at` is null, set it to `now()`. Later syncs do not move it, so the location UPDATE trigger does not loop.
 
-Database webhooks (`supabase_functions.http_request`, no new function) on `location`, `service`, `location_service`, and `service_marketplace_category` POST to `marketplace-sync`. The trigger body is a static `{}` because `http_request` cannot interpolate the row. `targetsFromWebhook` returns kind `ignore` for that body (and for any payload with no usable table and record ids). `marketplace-sync` then calls `rebuildAllListed`, which deletes projection rows that are no longer indexable and rebuilds every listed active location. A body that includes `table` plus a location or service id still rebuilds only those locations. For a service (or a category mapping) it loads location ids from `location_service`. `location_service.service_id` is `ON DELETE CASCADE`, so a service delete is also delivered by the `location_service` trigger while the link still exists.
+Database webhooks (`supabase_functions.http_request`, no new function) on `location`, `service`, `location_service`, and `location_marketplace_category` POST to `marketplace-sync`. The trigger body is a static `{}` because `http_request` cannot interpolate the row. `targetsFromWebhook` returns kind `ignore` for that body (and for any payload with no usable table and record ids). `marketplace-sync` then calls `rebuildAllListed`, which deletes projection rows that are no longer indexable and rebuilds every listed active location. A body that includes `table` plus a location or service id still rebuilds only those locations. A `location_marketplace_category` payload rebuilds that `location_id`. For a service it loads location ids from `location_service`. `location_service.service_id` is `ON DELETE CASCADE`, so a service delete is also delivered by the `location_service` trigger while the link still exists.
 
 There is **no** webhook on `marketplace_location_like`. `marketplace-refresh-like-counts` runs daily at 03:15 UTC and sets `like_count` with one `UPDATE ... FROM (SELECT location_id, count(*) ...)`, including zeros. It does not change `updated_at`.
 
@@ -121,7 +123,7 @@ Calls `getAvailabilityHandler` (the availability-list slot engine) with today 00
 ## Client tables
 
 - `marketplace_category`: anon/authenticated read active rows. No client writes.
-- `service_marketplace_category`: read is `true` (ids only; see the schema migration comment). Insert/delete requires `catalog:manage` on the service’s company.
+- `location_marketplace_category`: authenticated members of the location’s company can select, including while the location is unlisted. Insert and delete require `locations:manage` or `settings:manage` on that company. Anon does not read this table; the public profile comes from `marketplace-location-get`.
 - `marketplace_search_location`: `GRANT ALL` to anon and authenticated, and the only SELECT policy is `USING (true)` for both roles. Favorites are not a separate endpoint. An authenticated client reads its likes, then the projection:
 
 ```
@@ -147,7 +149,7 @@ The projection has no gallery column. The client keeps the first five `storage_p
 
 Throwaway Postgres 16. Production is 15; the SQL stays within generated columns and `security_invoker` views. Not applied to SalonFlow.
 
-`tests/marketplace/run-rls.sh` ended with `rls-check-ok`. Anon sees the listed projection row and not the unlisted one, can read listed media and the public storage objects, and cannot insert into any of the five tables. Authenticated updates and deletes of the projection and categories change 0 rows. A user likes only a listed location, and only their own row. The other company cannot write mappings or media. Storage writes require the `{company_id}/` prefix.
+`tests/marketplace/run-rls.sh` ended with `rls-check-ok`. Anon sees the listed projection row and not the unlisted one, can read listed media and the public storage objects, and cannot insert into any of the five tables. Authenticated updates and deletes of the projection and categories change 0 rows. A user likes only a listed location, and only their own row. The owner can assign a category to an unlisted location. The other company cannot write location categories or media. Storage writes require the `{company_id}/` prefix.
 
 `tests/marketplace/run-explain.sh` seeds 10k then 100k projection rows. No sequential scan on `marketplace_search_location`.
 

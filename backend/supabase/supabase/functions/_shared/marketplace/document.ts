@@ -11,7 +11,6 @@ export interface ServiceSource {
   isActive: boolean | null;
   isDeleted: boolean | null;
   isMarketplaceVisible: boolean;
-  categoryIds: string[];
   variants: VariantSource[];
 }
 
@@ -35,6 +34,8 @@ export interface LocationSource {
   isActive: boolean;
   hasCoordinates: boolean;
   likeCount: number;
+  /** Categories the salon presents itself as. Inactive catalog ids are dropped. */
+  categoryIds: string[];
   services: ServiceSource[];
   categories: CategoryName[];
 }
@@ -111,7 +112,9 @@ export function buildMarketplaceSearchDocument(source: LocationSource): Projecti
   }
 
   const categoryNamesById = new Map(source.categories.map((category) => [category.id, category.name]));
-  const categoryIds = new Set<string>();
+  const categoryIds = new Set(
+    source.categoryIds.filter((categoryId) => categoryNamesById.has(categoryId)),
+  );
   const treatments: TreatmentDocument[] = [];
   const serviceNames: string[] = [];
 
@@ -126,9 +129,6 @@ export function buildMarketplaceSearchDocument(source: LocationSource): Projecti
       name: service.name,
     });
     serviceNames.push(service.name);
-    for (const categoryId of service.categoryIds) {
-      if (categoryNamesById.has(categoryId)) categoryIds.add(categoryId);
-    }
   }
 
   const usedCategoryNames = [...categoryIds]

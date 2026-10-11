@@ -21,7 +21,6 @@ interface ServiceJson {
   isActive: boolean | null;
   isDeleted: boolean | null;
   isMarketplaceVisible: boolean;
-  categoryIds: string[] | null;
   variants: VariantJson[] | null;
 }
 
@@ -40,6 +39,7 @@ interface LocationJson {
   is_active: boolean;
   has_coordinates: boolean;
   like_count: number;
+  category_ids: string[] | null;
   services: ServiceJson[] | null;
   categories: Array<{ id: string; name: string }> | null;
 }
@@ -55,7 +55,6 @@ function toSource(row: LocationJson): LocationSource {
     isActive: service.isActive,
     isDeleted: service.isDeleted,
     isMarketplaceVisible: service.isMarketplaceVisible,
-    categoryIds: asArray(service.categoryIds),
     variants: asArray(service.variants).map((variant): VariantSource => ({
       id: variant.id,
       displayOrder: variant.displayOrder,
@@ -84,6 +83,7 @@ function toSource(row: LocationJson): LocationSource {
     isActive: row.is_active,
     hasCoordinates: row.has_coordinates,
     likeCount: row.like_count,
+    categoryIds: asArray(row.category_ids),
     services,
     categories,
   };
@@ -111,17 +111,17 @@ async function readLocation(sql: MarketplaceSql, locationId: string): Promise<Lo
         where k.location_id = l.id
       ) as like_count,
       coalesce((
+        select json_agg(lmc.marketplace_category_id)
+        from public.location_marketplace_category lmc
+        where lmc.location_id = l.id
+      ), '[]'::json) as category_ids,
+      coalesce((
         select json_agg(json_build_object(
           'id', s.id,
           'name', s.name,
           'isActive', s.is_active,
           'isDeleted', s.is_deleted,
           'isMarketplaceVisible', s.is_marketplace_visible,
-          'categoryIds', coalesce((
-            select json_agg(smc.marketplace_category_id)
-            from public.service_marketplace_category smc
-            where smc.service_id = s.id
-          ), '[]'::json),
           'variants', coalesce((
             select json_agg(json_build_object(
               'id', v.id,

@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { MarketplaceHome } from "@/components/marketplace/MarketplaceHome";
+import { ConsumerHome } from "@/components/consumer-home/ConsumerHome";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { SiteFooter } from "@/components/SiteFooter";
-import { SiteHeader } from "@/components/SiteHeader";
 import { getCopy } from "@/lib/copy";
-import { isLocale, type Locale } from "@/lib/i18n";
+import { isLocale, routeFor, type Locale } from "@/lib/i18n";
 import { createPageMetadata } from "@/lib/seo";
 import { breadcrumbJsonLd } from "@/lib/structured-data";
 
@@ -35,11 +33,10 @@ export default async function LocaleHomePage({ params }: Props) {
       <JsonLd
         data={breadcrumbJsonLd(locale, [{ name: "Gleami", route }])}
       />
-      <SiteHeader locale={locale} route={route} />
-      <main id="main">
-        <MarketplaceHome locale={locale} />
-      </main>
-      <SiteFooter locale={locale} route={route} />
+      <ConsumerHome
+        homeHref={routeFor(locale, { kind: "home" })}
+        businessHref={routeFor(locale, { kind: "business" })}
+      />
     </>
   );
 }

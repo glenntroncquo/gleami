@@ -9,5 +9,6 @@ sudo -u postgres psql -v ON_ERROR_STOP=1 -c "drop database if exists ${DB};" >/d
 sudo -u postgres psql -v ON_ERROR_STOP=1 -c "create database ${DB};" >/dev/null
 sudo -u postgres psql -v ON_ERROR_STOP=1 -d "$DB" -f "$ROOT/tests/marketplace/stub.sql" >/dev/null
 sudo -u postgres psql -v ON_ERROR_STOP=1 -d "$DB" -f "$ROOT/supabase/migrations/20260924183000_marketplace_schema.sql" >/dev/null
+sudo -u postgres psql -v ON_ERROR_STOP=1 -d "$DB" -f "$ROOT/supabase/migrations/20261011161500_location_marketplace_category.sql" >/dev/null
 sudo -u postgres psql -v ON_ERROR_STOP=1 -d "$DB" -f "$ROOT/tests/marketplace/rls-check.sql"
 sudo -u postgres psql -v ON_ERROR_STOP=1 -c "drop database ${DB};" >/dev/null

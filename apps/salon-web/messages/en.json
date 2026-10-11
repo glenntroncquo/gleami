@@ -245,7 +245,8 @@
           "slug": "Public link",
           "address": "Address (street, postal code and city)",
           "coordinates": "Coordinates",
-          "service": "At least one visible service with a category",
+          "category": "At least one category",
+          "service": "At least one visible service",
           "photo": "At least one photo"
         }
       },
@@ -271,16 +272,16 @@
         "geocodeNeedsAddress": "Enter street, postal code and city to search.",
         "geocodeFound": "Coordinates found. Save the profile to keep them.",
         "invalidCoordinates": "Latitude must be between -90 and 90, longitude between -180 and 180.",
-        "save": "Save profile"
+        "save": "Save profile",
+        "categories": "Categories",
+        "categoriesHint": "What this location is known for. Visitors use these to find a salon."
       },
       "services": {
         "title": "Services",
-        "hint": "Hide a service or attach marketplace categories.",
+        "hint": "Choose which services appear on the marketplace.",
         "empty": "This location has no services yet.",
         "visible": "Visible on the marketplace",
-        "inactive": "Inactive",
-        "categories": "Categories",
-        "noCatalogPermission": "You need catalog permission to change categories."
+        "inactive": "Inactive"
       },
       "photos": {
         "title": "Photos",

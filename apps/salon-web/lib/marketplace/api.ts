@@ -27,7 +27,6 @@ export type MarketplaceService = {
   name: string;
   active: boolean;
   visible: boolean;
-  categoryIds: string[];
 };
 
 export type MarketplaceCategory = {
@@ -127,28 +126,11 @@ export async function loadMarketplaceServices(
   serviceIds: string[],
 ): Promise<{ data: MarketplaceService[]; error: DbError }> {
   if (serviceIds.length === 0) return { data: [], error: null };
-  const [services, mappings] = await Promise.all([
-    supabase
-      .from("service")
-      .select("id, name, is_active, is_deleted, is_marketplace_visible")
-      .in("id", serviceIds),
-    supabase
-      .from("service_marketplace_category")
-      .select("service_id, marketplace_category_id")
-      .in("service_id", serviceIds),
-  ]);
+  const services = await supabase
+    .from("service")
+    .select("id, name, is_active, is_deleted, is_marketplace_visible")
+    .in("id", serviceIds);
   if (services.error) return { data: [], error: services.error };
-  if (mappings.error) return { data: [], error: mappings.error };
-
-  const categoriesByService = new Map<string, string[]>();
-  for (const row of asRows(mappings.data)) {
-    const serviceId = text(row.service_id);
-    const categoryId = text(row.marketplace_category_id);
-    if (!serviceId || !categoryId) continue;
-    const list = categoriesByService.get(serviceId) ?? [];
-    list.push(categoryId);
-    categoriesByService.set(serviceId, list);
-  }
 
   const data = asRows(services.data)
     .filter((row) => row.is_deleted !== true)
@@ -159,7 +141,6 @@ export async function loadMarketplaceServices(
         name: text(row.name) ?? "",
         active: row.is_active !== false,
         visible: row.is_marketplace_visible !== false,
-        categoryIds: categoriesByService.get(id) ?? [],
       };
     })
     .filter((row) => row.id)
@@ -286,13 +267,28 @@ export async function updateServiceVisibility(
   return { error: null };
 }
 
-export async function addServiceCategory(
+export async function loadLocationCategoryIds(
   supabase: MarketplaceClient,
-  serviceId: string,
+  locationId: string,
+): Promise<{ data: string[]; error: DbError }> {
+  const { data, error } = await supabase
+    .from("location_marketplace_category")
+    .select("marketplace_category_id")
+    .eq("location_id", locationId);
+  if (error) return { data: [], error };
+  const ids = asRows(data)
+    .map((row) => text(row.marketplace_category_id))
+    .filter((id): id is string => Boolean(id));
+  return { data: [...new Set(ids)], error: null };
+}
+
+export async function addLocationCategory(
+  supabase: MarketplaceClient,
+  locationId: string,
   categoryId: string,
 ): Promise<{ error: DbError }> {
-  const { error } = await supabase.from("service_marketplace_category").insert({
-    service_id: serviceId,
+  const { error } = await supabase.from("location_marketplace_category").insert({
+    location_id: locationId,
     marketplace_category_id: categoryId,
   });
   if (error && (error.code === "23505" || (error.message ?? "").includes("duplicate"))) {
@@ -301,17 +297,17 @@ export async function addServiceCategory(
   return { error };
 }
 
-export async function removeServiceCategory(
+export async function removeLocationCategory(
   supabase: MarketplaceClient,
-  serviceId: string,
+  locationId: string,
   categoryId: string,
 ): Promise<{ error: DbError }> {
   const { data, error } = await supabase
-    .from("service_marketplace_category")
+    .from("location_marketplace_category")
     .delete()
-    .eq("service_id", serviceId)
+    .eq("location_id", locationId)
     .eq("marketplace_category_id", categoryId)
-    .select("service_id");
+    .select("location_id");
   if (error) return { error };
   if (!rowsWritten(data)) return { error: PERMISSION_ERROR };
   return { error: null };

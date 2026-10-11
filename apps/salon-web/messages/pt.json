@@ -245,7 +245,8 @@
           "slug": "Ligação pública",
           "address": "Morada (rua, código postal e localidade)",
           "coordinates": "Coordenadas",
-          "service": "Pelo menos um serviço visível com uma categoria",
+          "category": "Pelo menos uma categoria",
+          "service": "Pelo menos um serviço visível",
           "photo": "Pelo menos uma foto"
         }
       },
@@ -271,16 +272,16 @@
         "geocodeNeedsAddress": "Introduza rua, código postal e localidade para procurar.",
         "geocodeFound": "Coordenadas encontradas. Guarde o perfil para as manter.",
         "invalidCoordinates": "A latitude deve estar entre -90 e 90, a longitude entre -180 e 180.",
-        "save": "Guardar perfil"
+        "save": "Guardar perfil",
+        "categories": "Categorias",
+        "categoriesHint": "Aquilo por que este local é conhecido. Os visitantes usam isto para encontrar um salão."
       },
       "services": {
         "title": "Serviços",
-        "hint": "Oculte um serviço ou associe categorias do marketplace.",
+        "hint": "Escolha quais serviços aparecem no marketplace.",
         "empty": "Este local ainda não tem serviços.",
         "visible": "Visível no marketplace",
-        "inactive": "Inativo",
-        "categories": "Categorias",
-        "noCatalogPermission": "Precisa de permissão de catálogo para alterar categorias."
+        "inactive": "Inativo"
       },
       "photos": {
         "title": "Fotos",

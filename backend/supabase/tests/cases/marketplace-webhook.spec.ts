@@ -26,13 +26,19 @@ describe("webhook targets", () => {
     })).toEqual({ kind: "locations", locationIds: [locationId] });
   });
 
-  it("maps service and category changes to a service id", () => {
+  it("maps a service change to a service id and a category change to the location", () => {
     expect(targetsFromWebhook({ table: "service", record: { id: serviceId } }))
       .toEqual({ kind: "service", serviceId });
     expect(targetsFromWebhook({
-      table: "service_marketplace_category",
-      record: { service_id: serviceId, marketplace_category_id: locationId },
-    })).toEqual({ kind: "service", serviceId });
+      table: "location_marketplace_category",
+      record: { location_id: locationId, marketplace_category_id: serviceId },
+    })).toEqual({ kind: "locations", locationIds: [locationId] });
+    expect(targetsFromWebhook({
+      table: "location_marketplace_category",
+      type: "DELETE",
+      record: null,
+      old_record: { location_id: locationId.toUpperCase() },
+    })).toEqual({ kind: "locations", locationIds: [locationId] });
   });
 
   it("ignores likes and junk", () => {

@@ -15,15 +15,16 @@ import {
   withTimeout,
 } from "@/lib/async/fail-closed";
 import {
-  addServiceCategory,
+  addLocationCategory,
   deleteMarketplacePhoto,
+  loadLocationCategoryIds,
   loadLocationServiceIds,
   loadMarketplaceCategories,
   loadMarketplaceLocation,
   loadMarketplacePhotos,
   loadMarketplaceServices,
   persistPhotoOrder,
-  removeServiceCategory,
+  removeLocationCategory,
   updateListing,
   updateMarketplaceProfile,
   updateServiceVisibility,
@@ -55,7 +56,6 @@ export function MarketplaceSettings() {
 
   const canManage =
     hasCompanyPermission("locations:manage") || hasCompanyPermission("settings:manage");
-  const canEditCategories = hasCompanyPermission("catalog:manage");
 
   const [loading, setLoading] = useState(true);
   const [locationName, setLocationName] = useState("");
@@ -74,12 +74,14 @@ export function MarketplaceSettings() {
   const [coordinatesSaved, setCoordinatesSaved] = useState(false);
   const [services, setServices] = useState<MarketplaceService[]>([]);
   const [categories, setCategories] = useState<MarketplaceCategory[]>([]);
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [photos, setPhotos] = useState<MarketplacePhoto[]>([]);
   const [savingListing, setSavingListing] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [findingCoordinates, setFindingCoordinates] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [busyServiceId, setBusyServiceId] = useState<string | null>(null);
+  const [busyCategoryId, setBusyCategoryId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!locationId || !canManage) {
@@ -109,6 +111,7 @@ export function MarketplaceSettings() {
         applyLocation(loaded.location);
         setServices(loaded.services);
         setCategories(loaded.categories);
+        setCategoryIds(loaded.categoryIds);
         setPhotos(loaded.photos);
         setSlugSuggestion(null);
       },
@@ -139,9 +142,8 @@ export function MarketplaceSettings() {
     postalCode,
     city,
     hasCoordinates: coordinatesSaved,
-    visibleCategorisedServiceCount: services.filter(
-      (service) => service.visible && service.active && service.categoryIds.length > 0,
-    ).length,
+    categoryCount: categoryIds.length,
+    visibleServiceCount: services.filter((service) => service.visible && service.active).length,
     photoCount: photos.length,
   });
 
@@ -246,25 +248,19 @@ export function MarketplaceSettings() {
     }
   };
 
-  const toggleCategory = async (serviceId: string, categoryId: string, checked: boolean) => {
-    if (!canEditCategories) return;
-    const previous = services;
-    setServices((rows) =>
-      rows.map((row) => {
-        if (row.id !== serviceId) return row;
-        const categoryIds = checked
-          ? [...new Set([...row.categoryIds, categoryId])]
-          : row.categoryIds.filter((id) => id !== categoryId);
-        return { ...row, categoryIds };
-      }),
+  const toggleCategory = async (categoryId: string, checked: boolean) => {
+    if (!canManage || !locationId) return;
+    const previous = categoryIds;
+    setCategoryIds((ids) =>
+      checked ? [...new Set([...ids, categoryId])] : ids.filter((id) => id !== categoryId),
     );
-    setBusyServiceId(serviceId);
+    setBusyCategoryId(categoryId);
     const result = checked
-      ? await addServiceCategory(supabase, serviceId, categoryId)
-      : await removeServiceCategory(supabase, serviceId, categoryId);
-    setBusyServiceId(null);
+      ? await addLocationCategory(supabase, locationId, categoryId)
+      : await removeLocationCategory(supabase, locationId, categoryId);
+    setBusyCategoryId(null);
     if (result.error) {
-      setServices(previous);
+      setCategoryIds(previous);
       reportError(result.error, t("saveFailed"));
     }
   };
@@ -375,13 +371,15 @@ export function MarketplaceSettings() {
       checklist={checklist}
       services={services}
       categories={categories}
+      categoryIds={categoryIds}
       photos={photos}
-      canEditCategories={canEditCategories}
+      canManage={canManage}
       savingListing={savingListing}
       savingProfile={savingProfile}
       findingCoordinates={findingCoordinates}
       uploading={uploading}
       busyServiceId={busyServiceId}
+      busyCategoryId={busyCategoryId}
       onListedChange={(next) => void saveListing(next)}
       onSlugChange={(value) => {
         setSlug(value);
@@ -407,9 +405,7 @@ export function MarketplaceSettings() {
       onFindCoordinates={() => void findCoordinates()}
       onSaveProfile={() => void saveProfile()}
       onToggleService={(serviceId, visible) => void toggleService(serviceId, visible)}
-      onToggleCategory={(serviceId, categoryId, checked) =>
-        void toggleCategory(serviceId, categoryId, checked)
-      }
+      onToggleCategory={(categoryId, checked) => void toggleCategory(categoryId, checked)}
       onUpload={(files) => void upload(files)}
       onReorderPhotos={(ids) => void reorderPhotos(ids)}
       onDeletePhoto={(id) => void deletePhoto(id)}
@@ -420,27 +416,29 @@ export function MarketplaceSettings() {
 async function loadAll(supabase: MarketplaceClient, locationId: string) {
   const location = await loadMarketplaceLocation(supabase, locationId);
   if (location.error || !location.data) {
-    return { location: null, services: [], categories: [], photos: [] };
+    return { location: null, services: [], categories: [], categoryIds: [], photos: [] };
   }
   const serviceIds = await loadLocationServiceIds(supabase, locationId);
-  const [services, categories, photos] = await Promise.all([
+  const [services, categories, selectedCategories, photos] = await Promise.all([
     serviceIds.error
       ? Promise.resolve({ data: [] as MarketplaceService[], error: serviceIds.error })
       : loadMarketplaceServices(supabase, serviceIds.data),
     loadMarketplaceCategories(supabase),
+    loadLocationCategoryIds(supabase, locationId),
     loadMarketplacePhotos(
       supabase,
       locationId,
       process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
     ),
   ]);
-  if (serviceIds.error || services.error || categories.error || photos.error) {
-    return { location: null, services: [], categories: [], photos: [] };
+  if (serviceIds.error || services.error || categories.error || selectedCategories.error || photos.error) {
+    return { location: null, services: [], categories: [], categoryIds: [], photos: [] };
   }
   return {
     location: location.data,
     services: services.data,
     categories: categories.data,
+    categoryIds: selectedCategories.data,
     photos: photos.data,
   };
 }

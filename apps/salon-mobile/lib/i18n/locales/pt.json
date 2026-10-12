@@ -135,7 +135,11 @@
       "teamMember": "Membro da equipa",
       "endBeforeStart": "A hora de fim tem de ser depois da hora de início.",
       "minutes": "{{count}} min",
-      "hours": "{{count}} h"
+      "hours": "{{count}} h",
+      "editTitle": "Editar ausência",
+      "delete": "Eliminar ausência",
+      "deleteConfirm": "Eliminar esta ausência?",
+      "failedToLoad": "Não foi possível carregar esta ausência."
     }
   },
   "appointment": {

@@ -3,6 +3,7 @@ export type AvailabilityRule = {
   effective_from: string | null; effective_to: string | null;
 };
 export type AvailabilityException = {
+  id?: string;
   staff_id: string; starts_at: string; ends_at: string;
   kind: 'unavailable' | 'available_addition';
 };
@@ -11,7 +12,7 @@ type Interval = { start: number; end: number };
 const minutes = (time: string) => { const [h, m] = time.split(':').map(Number); return h * 60 + m; };
 
 /** Use the same local schedule clock as the mobile staff schedule editor. */
-export function availableIntervals(data: AvailabilityData, staffId: string, dateKey: string): Interval[] {
+export function availableIntervals(data: AvailabilityData, staffId: string, dateKey: string, options: { keepAbsences?: boolean } = {}): Interval[] {
   const day = new Date(dateKey + 'T00:00:00');
   const nextDay = new Date(day); nextDay.setDate(nextDay.getDate() + 1);
   let intervals = data.rules.filter(rule => rule.staff_id === staffId && rule.day_of_week === day.getDay()
@@ -24,7 +25,8 @@ export function availableIntervals(data: AvailabilityData, staffId: string, date
       return { kind: e.kind, start: start <= day ? 0 : start.getHours() * 60 + start.getMinutes(), end: end >= nextDay ? 1440 : end.getHours() * 60 + end.getMinutes() + end.getSeconds() / 60 };
     });
   intervals.push(...exceptions.filter(e => e.kind === 'available_addition'));
-  for (const block of exceptions.filter(e => e.kind === 'unavailable')) {
+  // keepAbsences: the calendar draws absences as their own blocks, so it doesn't carve them out of working hours.
+  for (const block of options.keepAbsences ? [] : exceptions.filter(e => e.kind === 'unavailable')) {
     intervals = intervals.flatMap(slot => block.end <= slot.start || block.start >= slot.end ? [slot] : [
       { start: slot.start, end: Math.min(slot.end, block.start) },
       { start: Math.max(slot.start, block.end), end: slot.end },
@@ -34,8 +36,8 @@ export function availableIntervals(data: AvailabilityData, staffId: string, date
 }
 
 /** Complement of the combined working hours; all-staff is unavailable only when nobody works. */
-export function unavailableIntervals(data: AvailabilityData, staffIds: string[], dateKey: string, start: number, end: number): Interval[] {
-  const available = staffIds.flatMap(id => availableIntervals(data, id, dateKey)).sort((a, b) => a.start - b.start);
+export function unavailableIntervals(data: AvailabilityData, staffIds: string[], dateKey: string, start: number, end: number, options: { keepAbsences?: boolean } = {}): Interval[] {
+  const available = staffIds.flatMap(id => availableIntervals(data, id, dateKey, options)).sort((a, b) => a.start - b.start);
   const gaps: Interval[] = [];
   let cursor = start;
   for (const slot of available) {
@@ -45,4 +47,24 @@ export function unavailableIntervals(data: AvailabilityData, staffIds: string[],
   }
   if (cursor < end) gaps.push({ start: cursor, end });
   return gaps;
+}
+
+export type AbsenceBlock = Interval & { id: string; staffId: string };
+
+/** A staff member's absences on one day, clipped to that day, in minutes since midnight. */
+export function absenceBlocks(data: AvailabilityData, staffId: string, dateKey: string): AbsenceBlock[] {
+  const day = new Date(dateKey + 'T00:00:00');
+  const nextDay = new Date(day); nextDay.setDate(nextDay.getDate() + 1);
+  return data.exceptions
+    .filter(e => e.kind === 'unavailable' && e.staff_id === staffId && new Date(e.starts_at) < nextDay && new Date(e.ends_at) > day)
+    .map((e, index) => {
+      const start = new Date(e.starts_at); const end = new Date(e.ends_at);
+      return {
+        id: e.id ?? `${staffId}-${dateKey}-${index}`,
+        staffId,
+        start: start <= day ? 0 : start.getHours() * 60 + start.getMinutes(),
+        end: end >= nextDay ? 1440 : Math.ceil(end.getHours() * 60 + end.getMinutes() + end.getSeconds() / 60),
+      };
+    })
+    .filter(block => block.end > block.start);
 }

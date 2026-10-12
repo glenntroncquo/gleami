@@ -297,3 +297,52 @@ export async function deleteTimeOff(id: string): Promise<void> {
   const { error } = await supabase.from('staff_schedule_exception').delete().eq('id', id);
   if (error) throw error;
 }
+
+export type TimeOffEntry = { id: string; staff_id: string; starts_at: string; ends_at: string };
+
+export async function fetchTimeOffById(id: string): Promise<TimeOffEntry | null> {
+  const { data, error } = await supabase
+    .from('staff_schedule_exception')
+    .select('id, staff_id, starts_at, ends_at')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/** Absences overlapping [start, end) at one location, for calendar overviews. */
+export async function fetchAbsences(companyId: string, locationId: string, start: Date, end: Date): Promise<TimeOffEntry[]> {
+  const { data, error } = await supabase
+    .from('staff_schedule_exception')
+    .select('id, staff_id, starts_at, ends_at')
+    .eq('company_id', companyId)
+    .eq('location_id', locationId)
+    .eq('kind', 'unavailable')
+    .lt('starts_at', end.toISOString())
+    .gt('ends_at', start.toISOString())
+    .order('starts_at', { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function updateTimeOff(
+  id: string,
+  staffId: string,
+  date: Date,
+  startHours: number,
+  startMinutes: number,
+  endHours: number,
+  endMinutes: number
+): Promise<void> {
+  const start = new Date(date);
+  start.setHours(startHours, startMinutes, 0, 0);
+  const end = new Date(date);
+  const isEndOfDay = endHours === 23 && endMinutes === 59;
+  end.setHours(endHours, endMinutes, isEndOfDay ? 59 : 0, 0);
+
+  const { error } = await supabase
+    .from('staff_schedule_exception')
+    .update({ staff_id: staffId, starts_at: start.toISOString(), ends_at: end.toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}

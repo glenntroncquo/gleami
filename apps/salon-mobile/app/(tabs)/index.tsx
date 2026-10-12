@@ -19,7 +19,7 @@ import { SalonSelector } from '@/components/salon-selector';
 import { TabScreen } from '@/components/tab-screen';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/empty-state';
@@ -27,6 +27,7 @@ import { StaffAvatar } from '@/components/staff-avatar';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { isAppointmentCanceled } from '@/lib/api/appointment-status';
+import { fetchAbsences, type TimeOffEntry } from '@/lib/api/staff';
 import {
   fetchAppointmentById,
   fetchAppointmentsForMonth,
@@ -159,6 +160,8 @@ export default function CalendarScreen() {
   // FlashList/React.memo skip re-rendering rows whose data hasn't changed.
   // Invalidated in loadMonth whenever a month's appointments are (re)fetched.
   const monthEventsCacheRef = React.useRef(new Map<string, Record<string, EventItem[]>>());
+
+  const [monthAbsences, setMonthAbsences] = React.useState<{ key: string; byDate: Record<string, TimeOffEntry[]> } | null>(null);
 
   const monthKeyForOffset = React.useCallback(
     (offset: number) => {
@@ -600,6 +603,39 @@ export default function CalendarScreen() {
     [handleListEventPress, styles]
   );
 
+  const absenceMonth = monthKeyForOffset(currentOffset);
+  const absenceKey = viewMode === 'month' && companyId && locationId ? `${absenceMonth.key}` : null;
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!absenceKey || !companyId || !locationId) return;
+      let active = true;
+      // The month grid also shows trailing/leading days of neighbouring months.
+      const start = new Date(absenceMonth.year, absenceMonth.monthIndex, 1 - 7);
+      const end = new Date(absenceMonth.year, absenceMonth.monthIndex + 1, 1 + 14);
+      fetchAbsences(companyId, locationId, start, end)
+        .then((entries) => {
+          if (!active) return;
+          const byDate: Record<string, TimeOffEntry[]> = {};
+          for (const entry of entries) {
+            const day = new Date(entry.starts_at);
+            day.setHours(0, 0, 0, 0);
+            const last = new Date(entry.ends_at);
+            while (day < last) {
+              const key = toDateKey(day);
+              (byDate[key] ??= []).push(entry);
+              day.setDate(day.getDate() + 1);
+            }
+          }
+          setMonthAbsences({ key: absenceKey, byDate });
+        })
+        .catch(() => {});
+      return () => {
+        active = false;
+      };
+    }, [absenceKey, companyId, locationId, absenceMonth.year, absenceMonth.monthIndex])
+  );
+  const absencesByDate = monthAbsences?.key === absenceKey ? monthAbsences.byDate : undefined;
+
   const renderMonthGrid = React.useCallback(
     (monthData: MonthData) => {
       const weeksToRender = [...monthData.weeks];
@@ -613,8 +649,15 @@ export default function CalendarScreen() {
             <View key={`${monthData.key}-${week.weekNumber}`} style={styles.weekRow}>
               {week.days.map((day) => {
                 const events = monthData.events[day.dateKey] ?? [];
-                const preview = calendarPreviewLayout(calendarHeight / weeksToRender.length, fontScale, events.length);
-                const visibleEvents = events.slice(0, preview.visibleCount);
+                const absences = (absencesByDate?.[day.dateKey] ?? []).filter(
+                  (entry) => selectedStaffIds.length === 0 || selectedStaffIds.includes(entry.staff_id)
+                );
+                const preview = calendarPreviewLayout(calendarHeight / weeksToRender.length, fontScale, absences.length + events.length);
+                const items = [
+                  ...absences.map((entry) => ({ kind: 'absence' as const, at: entry.starts_at, entry })),
+                  ...events.map((event) => ({ kind: 'event' as const, at: event.startISO, event })),
+                ].sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+                const visibleItems = items.slice(0, preview.visibleCount);
                 const hiddenCount = preview.hiddenCount;
                 const isToday = day.dateKey === todayKey;
 
@@ -645,13 +688,26 @@ export default function CalendarScreen() {
                     </View>
 
                     <View style={styles.eventStack}>
-                      {visibleEvents.map((event) => (
-                        <View key={event.id} style={[styles.eventPill, { backgroundColor: event.bgColor }]}>
-                          <Text style={[styles.eventText, { color: event.textColor, lineHeight: preview.lineHeight }]} numberOfLines={1}>
-                            {event.label}
-                          </Text>
-                        </View>
-                      ))}
+                      {visibleItems.map((item) =>
+                        item.kind === 'absence' ? (
+                          <Pressable
+                            key={`absence-${item.entry.id}`}
+                            accessibilityRole="button"
+                            accessibilityLabel={t('calendar.unavailability.editTitle')}
+                            onPress={() => router.push({ pathname: '/staff/time-off-new', params: { id: item.entry.id } })}
+                            style={[styles.eventPill, styles.absencePill]}>
+                            <Text style={[styles.eventText, styles.absenceText, { lineHeight: preview.lineHeight }]} numberOfLines={1}>
+                              {t('calendar.addUnavailability')}
+                            </Text>
+                          </Pressable>
+                        ) : (
+                          <View key={item.event.id} style={[styles.eventPill, { backgroundColor: item.event.bgColor }]}>
+                            <Text style={[styles.eventText, { color: item.event.textColor, lineHeight: preview.lineHeight }]} numberOfLines={1}>
+                              {item.event.label}
+                            </Text>
+                          </View>
+                        )
+                      )}
                       {preview.showMore ? (
                         <View style={styles.morePill}>
                           <Text style={[styles.moreText, { lineHeight: preview.lineHeight }]} numberOfLines={1}>{`+${hiddenCount}`}</Text>
@@ -666,7 +722,7 @@ export default function CalendarScreen() {
         </View>
       );
     },
-    [calendarHeight, fontScale, openDaySheet, styles, t, todayKey]
+    [absencesByDate, calendarHeight, fontScale, openDaySheet, router, selectedStaffIds, styles, t, todayKey]
   );
 
   const menuWidth = Math.min(280, width - 24);

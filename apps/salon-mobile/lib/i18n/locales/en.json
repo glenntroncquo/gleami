@@ -137,7 +137,11 @@
       "teamMember": "Team member",
       "endBeforeStart": "End time must be after start time.",
       "minutes": "{{count}} min",
-      "hours": "{{count}} h"
+      "hours": "{{count}} h",
+      "editTitle": "Edit absence",
+      "delete": "Delete absence",
+      "deleteConfirm": "Delete this absence?",
+      "failedToLoad": "Could not load this absence."
     }
   },
   "appointment": {

@@ -1,13 +1,13 @@
 import { StaffAvatar } from '@/components/staff-avatar';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { DeviceEventEmitter, ScrollView, StyleSheet } from 'react-native';
+import { Alert, DeviceEventEmitter, ScrollView, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { Button, ErrorBanner, Field, FieldRow, FormScreen, ListGroup, OptionCard, RadioRow, SelectField, useModalHeader } from '@/components/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
-import { createTimeOff, fetchAllStaff, type Staff } from '@/lib/api/staff';
+import { createTimeOff, deleteTimeOff, fetchAllStaff, fetchTimeOffById, updateTimeOff, type Staff } from '@/lib/api/staff';
 
 const TIME_OFF_EVENT = 'timeOffDraft:setDateTime';
 
@@ -57,14 +57,15 @@ function minutesOf(date: Date) {
 export default function StaffTimeOffNewScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
-  const params = useLocalSearchParams<{ staffId?: string; date?: string }>();
+  const params = useLocalSearchParams<{ staffId?: string; date?: string; id?: string }>();
+  const editId = params.id;
   const { companyId, user } = useAuth();
   const userId = user?.id;
   const { locationId } = useLocation();
   const modalHeader = useModalHeader();
 
   // Opened from a staff profile the staff member is fixed; from the calendar it's pickable.
-  const pickStaff = !params.staffId;
+  const pickStaff = !params.staffId || !!editId;
 
   const [date, setDate] = React.useState(() => startOfDay(params.date));
   const [startTime, setStartTime] = React.useState(nextQuarter);
@@ -74,6 +75,29 @@ export default function StaffTimeOffNewScreen() {
   const [staffOptions, setStaffOptions] = React.useState<Staff[]>([]);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!editId) return;
+    let active = true;
+    fetchTimeOffById(editId)
+      .then((entry) => {
+        if (!active || !entry) return;
+        const start = new Date(entry.starts_at);
+        const end = new Date(entry.ends_at);
+        setStaffId(entry.staff_id);
+        setDate(atTime(start, 0, 0));
+        setStartTime(start);
+        setEndTime(end.getHours() === 23 && end.getMinutes() === 59 ? atTime(start, 23, 59) : end);
+        if (start.getHours() === 0 && start.getMinutes() === 0 && end.getHours() === 23 && end.getMinutes() === 59) setPreset('wholeDay');
+      })
+      .catch(() => {
+        if (active) setError(t('calendar.unavailability.failedToLoad'));
+      });
+    return () => {
+      active = false;
+    };
+  }, [editId, t]);
 
   React.useEffect(() => {
     if (!pickStaff || !companyId) return;
@@ -138,16 +162,20 @@ export default function StaffTimeOffNewScreen() {
     setSaving(true);
     setError(null);
     try {
-      await createTimeOff(
-        staffId,
-        companyId,
-        date,
-        startTime.getHours(),
-        startTime.getMinutes(),
-        endTime.getHours(),
-        endTime.getMinutes(),
-        locationId
-      );
+      if (editId) {
+        await updateTimeOff(editId, staffId, date, startTime.getHours(), startTime.getMinutes(), endTime.getHours(), endTime.getMinutes());
+      } else {
+        await createTimeOff(
+          staffId,
+          companyId,
+          date,
+          startTime.getHours(),
+          startTime.getMinutes(),
+          endTime.getHours(),
+          endTime.getMinutes(),
+          locationId
+        );
+      }
       router.back();
     } catch {
       setError(t('staff.failedToSaveTimeOff'));
@@ -156,13 +184,47 @@ export default function StaffTimeOffNewScreen() {
     }
   };
 
+  const handleDelete = () => {
+    if (!editId) return;
+    Alert.alert(t('calendar.unavailability.deleteConfirm'), undefined, [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: async () => {
+          setDeleting(true);
+          setError(null);
+          try {
+            await deleteTimeOff(editId);
+            router.back();
+          } catch {
+            setError(t('staff.failedToDeleteTimeOff'));
+          } finally {
+            setDeleting(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const title = editId
+    ? t('calendar.unavailability.editTitle')
+    : params.staffId ? t('staff.addTimeOff').replace(/^\+\s*/, '') : t('calendar.addUnavailability');
+
   return (
     <>
       <Stack.Screen options={modalHeader} />
       <FormScreen
         closable
-        title={pickStaff ? t('calendar.addUnavailability') : t('staff.addTimeOff').replace(/^\+\s*/, '')}
-        footer={<Button label={t('client.save')} onPress={handleSave} loading={saving} disabled={invalidRange} />}>
+        title={title}
+        footer={
+          <>
+            <Button label={t('client.save')} onPress={handleSave} loading={saving} disabled={invalidRange || deleting} />
+            {editId ? (
+              <Button label={t('calendar.unavailability.delete')} variant="destructive" onPress={handleDelete} loading={deleting} disabled={saving} />
+            ) : null}
+          </>
+        }>
         <Field label={t('calendar.unavailability.type')}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow} style={styles.bleed}>
             {PRESETS.map((item) => (

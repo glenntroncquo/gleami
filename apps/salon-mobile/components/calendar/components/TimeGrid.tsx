@@ -1,8 +1,8 @@
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { fetchCalendarAvailability } from '@/lib/api/calendar-availability';
-import { availableIntervals, unavailableIntervals, type AvailabilityData } from '../availability';
+import { absenceBlocks, availableIntervals, unavailableIntervals, type AbsenceBlock, type AvailabilityData } from '../availability';
 import React from 'react';
 import { PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -105,8 +105,45 @@ function RingAvatar({
   );
 }
 
+function AbsenceItem({ block, firstMinute, left, width, label, scheme, compact, onPress }: {
+  block: AbsenceBlock;
+  firstMinute: number;
+  left: number;
+  width: number;
+  label: string;
+  scheme: 'light' | 'dark';
+  compact?: boolean;
+  onPress: (block: AbsenceBlock) => void;
+}) {
+  const bg = scheme === 'dark' ? '#3A3D44' : '#DDE1E8';
+  const ink = scheme === 'dark' ? '#E6E8EC' : '#3B4252';
+  const time = `${timeLabel(block.start)} - ${timeLabel(Math.min(block.end, 24 * 60 - 1))}`;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label}, ${time}`}
+      onPress={() => onPress(block)}
+      style={{
+        position: 'absolute',
+        top: (block.start - firstMinute) * PPM + 1,
+        height: Math.max(compact ? 30 : 22, (block.end - block.start) * PPM - 3),
+        left,
+        width,
+        backgroundColor: bg,
+        borderRadius: compact ? 5 : 8,
+        paddingHorizontal: compact ? 4 : 6,
+        paddingVertical: compact ? 3 : 4,
+        overflow: 'hidden',
+      }}>
+      <Text numberOfLines={1} style={{ color: ink, fontSize: compact ? 9 : 11, fontVariant: ['tabular-nums'] }}>{time}</Text>
+      <Text numberOfLines={1} style={{ color: ink, fontSize: compact ? 10 : 13, fontWeight: '700' }}>{label}</Text>
+    </Pressable>
+  );
+}
+
 export function TimeGrid({ mode, days, staff, staffFilterId, selectedStaffIds = staffFilterId ? [staffFilterId] : [], width, loading, onNavigate, onEvent, onSlot }: Props) {
   const { t } = useTranslation();
+  const router = useRouter();
   const { companyId } = useAuth();
   const { locationId } = useLocation();
   const scheme = useColorScheme() ?? 'light';
@@ -172,6 +209,11 @@ export function TimeGrid({ mode, days, staff, staffFilterId, selectedStaffIds = 
         ]
       : [];
 
+  const absenceLabel = t('calendar.addUnavailability');
+  const openAbsence = React.useCallback(
+    (block: AbsenceBlock) => router.push({ pathname: '/staff/time-off-new', params: { id: block.id } }),
+    [router]
+  );
   const hatch = scheme === 'dark' ? 'rgba(255,255,255,0.16)' : 'rgba(7,29,67,0.14)';
   const waiting = loading;
 
@@ -202,6 +244,8 @@ export function TimeGrid({ mode, days, staff, staffFilterId, selectedStaffIds = 
           unassignedLabel={t('calendar.unassignedStaff')}
           onEvent={onEvent}
           onSlot={onSlot}
+          absenceLabel={absenceLabel}
+          onAbsence={openAbsence}
         />
       ) : (
         <DayBoard
@@ -219,6 +263,8 @@ export function TimeGrid({ mode, days, staff, staffFilterId, selectedStaffIds = 
           onEvent={onEvent}
           onSlot={onSlot}
           newAppointmentLabel={t('appointment.title')}
+          absenceLabel={absenceLabel}
+          onAbsence={openAbsence}
         />
       )}
     </View>
@@ -240,6 +286,8 @@ function DayBoard({
   onEvent,
   onSlot,
   newAppointmentLabel,
+  absenceLabel,
+  onAbsence,
 }: {
   columns: Column[];
   width: number;
@@ -255,6 +303,8 @@ function DayBoard({
   onEvent: (event: EventItem) => void;
   onSlot: (date: string, time: string, staffId?: string) => void;
   newAppointmentLabel: string;
+  absenceLabel: string;
+  onAbsence: (block: AbsenceBlock) => void;
 }) {
   const vertical = React.useRef<ScrollView>(null);
   const headerScroll = React.useRef<ScrollView>(null);
@@ -318,8 +368,9 @@ function DayBoard({
                 {columns.map((column, index) => {
                   const gaps =
                     usesSchedule && schedule
-                      ? unavailableIntervals(schedule, column.staffId ? [column.staffId] : staffIds, column.date, firstMinute, lastMinute)
+                      ? unavailableIntervals(schedule, column.staffId ? [column.staffId] : staffIds, column.date, firstMinute, lastMinute, { keepAbsences: true })
                       : [];
+                  const absences = schedule && column.staffId ? absenceBlocks(schedule, column.staffId, column.date) : [];
                   return (
                     <View key={column.key} style={{ width: columnWidth, borderLeftWidth: StyleSheet.hairlineWidth, borderColor: theme.border }}>
                       {hours.map((minute) => (
@@ -346,6 +397,18 @@ function DayBoard({
                             height: (gap.end - gap.start) * PPM,
                             backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.035)' : 'rgba(7,29,67,0.035)',
                           }}
+                        />
+                      ))}
+                      {absences.map((block) => (
+                        <AbsenceItem
+                          key={block.id}
+                          block={block}
+                          firstMinute={firstMinute}
+                          left={3}
+                          width={columnWidth - 6}
+                          label={absenceLabel}
+                          scheme={scheme}
+                          onPress={onAbsence}
                         />
                       ))}
                       {layouts[index].map(({ event, start, end, lane, lanes }) => (
@@ -434,6 +497,8 @@ function WeekBoard({
   unassignedLabel,
   onEvent,
   onSlot,
+  absenceLabel,
+  onAbsence,
 }: {
   days: WeekDayData[];
   staff: StaffMember[];
@@ -449,21 +514,32 @@ function WeekBoard({
   unassignedLabel: string;
   onEvent: (event: EventItem) => void;
   onSlot: (date: string, time: string, staffId?: string) => void;
+  absenceLabel: string;
+  onAbsence: (block: AbsenceBlock) => void;
 }) {
   const vertical = React.useRef<ScrollView>(null);
   const horizontalHeader = React.useRef<ScrollView>(null);
   const singleStaffSelected = selectedStaffIds.length === 1;
-  const headerHeight = singleStaffSelected ? DAY_HEADER : 66;
+  const headerHeight = 66;
   const labelWidth = GUTTER;
   const columnWidth = Math.max(112, (width - labelWidth) / Math.max(1, days.length));
   const layouts = days.map((day) => layoutTimelineEvents(day.appointments.filter((event) => !event.canceled), day.dateKey));
-  const firstMinute = singleStaffSelected ? Math.max(0, Math.floor(Math.min(9 * 60, ...layouts.flat().map((event) => event.start), 9 * 60) / 60) * 60) : 0;
-  const lastMinute = singleStaffSelected ? Math.min(24 * 60, Math.ceil(Math.max(20 * 60, ...layouts.flat().map((event) => event.end), 20 * 60) / 60) * 60) : 24 * 60;
+  // 06:00–22:00 by default, stretched to whole hours if an appointment falls outside it.
+  const firstMinute = Math.max(0, Math.floor(Math.min(6 * 60, ...layouts.flat().map((event) => event.start)) / 60) * 60);
+  const lastMinute = Math.min(24 * 60, Math.ceil(Math.max(22 * 60, ...layouts.flat().map((event) => event.end)) / 60) * 60);
   const height = (lastMinute - firstMinute) * PPM;
   const hours = Array.from({ length: Math.ceil((lastMinute - firstMinute) / 60) }, (_, index) => firstMinute + index * 60);
   const now = new Date();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const showNow = days.some((day) => day.dateKey === todayKey) && nowMinutes >= firstMinute && nowMinutes < lastMinute;
+  const weekKey = days[0]?.dateKey;
+
+  React.useEffect(() => {
+    const target = showNow ? nowMinutes : 9 * 60;
+    vertical.current?.scrollTo({ y: Math.max(0, (target - firstMinute) * PPM - 120), animated: false });
+    // Only re-centre when the visible week changes, not on every minute tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekKey, firstMinute]);
   const rows: { key: string; name: string; member?: StaffMember; staffId?: string }[] = [
     ...staff.map((member) => ({
       key: member.id,
@@ -492,12 +568,10 @@ function WeekBoard({
               const today = day.dateKey === todayKey;
               return (
                 <Pressable key={day.dateKey} onPress={() => onSlot(day.dateKey, '09:00')} style={{ width: columnWidth, alignItems: 'center', justifyContent: 'center', paddingVertical: 5, gap: 1, borderLeftWidth: StyleSheet.hairlineWidth, borderColor: theme.border }}>
-                  {singleStaffSelected ? <><RingAvatar member={staff.find((member) => member.id === selectedStaffIds[0])} name={staff.find((member) => member.id === selectedStaffIds[0])?.first_name ?? ''} size={40} scheme={scheme} /><Text numberOfLines={1} style={{ color: theme.text, fontSize: 11, fontWeight: '500' }}>{staff.find((member) => member.id === selectedStaffIds[0])?.first_name}</Text></> : <>
                     <View style={{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: today ? theme.tint : 'transparent' }}>
                       <Text style={{ color: today ? theme.onTint : theme.text, fontSize: 14, fontWeight: '600' }}>{day.date}</Text>
                     </View>
                     <Text style={{ color: today ? theme.tint : theme.muted, fontSize: 10 }}>{getWeekdayShort(date)}</Text>
-                  </>}
                 </Pressable>
               );
             })}
@@ -514,10 +588,13 @@ function WeekBoard({
                   const dayRows = singleStaffSelected ? [{ staffId: selectedStaffIds[0], events: day.appointments.filter((event) => event.staffIds.includes(selectedStaffIds[0]) || event.staffId === selectedStaffIds[0]) }] : rows.filter((row) => selectedStaffIds.length === 0 ? true : Boolean(row.staffId && selectedStaffIds.includes(row.staffId))).map((row) => ({ staffId: row.staffId, events: eventsFor(row.staffId, day) }));
                   const flatEvents = dayRows.flatMap((row) => row.events);
                   const dayLayouts = layoutTimelineEvents(flatEvents, day.dateKey);
-                  const isOff = usesSchedule && schedule && unavailableIntervals(schedule, dayRows.map((row) => row.staffId).filter((id): id is string => Boolean(id)), day.dateKey, firstMinute, lastMinute);
+                  const isOff = usesSchedule && schedule && unavailableIntervals(schedule, dayRows.map((row) => row.staffId).filter((id): id is string => Boolean(id)), day.dateKey, firstMinute, lastMinute, { keepAbsences: singleStaffSelected });
+                  // Only a single-staff week has one person per column, so only then can an absence be drawn as a block.
+                  const absences = singleStaffSelected && schedule ? absenceBlocks(schedule, selectedStaffIds[0], day.dateKey) : [];
                   return <View key={day.dateKey} style={{ width: columnWidth, height, borderLeftWidth: StyleSheet.hairlineWidth, borderColor: theme.border }}>
                     {hours.map((minute) => <View key={minute} style={{ height: HOUR_HEIGHT, borderTopWidth: StyleSheet.hairlineWidth, borderColor: theme.border }}><Pressable style={{ flex: 1 }} onPress={() => onSlot(day.dateKey, timeLabel(minute), singleStaffSelected ? selectedStaffIds[0] : undefined)} /></View>)}
                     {isOff && isOff.length > 0 ? isOff.map((gap, index) => <View key={`gap-${index}`} pointerEvents="none" style={{ position: 'absolute', top: (gap.start - firstMinute) * PPM, height: (gap.end - gap.start) * PPM, left: 0, right: 0, backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.035)' : 'rgba(7,29,67,0.035)' }} />) : null}
+                    {absences.map((block) => <AbsenceItem key={block.id} block={block} firstMinute={firstMinute} left={2} width={Math.max(0, columnWidth - 4)} label={absenceLabel} scheme={scheme} compact onPress={onAbsence} />)}
                     {dayLayouts.map(({ event, start, end, lane, lanes }) => <Pressable key={event.id} onPress={() => onEvent(event)} style={{ position: 'absolute', top: (start - firstMinute) * PPM + 1, height: Math.max(36, (end - start) * PPM - 3), left: (lane * columnWidth) / lanes + 2, width: Math.max(0, columnWidth / lanes - 4), backgroundColor: event.bgColor, borderRadius: 5, paddingHorizontal: 4, paddingVertical: 3, overflow: 'hidden' }}>
                       <Text numberOfLines={1} style={{ color: event.textColor, fontSize: singleStaffSelected ? 10 : 9, fontVariant: ['tabular-nums'] }}>{event.startTime}</Text>
                       <Text numberOfLines={2} style={{ color: event.textColor, fontSize: singleStaffSelected ? 12 : 10, fontWeight: '700' }}>{event.label}</Text>

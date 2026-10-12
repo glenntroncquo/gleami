@@ -139,6 +139,17 @@ export const createStyles = (theme: typeof Colors.light) =>
       fontSize: 10,
       fontWeight: '600',
     },
+    // Matches the grey absence blocks in the day/week grid.
+    absencePill: {
+      // The shared Pressable enforces a 44pt minimum touch target; month pills must match event pill height.
+      minHeight: 0,
+      minWidth: 0,
+      justifyContent: 'flex-start',
+      backgroundColor: theme === Colors.dark ? '#3A3D44' : '#DDE1E8',
+    },
+    absenceText: {
+      color: theme === Colors.dark ? '#E6E8EC' : '#3B4252',
+    },
     morePill: {
       alignSelf: 'flex-start',
       borderRadius: 6,

@@ -137,7 +137,11 @@
       "teamMember": "Teamlid",
       "endBeforeStart": "De eindtijd moet na de begintijd liggen.",
       "minutes": "{{count}} min",
-      "hours": "{{count}} u"
+      "hours": "{{count}} u",
+      "editTitle": "Afwezigheid bewerken",
+      "delete": "Afwezigheid verwijderen",
+      "deleteConfirm": "Deze afwezigheid verwijderen?",
+      "failedToLoad": "Kan deze afwezigheid niet laden."
     }
   },
   "appointment": {

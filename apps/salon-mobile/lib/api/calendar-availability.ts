@@ -8,7 +8,7 @@ export async function fetchCalendarAvailability(companyId: string, locationId: s
     supabase.from('staff_schedule_rule')
       .select('staff_id, day_of_week, start_time, end_time, effective_from, effective_to')
       .eq('company_id', companyId).eq('location_id', locationId).eq('is_active', true),
-    supabase.from('staff_schedule_exception').select('staff_id, starts_at, ends_at, kind')
+    supabase.from('staff_schedule_exception').select('id, staff_id, starts_at, ends_at, kind')
       .eq('company_id', companyId).eq('location_id', locationId)
       .lt('starts_at', end.toISOString()).gt('ends_at', start.toISOString()),
   ]);

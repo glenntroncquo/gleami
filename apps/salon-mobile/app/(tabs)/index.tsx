@@ -1002,18 +1002,7 @@ export default function CalendarScreen() {
                   <Text style={styles.modeText}>{t('calendar.month')}</Text>
                   {viewMode === 'month' ? <AppIcon name="check" size={20} color={theme.tint} /> : null}
                 </Pressable>
-                <Pressable
-                  style={styles.modeItem}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    setShowModeMenu(false);
-                    React.startTransition(() => setViewMode('list'));
-                  }}>
-                  <AppIcon name="viewList" size={20} color={theme.text} />
-                  <Text style={styles.modeText}>{t('calendar.list')}</Text>
-                  {viewMode === 'list' ? <AppIcon name="check" size={20} color={theme.tint} /> : null}
-                </Pressable>
-                {(['dayGrid', 'weekGrid'] as const).map(mode => (
+                {(['weekGrid', 'dayGrid'] as const).map(mode => (
                   <Pressable key={mode} style={styles.modeItem} onPress={() => {
                     Haptics.selectionAsync();
                     setShowModeMenu(false);
@@ -1029,6 +1018,17 @@ export default function CalendarScreen() {
                     {viewMode === mode ? <AppIcon name="check" size={20} color={theme.tint} /> : null}
                   </Pressable>
                 ))}
+                <Pressable
+                  style={styles.modeItem}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setShowModeMenu(false);
+                    React.startTransition(() => setViewMode('list'));
+                  }}>
+                  <AppIcon name="viewList" size={20} color={theme.text} />
+                  <Text style={styles.modeText}>{t('calendar.list')}</Text>
+                  {viewMode === 'list' ? <AppIcon name="check" size={20} color={theme.tint} /> : null}
+                </Pressable>
               </CalendarGlassMenu>
             </>
           ) : null}

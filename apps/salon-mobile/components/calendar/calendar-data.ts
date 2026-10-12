@@ -153,12 +153,13 @@ export function upsertAppointmentInMonthCache(
 
 export function groupAppointmentsByDateKey(
   appointments: AppointmentRow[],
-  staffFilterId: string | null,
+  staffFilterId: string | string[] | null,
   scheme: ColorSchemeName = 'light'
 ): Record<string, EventItem[]> {
   const events = appointments.flatMap((appointment) => appointmentToEvents(appointment, scheme));
-  const filtered = staffFilterId
-    ? events.filter((event) => event.staffIds.includes(staffFilterId) || event.staffId === staffFilterId)
+  const staffFilterIds = Array.isArray(staffFilterId) ? staffFilterId : staffFilterId ? [staffFilterId] : [];
+  const filtered = staffFilterIds.length
+    ? events.filter((event) => staffFilterIds.some((id) => event.staffIds.includes(id) || event.staffId === id))
     : events;
 
   const byDateKey: Record<string, EventItem[]> = {};

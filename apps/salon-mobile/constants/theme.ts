@@ -3,7 +3,7 @@
  * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
  */
 
-// Light mode stays on Gleami navy. Dark mode follows Fresha: pure black surfaces and a purple accent.
+// Light mode stays on Gleami navy. Dark mode keeps black surfaces, with the same blue accent lifted so it reads on black.
 const textLight = '#071D43';
 
 export const Colors = {
@@ -35,8 +35,8 @@ export const Colors = {
     surface: '#1C1C1E',
     border: '#2C2C2E',
     muted: '#8E8E93',
-    blueTint: '#2A2152',
-    brandBlue: '#A78BFA',
+    blueTint: '#1A2945',
+    brandBlue: '#8FAAFF',
     error: '#FF453A',
     errorSurface: '#3A1214',
     success: '#30D158',
@@ -45,11 +45,11 @@ export const Colors = {
     warningSurface: '#2C2608',
     destructive: '#FF453A',
     onDestructive: '#FFFFFF',
-    tint: '#6E56F5',
-    onTint: '#FFFFFF',
+    tint: '#8FAAFF',
+    onTint: '#071D43',
     icon: '#8E8E93',
     tabIconDefault: '#8E8E93',
-    tabIconSelected: '#6E56F5',
+    tabIconSelected: '#8FAAFF',
   },
 };
 

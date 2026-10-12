@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SystemUI from 'expo-system-ui';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Platform, useColorScheme as useRNColorScheme } from 'react-native';
+import { Appearance, AppState, Platform, type ColorSchemeName } from 'react-native';
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 
@@ -14,37 +15,107 @@ type ThemeContextType = {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export function ThemePreferenceProvider({ children }: { children: React.ReactNode }) {
-  const systemScheme = useRNColorScheme();
+function resolveScheme(scheme: ColorSchemeName | null | undefined): 'light' | 'dark' {
+  return scheme === 'dark' ? 'dark' : 'light';
+}
 
-  // Static web export needs the system value recomputed client-side after
-  // hydration (same reasoning as the pre-existing hooks/use-color-scheme.web.ts).
+/**
+ * iOS ignores interface-style changes that happen while the app is backgrounded
+ * and then keeps returning the old scheme. Toggling the window off the system
+ * style and straight back makes it emit the phone's current setting.
+ */
+function rereadSystemScheme(onSettled: (scheme: 'light' | 'dark') => void) {
+  if (Platform.OS === 'ios') {
+    // A plain "unspecified" write does not emit when the window is already
+    // following the system, so a scheme cached before backgrounding sticks.
+    const seen = Appearance.getColorScheme();
+    Appearance.setColorScheme(seen === 'dark' ? 'light' : 'dark');
+  }
+  Appearance.setColorScheme('unspecified');
+  const timer = setTimeout(() => {
+    onSettled(resolveScheme(Appearance.getColorScheme()));
+  }, 100);
+  return () => clearTimeout(timer);
+}
+
+export function ThemePreferenceProvider({ children }: { children: React.ReactNode }) {
   const [hasHydrated, setHasHydrated] = useState(Platform.OS !== 'web');
+  const [systemScheme, setSystemScheme] = useState<'light' | 'dark'>(() =>
+    Platform.OS === 'web' ? 'light' : resolveScheme(Appearance.getColorScheme())
+  );
+  const [preference, setPreferenceState] = useState<ThemePreference>('system');
+  const [preferenceReady, setPreferenceReady] = useState(false);
+
   useEffect(() => {
     setHasHydrated(true);
+    let active = true;
+    AsyncStorage.getItem(THEME_STORAGE_KEY)
+      .then((saved) => {
+        if (!active) return;
+        if (saved === 'light' || saved === 'dark' || saved === 'system') setPreferenceState(saved);
+      })
+      .finally(() => {
+        if (active) setPreferenceReady(true);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
-  // RN 0.86 ColorSchemeName includes "unspecified"; treat that (and null) as light.
-  const effectiveSystemScheme: 'light' | 'dark' =
-    Platform.OS === 'web' && !hasHydrated
-      ? 'light'
-      : systemScheme === 'dark'
-        ? 'dark'
-        : 'light';
-
-  const [preference, setPreferenceState] = useState<ThemePreference>('system');
 
   useEffect(() => {
-    AsyncStorage.getItem(THEME_STORAGE_KEY).then((saved) => {
-      if (saved === 'light' || saved === 'dark' || saved === 'system') setPreferenceState(saved);
+    if (!preferenceReady) return;
+
+    if (Platform.OS === 'web') {
+      setSystemScheme(resolveScheme(Appearance.getColorScheme()));
+      const appearance = Appearance.addChangeListener(({ colorScheme: next }) => {
+        setSystemScheme(resolveScheme(next));
+      });
+      return () => appearance.remove();
+    }
+
+    if (preference !== 'system') {
+      Appearance.setColorScheme(preference);
+      return;
+    }
+
+    let ignoreEvents = true;
+    let cancelReread = rereadSystemScheme((scheme) => {
+      ignoreEvents = false;
+      setSystemScheme(scheme);
     });
-  }, []);
+    const appearance = Appearance.addChangeListener(({ colorScheme: next }) => {
+      if (ignoreEvents) return;
+      if (next === 'light' || next === 'dark') setSystemScheme(next);
+    });
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      ignoreEvents = true;
+      cancelReread();
+      cancelReread = rereadSystemScheme((scheme) => {
+        ignoreEvents = false;
+        setSystemScheme(scheme);
+      });
+    });
+
+    return () => {
+      cancelReread();
+      appearance.remove();
+      appState.remove();
+      Appearance.setColorScheme('unspecified');
+    };
+  }, [preference, preferenceReady]);
 
   const setPreference = (next: ThemePreference) => {
     setPreferenceState(next);
-    AsyncStorage.setItem(THEME_STORAGE_KEY, next);
+    void AsyncStorage.setItem(THEME_STORAGE_KEY, next);
   };
 
-  const colorScheme = preference === 'system' ? effectiveSystemScheme : preference;
+  const colorScheme = preference === 'system' ? (hasHydrated ? systemScheme : 'light') : preference;
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    void SystemUI.setBackgroundColorAsync(colorScheme === 'dark' ? '#000000' : '#FFFFFF');
+  }, [colorScheme]);
 
   return <ThemeContext.Provider value={{ preference, colorScheme, setPreference }}>{children}</ThemeContext.Provider>;
 }

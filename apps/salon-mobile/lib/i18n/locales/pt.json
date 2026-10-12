@@ -48,7 +48,7 @@
   },
   "calendar": {
     "dayGrid": "Linha do tempo diária",
-    "weekGrid": "Linha do tempo semanal",
+    "weekGrid": "Semana",
     "previousPeriod": "Período anterior",
     "nextPeriod": "Próximo período",
     "employee": "Funcionário",
@@ -70,7 +70,20 @@
     "untitledAppointment": "Agendamento",
     "unknownClient": "Cliente desconhecido",
     "unassignedStaff": "Não atribuído",
-    "monthsShort": ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"],
+    "monthsShort": [
+      "jan",
+      "fev",
+      "mar",
+      "abr",
+      "mai",
+      "jun",
+      "jul",
+      "ago",
+      "set",
+      "out",
+      "nov",
+      "dez"
+    ],
     "monthsLong": [
       "janeiro",
       "fevereiro",
@@ -85,8 +98,25 @@
       "novembro",
       "dezembro"
     ],
-    "weekdaysLong": ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"],
-    "weekdaysShort": ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"]
+    "weekdaysLong": [
+      "domingo",
+      "segunda-feira",
+      "terça-feira",
+      "quarta-feira",
+      "quinta-feira",
+      "sexta-feira",
+      "sábado"
+    ],
+    "weekdaysShort": [
+      "dom",
+      "seg",
+      "ter",
+      "qua",
+      "qui",
+      "sex",
+      "sáb"
+    ],
+    "employeesSelected": "{{count}} funcionários selecionados"
   },
   "appointment": {
     "title": "Novo agendamento",

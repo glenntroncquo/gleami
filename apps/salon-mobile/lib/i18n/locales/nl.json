@@ -50,7 +50,7 @@
   },
   "calendar": {
     "dayGrid": "Dagtijdlijn",
-    "weekGrid": "Weektijdlijn",
+    "weekGrid": "Week",
     "previousPeriod": "Vorige periode",
     "nextPeriod": "Volgende periode",
     "employee": "Medewerker",
@@ -72,7 +72,20 @@
     "untitledAppointment": "Afspraak",
     "unknownClient": "Onbekende klant",
     "unassignedStaff": "Niet toegewezen",
-    "monthsShort": ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"],
+    "monthsShort": [
+      "jan",
+      "feb",
+      "mrt",
+      "apr",
+      "mei",
+      "jun",
+      "jul",
+      "aug",
+      "sep",
+      "okt",
+      "nov",
+      "dec"
+    ],
     "monthsLong": [
       "januari",
       "februari",
@@ -87,8 +100,25 @@
       "november",
       "december"
     ],
-    "weekdaysLong": ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"],
-    "weekdaysShort": ["zo", "ma", "di", "wo", "do", "vr", "za"]
+    "weekdaysLong": [
+      "zondag",
+      "maandag",
+      "dinsdag",
+      "woensdag",
+      "donderdag",
+      "vrijdag",
+      "zaterdag"
+    ],
+    "weekdaysShort": [
+      "zo",
+      "ma",
+      "di",
+      "wo",
+      "do",
+      "vr",
+      "za"
+    ],
+    "employeesSelected": "{{count}} medewerkers geselecteerd"
   },
   "appointment": {
     "detailTitle": "Afspraak",

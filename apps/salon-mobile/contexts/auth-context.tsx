@@ -34,8 +34,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [sessionLoading, setSessionLoading] = useState(true);
   const [companyIds, setCompanyIds] = useState<string[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
-  const [membershipReady, setMembershipReady] = useState(false);
+  const [readyUserId, setReadyUserId] = useState<string | null>(null);
   const [permissionKeys, setPermissionKeys] = useState<PermissionKey[]>([]);
+  const userId = session?.user?.id ?? null;
+  // False in the same render the session arrives, so the login screen is not
+  // swapped out before membership has actually loaded.
+  const membershipReady = userId === null || readyUserId === userId;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: next } }) => {
@@ -59,12 +63,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCompanyId(null);
       setCompanyIds([]);
       setPermissionKeys([]);
-      setMembershipReady(true);
+      setReadyUserId(null);
       return;
     }
 
     let cancelled = false;
-    setMembershipReady(false);
 
     const jwtIds = jwtCompanyIds(user.app_metadata as Record<string, unknown> | undefined);
 
@@ -90,14 +93,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (picked) {
         void writePreferredCompanyId(picked);
       }
-      setMembershipReady(true);
+      setReadyUserId(user.id);
     })().catch(() => {
       if (cancelled) return;
       const fallback = pickPreferredId(jwtIds, null) ?? jwtIds[0] ?? null;
       setCompanyIds(jwtIds);
       setCompanyId(fallback);
       setPermissionKeys([]);
-      setMembershipReady(true);
+      setReadyUserId(user.id);
     });
 
     return () => {

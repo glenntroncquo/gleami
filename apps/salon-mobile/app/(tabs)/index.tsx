@@ -8,6 +8,7 @@ import {
   DeviceEventEmitter,
   FlatList,
   ScrollView,
+  StyleSheet,
   Text,
   View,
   useWindowDimensions,
@@ -40,8 +41,6 @@ import {
   LIST_MAX_LOADED_MONTHS,
   PREFETCH_FUTURE_MONTHS,
   PREFETCH_PAST_MONTHS,
-  WEEK_CENTER_INDEX,
-  WEEK_PAGE_COUNT,
 } from '@/components/calendar/constants';
 import {
   addDays,
@@ -49,7 +48,6 @@ import {
   getListHeaderLabel,
   getMonthShortLabel,
   getOffsetForDate,
-  getWeekOffsetFromBase,
   getWeekStartMonday,
   getWeekdayLong,
   getWeekdayShort,
@@ -67,7 +65,6 @@ import {
   ListAgendaSkeleton,
   ListFooterSkeleton,
   MonthGridSkeleton,
-  WeekAgendaSkeleton,
 } from '@/components/calendar/components/CalendarSkeletons';
 import { ListEventRow } from '@/components/calendar/components/ListEventRow';
 import { ListSectionHeader } from '@/components/calendar/components/ListSectionHeader';
@@ -93,7 +90,6 @@ export default function CalendarScreen() {
   const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [calendarAreaHeight, setCalendarAreaHeight] = React.useState(0);
   const calendarHeight = calendarAreaHeight;
-  const weekRowFixedHeight = calendarHeight / 7;
   // Dismiss menus urgently; filtering/view changes are interruptible transitions
   // so a calendar render does not hold up the native exit animation.
   const [showModeMenu, setShowModeMenu] = React.useState(false);
@@ -113,7 +109,7 @@ export default function CalendarScreen() {
     let active = true;
     readPreferredCalendarView().then(mode => {
       if (!active) return;
-      updateViewMode(mode);
+      updateViewMode(mode === 'week' ? 'weekGrid' : mode);
       setViewPreferenceLoaded(true);
     });
     return () => { active = false; };
@@ -131,24 +127,17 @@ export default function CalendarScreen() {
   const [listMonthOffsets, setListMonthOffsets] = React.useState(() =>
     buildPrefetchWindow(getOffsetForDate(new Date()))
   );
-  const weekOffsets = React.useMemo(
-    () => Array.from({ length: WEEK_PAGE_COUNT }, (_, i) => i - WEEK_CENTER_INDEX),
-    []
-  );
-  const [currentWeekIndex, setCurrentWeekIndex] = React.useState(WEEK_CENTER_INDEX);
   const todayKey = React.useMemo(() => toDateKey(new Date()), []);
   const listRef = React.useRef<FlatList<number>>(null);
-  const weekListRef = React.useRef<FlatList<number>>(null);
   const listAgendaRef = React.useRef<FlashListRef<ListFlatItem>>(null);
   const pendingListScrollRef = React.useRef<string | null>(null);
-  const weekProgrammaticScrollRef = React.useRef(false);
   const router = useRouter();
   const offsetsRef = React.useRef(offsets);
   const viewModeRef = React.useRef(viewMode);
   const prevViewModeRef = React.useRef(viewMode);
 
   const [staffList, setStaffList] = React.useState<StaffMember[]>(() => peekCalendarWarm(companyId, locationId)?.staff ?? []);
-  const [staffFilterId, setStaffFilterId] = React.useState<string | null>(null);
+  const [selectedStaffIds, setSelectedStaffIds] = React.useState<string[]>([]);
   const [refreshing, setRefreshing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [calendarEpoch, setCalendarEpoch] = React.useState(0);
@@ -243,7 +232,7 @@ export default function CalendarScreen() {
     monthEventsCacheRef.current.clear();
     inFlightMonthsRef.current.clear();
     setLoadingMonthKeys(new Set());
-    setStaffFilterId(null);
+    setSelectedStaffIds([]);
     setCalendarEpoch((value) => value + 1);
   }, [companyId, locationId]);
 
@@ -251,7 +240,6 @@ export default function CalendarScreen() {
     loadStaff();
   }, [loadStaff]);
 
-  const baseWeekStart = React.useMemo(() => getWeekStartMonday(new Date()), []);
 
   // The set of month offsets the active view currently needs, unioned with a
   // PREFETCH_PAST_MONTHS/PREFETCH_FUTURE_MONTHS buffer around wherever the
@@ -264,21 +252,11 @@ export default function CalendarScreen() {
       const start = viewMode === 'dayGrid' ? parseSalonWallClock(gridDate + 'T00:00:00') : getWeekStartMonday(parseSalonWallClock(gridDate + 'T00:00:00'));
       return Array.from(new Set([...buildPrefetchWindow(getOffsetForDate(start)), getOffsetForDate(addDays(start, 6))]));
     }
-    if (viewMode === 'week') {
-      const weekOffset = weekOffsets[currentWeekIndex] ?? 0;
-      const weekStart = addDays(baseWeekStart, weekOffset * 7);
-      const offsetsSet = new Set<number>();
-      for (let i = 0; i < 7; i += 1) {
-        offsetsSet.add(getOffsetForDate(addDays(weekStart, i)));
-      }
-      buildPrefetchWindow(getOffsetForDate(weekStart)).forEach((offset) => offsetsSet.add(offset));
-      return Array.from(offsetsSet);
-    }
     if (viewMode === 'list') {
       return Array.from(new Set([...listMonthOffsets, ...buildPrefetchWindow(currentOffset)]));
     }
     return Array.from(new Set([...offsets, ...buildPrefetchWindow(currentOffset)]));
-  }, [viewMode, gridDate, weekOffsets, currentWeekIndex, baseWeekStart, listMonthOffsets, offsets, currentOffset]);
+  }, [viewMode, gridDate, listMonthOffsets, offsets, currentOffset]);
 
   React.useEffect(() => {
     neededMonthOffsets.forEach((offset) => {
@@ -296,10 +274,12 @@ export default function CalendarScreen() {
 
   const isVisibleDataLoading = neededMonthOffsets.some((offset) => loadingMonthKeys.has(monthKeyForOffset(offset).key));
 
-  const selectedStaff = staffFilterId ? staffList.find((staff) => staff.id === staffFilterId) : undefined;
-  const selectedStaffName = selectedStaff
-    ? `${selectedStaff.first_name ?? ''} ${selectedStaff.last_name ?? ''}`.trim() || t('calendar.employee')
-    : t('calendar.allStaff');
+  const selectedStaff = selectedStaffIds.length === 1 ? staffList.find((staff) => staff.id === selectedStaffIds[0]) : undefined;
+  const selectedStaffName = selectedStaffIds.length === 0
+    ? t('calendar.allStaff')
+    : selectedStaffIds.length === 1
+      ? `${selectedStaff?.first_name ?? ''} ${selectedStaff?.last_name ?? ''}`.trim() || t('calendar.employee')
+      : t('calendar.employeesSelected', { count: selectedStaffIds.length });
 
   const staffImageById = React.useMemo(() => {
     const map = new Map<string, string | null>();
@@ -319,10 +299,10 @@ export default function CalendarScreen() {
     (offset: number): MonthData => {
       const { year, monthIndex, key } = monthKeyForOffset(offset);
       const monthAppointments = monthDataRef.current.get(key) ?? [];
-      const eventsByDateKey = groupAppointmentsByDateKey(monthAppointments, staffFilterId, colorScheme);
+      const eventsByDateKey = groupAppointmentsByDateKey(monthAppointments, selectedStaffIds, colorScheme);
       return buildMonthData(year, monthIndex, eventsByDateKey);
     },
-    [monthKeyForOffset, staffFilterId, calendarEpoch, colorScheme]
+    [monthKeyForOffset, selectedStaffIds, calendarEpoch, colorScheme]
   );
 
   const getMonthEventsByDateKey = React.useCallback(
@@ -389,36 +369,9 @@ export default function CalendarScreen() {
     return () => subscription.remove();
   }, [applyAppointmentChange]);
 
-  const fetchWeekData = React.useCallback(
-    (weekOffset: number): WeekDayData[] => {
-      const weekStart = addDays(baseWeekStart, weekOffset * 7);
-      return Array.from({ length: 7 }, (_, dayOffset) => {
-        const dayDate = addDays(weekStart, dayOffset);
-        const dateKey = toDateKey(dayDate);
-        const monthOffset = getOffsetForDate(dayDate);
-        const monthData = fetchMonthData(monthOffset);
-        return {
-          dateKey,
-          date: dayDate.getDate(),
-          weekday: getWeekdayLong(dayDate),
-          isSunday: dayDate.getDay() === 0,
-          appointments: monthData.events[dateKey] ?? [],
-        };
-      });
-    },
-    [baseWeekStart, fetchMonthData]
-  );
-
-  const currentWeekOffset = weekOffsets[currentWeekIndex] ?? 0;
-  const currentWeekDays = fetchWeekData(currentWeekOffset);
   const { activeYear, activeMonthIndex } =
     viewMode === 'dayGrid' || viewMode === 'weekGrid'
       ? { activeYear: Number(gridDate.slice(0, 4)), activeMonthIndex: Number(gridDate.slice(5, 7)) - 1 }
-      : viewMode === 'week'
-      ? (() => {
-          const weekDate = new Date(currentWeekDays[0]?.dateKey ?? todayKey);
-          return { activeYear: weekDate.getFullYear(), activeMonthIndex: weekDate.getMonth() };
-        })()
       : (() => {
           const { year, monthIndex } = monthKeyForOffset(currentOffset);
           return { activeYear: year, activeMonthIndex: monthIndex };
@@ -439,23 +392,8 @@ export default function CalendarScreen() {
         : null;
 
   React.useEffect(() => {
-    const prevMode = prevViewModeRef.current;
     prevViewModeRef.current = viewMode;
-    if (viewMode !== 'week' || prevMode === 'week') return;
-
-    const targetWeekOffset = getWeekOffsetFromBase(baseWeekStart, todayKey);
-    const targetIndex = WEEK_CENTER_INDEX + targetWeekOffset;
-    if (targetIndex < 0 || targetIndex >= WEEK_PAGE_COUNT) return;
-
-    setCurrentWeekIndex(targetIndex);
-    requestAnimationFrame(() => {
-      weekProgrammaticScrollRef.current = true;
-      weekListRef.current?.scrollToIndex({ index: targetIndex, animated: false });
-      setTimeout(() => {
-        weekProgrammaticScrollRef.current = false;
-      }, 120);
-    });
-  }, [baseWeekStart, viewMode, todayKey]);
+  }, [viewMode]);
 
   React.useEffect(() => {
     if (viewMode !== 'list') return;
@@ -487,7 +425,6 @@ export default function CalendarScreen() {
     }
 
     setCurrentOffset(targetOffset);
-    setCurrentWeekIndex(WEEK_CENTER_INDEX);
     setListMonthOffsets(buildPrefetchWindow(targetOffset));
 
     if (currentViewMode === 'month') {
@@ -496,16 +433,6 @@ export default function CalendarScreen() {
         if (index >= 0) {
           listRef.current?.scrollToIndex({ index, animated: true });
         }
-      });
-    }
-
-    if (currentViewMode === 'week') {
-      requestAnimationFrame(() => {
-        weekProgrammaticScrollRef.current = true;
-        weekListRef.current?.scrollToIndex({ index: WEEK_CENTER_INDEX, animated: true });
-        setTimeout(() => {
-          weekProgrammaticScrollRef.current = false;
-        }, 260);
       });
     }
 
@@ -562,9 +489,9 @@ export default function CalendarScreen() {
         Object.keys(eventsByDateKey)
           .sort()
           .forEach((dateKey) => {
-            const dayEvents = staffFilterId
+            const dayEvents = selectedStaffIds.length
               ? eventsByDateKey[dateKey].filter(
-                  (event) => event.staffIds.includes(staffFilterId) || event.staffId === staffFilterId
+                  (event) => selectedStaffIds.some((staffId) => event.staffIds.includes(staffId) || event.staffId === staffId)
                 )
               : eventsByDateKey[dateKey];
             if (!dayEvents || dayEvents.length === 0) return;
@@ -584,7 +511,7 @@ export default function CalendarScreen() {
       });
 
     return { items, stickyHeaderIndices };
-  }, [getMonthEventsByDateKey, listMonthOffsets, loadingMonthKeys, staffFilterId, todayKey]);
+  }, [getMonthEventsByDateKey, listMonthOffsets, loadingMonthKeys, selectedStaffIds, todayKey]);
 
   // Grows the loaded window forward by one month at a time, up to a cap.
   // Never drops already-loaded months (that eviction was what caused the
@@ -642,16 +569,6 @@ export default function CalendarScreen() {
     [offsets]
   );
 
-  const handleWeekChange = React.useCallback(
-    (index: number) => {
-      if (weekProgrammaticScrollRef.current) return;
-      const weekOffset = weekOffsets[index];
-      if (weekOffset === undefined) return;
-      setCurrentWeekIndex(index);
-    },
-    [weekOffsets]
-  );
-
   const listKeyExtractor = React.useCallback((item: ListFlatItem) => item.key, []);
 
   const listGetItemType = React.useCallback((item: ListFlatItem) => item.kind, []);
@@ -667,10 +584,10 @@ export default function CalendarScreen() {
     (dateKey: string) => {
       router.push({
         pathname: '/day/[date]',
-        params: { date: dateKey, ...(staffFilterId ? { staffId: staffFilterId } : {}) },
+        params: { date: dateKey, ...(selectedStaffIds.length === 1 ? { staffId: selectedStaffIds[0] } : {}) },
       });
     },
-    [router, staffFilterId]
+    [router, selectedStaffIds]
   );
 
   const renderListItem = React.useCallback(
@@ -909,7 +826,7 @@ export default function CalendarScreen() {
               setCalendarAreaHeight(layout.height);
               setGridWidth(layout.width);
             }}>
-              {viewMode === 'dayGrid' || viewMode === 'weekGrid' ? (() => {
+              {viewMode === 'dayGrid' || (viewMode === 'weekGrid' && selectedStaffIds.length === 1) ? (() => {
                 const start = viewMode === 'weekGrid' ? getWeekStartMonday(parseSalonWallClock(gridDate + 'T00:00:00')) : parseSalonWallClock(gridDate + 'T00:00:00');
                 const days = Array.from({ length: viewMode === 'weekGrid' ? 7 : 1 }, (_, i) => {
                   const date = addDays(start, i);
@@ -920,7 +837,7 @@ export default function CalendarScreen() {
                   ] };
                 });
                 const loading = days.some(day => !monthDataRef.current.has(monthKeyForOffset(getOffsetForDate(parseSalonWallClock(day.dateKey + 'T00:00:00'))).key));
-                return <TimeGrid mode={viewMode} days={days} staff={staffList} staffFilterId={staffFilterId} width={gridWidth} loading={loading}
+                return <TimeGrid mode={viewMode} days={days} staff={staffList} staffFilterId={selectedStaffIds.length === 1 ? selectedStaffIds[0] : null} selectedStaffIds={selectedStaffIds} width={gridWidth} loading={loading}
                   onNavigate={direction => setGridDate(toDateKey(addDays(parseSalonWallClock(gridDate + 'T00:00:00'), direction * (viewMode === 'weekGrid' ? 7 : 1))))}
                   onToday={jumpToToday}
                   onEvent={event => router.push({ pathname: '/appointment/[id]', params: { id: event.appointmentId } })}
@@ -958,81 +875,19 @@ export default function CalendarScreen() {
                 />
               ) : null}
 
-              {viewMode === 'week' ? (
-                <FlatList
-                  ref={weekListRef}
-                  data={weekOffsets}
-                  keyExtractor={(item) => `week-${item}`}
-                  horizontal
-                  pagingEnabled
-                  initialScrollIndex={WEEK_CENTER_INDEX}
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.weekPager}
-                  getItemLayout={(_, index) => ({ length: gridWidth, offset: gridWidth * index, index })}
-                  decelerationRate="fast"
-                  disableIntervalMomentum
-                  onMomentumScrollEnd={(event) => {
-                    const index = Math.round(event.nativeEvent.contentOffset.x / gridWidth);
-                    handleWeekChange(index);
-                  }}
-                  renderItem={({ item }) => {
-                    const weekDays = fetchWeekData(item);
-                    const weekNeedsSkeleton = weekDays.some((day) => {
-                      const [year, month] = day.dateKey.split('-').map(Number);
-                      const { key } = monthKeyForOffset(getOffsetForDate(new Date(year, month - 1, 1)));
-                      return !monthDataRef.current.has(key) && (loadingMonthKeys.has(key) || locationLoading);
-                    });
-                    return (
-                      <View style={[styles.weekAgendaPage, { width: gridWidth, height: calendarHeight }]}>
-                        {weekNeedsSkeleton ? (
-                          <WeekAgendaSkeleton styles={styles} rowHeight={weekRowFixedHeight} />
-                        ) : (
-                        weekDays.map((day) => (
-                          <View key={day.dateKey} style={[styles.weekAgendaDay, { height: weekRowFixedHeight }]}>
-                            <Pressable
-                              style={styles.weekAgendaDateCol}
-                              onPress={() => openDaySheet(day.dateKey)}>
-                              <Text style={[styles.weekAgendaDate, day.isSunday && styles.dayNumberSunday]}>{day.date}</Text>
-                              <Text style={styles.weekAgendaWeekday}>{day.weekday}</Text>
-                            </Pressable>
-                            {day.appointments.length === 0 ? (
-                              <View style={styles.weekAgendaEmpty}>
-                                <EmptyState compact title={t('calendar.noAppointmentsToday')} />
-                              </View>
-                            ) : (
-                            <ScrollView style={styles.weekAgendaEvents} nestedScrollEnabled directionalLockEnabled showsVerticalScrollIndicator>
-                              {day.appointments.map((event) => {
-                                return (
-                                  <Pressable
-                                    key={event.id}
-                                    style={styles.weekAgendaEventRow}
-                                    onPress={() =>
-                                      router.push({ pathname: '/appointment/[id]', params: { id: event.appointmentId } })
-                                    }>
-                                    <View style={[styles.weekAgendaColorBar, { backgroundColor: event.color }]} />
-                                    <Text style={styles.weekAgendaTime}>{event.startTime}</Text>
-                                    <Text style={styles.weekAgendaTitle} numberOfLines={1}>
-                                      {event.label}
-                                    </Text>
-                                    <StaffAvatar
-                                      imagePath={staffImageById.get(event.staffId ?? '')}
-                                      name={event.staffName}
-                                      size={18}
-                                      fontSize={8}
-                                    />
-                                  </Pressable>
-                                );
-                              })}
-                            </ScrollView>
-                            )}
-                          </View>
-                        ))
-                        )}
-                      </View>
-                    );
-                  }}
-                />
-              ) : null}
+              {viewMode === 'weekGrid' && selectedStaffIds.length !== 1 ? (() => {
+                const weekStart = getWeekStartMonday(parseSalonWallClock(gridDate + 'T00:00:00'));
+                const weekDays = Array.from({ length: 7 }, (_, index) => {
+                  const date = addDays(weekStart, index);
+                  const dateKey = toDateKey(date);
+                  const currentEvents = fetchMonthData(getOffsetForDate(date)).events[dateKey] ?? [];
+                  const previousDate = addDays(date, -1);
+                  const carryOver = fetchMonthData(getOffsetForDate(previousDate)).events[toDateKey(previousDate)]?.filter((event) => event.endISO.slice(0, 10) > dateKey) ?? [];
+                  return { dateKey, date: date.getDate(), weekday: getWeekdayShort(date), isSunday: date.getDay() === 0, appointments: [...currentEvents, ...carryOver] };
+                });
+                const isLoading = weekDays.some((day) => !monthDataRef.current.has(monthKeyForOffset(getOffsetForDate(parseSalonWallClock(day.dateKey + 'T00:00:00'))).key));
+                return <TimeGrid mode="weekGrid" days={weekDays} staff={staffList} staffFilterId={null} selectedStaffIds={selectedStaffIds} width={gridWidth} loading={isLoading && isVisibleDataLoading} onNavigate={(direction) => setGridDate(toDateKey(addDays(parseSalonWallClock(gridDate + 'T00:00:00'), direction * 7)))} onToday={jumpToToday} onEvent={(event) => router.push({ pathname: '/appointment/[id]', params: { id: event.appointmentId } })} onSlot={(date, time, staffId) => router.push({ pathname: '/appointment-new', params: { date, time, ...(staffId ? { staffId } : {}) } })} />;
+              })() : null}
 
               {viewMode === 'list' ? (
                 <FlashList
@@ -1096,17 +951,6 @@ export default function CalendarScreen() {
                   onPress={() => {
                     Haptics.selectionAsync();
                     setShowModeMenu(false);
-                    React.startTransition(() => setViewMode('week'));
-                  }}>
-                  <AppIcon name="viewWeek" size={20} color={theme.text} />
-                  <Text style={styles.modeText}>{t('calendar.week')}</Text>
-                  {viewMode === 'week' ? <AppIcon name="check" size={20} color={theme.tint} /> : null}
-                </Pressable>
-                <Pressable
-                  style={styles.modeItem}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    setShowModeMenu(false);
                     React.startTransition(() => setViewMode('list'));
                   }}>
                   <AppIcon name="viewList" size={20} color={theme.text} />
@@ -1117,8 +961,7 @@ export default function CalendarScreen() {
                   <Pressable key={mode} style={styles.modeItem} onPress={() => {
                     Haptics.selectionAsync();
                     setShowModeMenu(false);
-                    if (viewMode === 'week') setGridDate(currentWeekDays[0].dateKey);
-                    else if (viewMode === 'month' || viewMode === 'list') {
+                    if (viewMode === 'month' || viewMode === 'list') {
                       const { year, monthIndex } = monthKeyForOffset(currentOffset);
                       const now = new Date();
                       setGridDate(toDateKey(now.getFullYear() === year && now.getMonth() === monthIndex ? now : new Date(year, monthIndex, 1)));
@@ -1126,7 +969,7 @@ export default function CalendarScreen() {
                     React.startTransition(() => setViewMode(mode));
                   }}>
                     <AppIcon name={mode === 'dayGrid' ? 'schedule' : 'viewWeek'} size={20} color={theme.text} />
-                    <Text style={styles.modeText}>{t(`calendar.${mode}`)}</Text>
+                  <Text style={styles.modeText}>{t(`calendar.${mode}`)}</Text>
                     {viewMode === mode ? <AppIcon name="check" size={20} color={theme.tint} /> : null}
                   </Pressable>
                 ))}
@@ -1144,13 +987,13 @@ export default function CalendarScreen() {
                     onPress={() => {
                       Haptics.selectionAsync();
                       setShowStaffMenu(false);
-                      React.startTransition(() => setStaffFilterId(null));
+                      React.startTransition(() => setSelectedStaffIds([]));
                     }}>
                     <View style={styles.staffMenuAvatar}>
                       <AppIcon name="groups" size={14} color={theme.muted} />
                     </View>
                     <Text style={styles.staffMenuName}>{t('calendar.allStaff')}</Text>
-                    {staffFilterId === null ? <AppIcon name="check" size={18} color={theme.tint} /> : null}
+                    {selectedStaffIds.length === 0 ? <AppIcon name="check" size={18} color={theme.tint} /> : null}
                   </Pressable>
                   {staffList.map((staff) => {
                     const name = `${staff.first_name ?? ''} ${staff.last_name ?? ''}`.trim() || t('calendar.employee');
@@ -1160,12 +1003,11 @@ export default function CalendarScreen() {
                         style={styles.staffMenuItem}
                         onPress={() => {
                           Haptics.selectionAsync();
-                          setShowStaffMenu(false);
-                          React.startTransition(() => setStaffFilterId(staff.id));
+                          React.startTransition(() => setSelectedStaffIds((current) => current.includes(staff.id) ? current.filter((id) => id !== staff.id) : [...current, staff.id]));
                         }}>
                         <StaffAvatar imagePath={staff.image_path} name={name} size={22} fontSize={9} />
                         <Text style={styles.staffMenuName}>{name}</Text>
-                        {staffFilterId === staff.id ? <AppIcon name="check" size={18} color={theme.tint} /> : null}
+                        {selectedStaffIds.includes(staff.id) ? <AppIcon name="check" size={18} color={theme.tint} /> : null}
                       </Pressable>
                     );
                   })}

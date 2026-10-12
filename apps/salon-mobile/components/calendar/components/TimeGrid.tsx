@@ -4,7 +4,7 @@ import { useLocation } from '@/contexts/location-context';
 import { fetchCalendarAvailability } from '@/lib/api/calendar-availability';
 import { availableIntervals, unavailableIntervals, type AvailabilityData } from '../availability';
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -38,6 +38,7 @@ type Props = {
   days: WeekDayData[];
   staff: StaffMember[];
   staffFilterId: string | null;
+  selectedStaffIds?: string[];
   width: number;
   loading: boolean;
   onNavigate: (direction: number) => void;
@@ -78,9 +79,9 @@ function RingAvatar({
   size: number;
   scheme: 'light' | 'dark';
 }) {
-  const ring = scheme === 'dark' ? '#3DDCFF' : '#1493B0';
-  const fill = scheme === 'dark' ? '#102E36' : '#E5F6FA';
-  const ink = scheme === 'dark' ? '#8AEAFF' : '#0E7490';
+  const ring = scheme === 'dark' ? Colors.dark.brandBlue : '#1493B0';
+  const fill = scheme === 'dark' ? Colors.dark.blueTint : '#E5F6FA';
+  const ink = scheme === 'dark' ? Colors.dark.brandBlue : '#0E7490';
   return (
     <View
       style={{
@@ -104,13 +105,13 @@ function RingAvatar({
   );
 }
 
-export function TimeGrid({ mode, days, staff, staffFilterId, width, loading, onEvent, onSlot }: Props) {
+export function TimeGrid({ mode, days, staff, staffFilterId, selectedStaffIds = staffFilterId ? [staffFilterId] : [], width, loading, onNavigate, onEvent, onSlot }: Props) {
   const { t } = useTranslation();
   const { companyId } = useAuth();
   const { locationId } = useLocation();
   const scheme = useColorScheme() ?? 'light';
   const theme = Colors[scheme];
-  const showAvailability = mode !== 'weekGrid' || staffFilterId !== null;
+  const showAvailability = mode === 'dayGrid' || selectedStaffIds.length > 0;
   const startDate = days[0].dateKey;
   const endDate = days[days.length - 1].dateKey;
   const [retry, setRetry] = React.useState(0);
@@ -143,7 +144,7 @@ export function TimeGrid({ mode, days, staff, staffFilterId, width, loading, onE
   }, []);
 
   const day = days[0];
-  const visibleStaff = staff.filter((member) => !staffFilterId || member.id === staffFilterId);
+  const visibleStaff = staff.filter((member) => selectedStaffIds.length === 0 || selectedStaffIds.includes(member.id));
   const dayColumns: Column[] =
     mode === 'dayGrid'
       ? [
@@ -155,7 +156,7 @@ export function TimeGrid({ mode, days, staff, staffFilterId, width, loading, onE
             member,
             events: day.appointments.filter((event) => event.staffIds.includes(member.id) || event.staffId === member.id),
           })),
-          ...(!staffFilterId &&
+          ...(selectedStaffIds.length === 0 &&
           (staff.length === 0 || day.appointments.some((event) => !event.staffId && event.staffIds.length === 0))
             ? [
                 {
@@ -188,7 +189,7 @@ export function TimeGrid({ mode, days, staff, staffFilterId, width, loading, onE
       ) : mode === 'weekGrid' ? (
         <WeekBoard
           days={days}
-          staff={visibleStaff.length > 0 ? visibleStaff : staff}
+          staff={visibleStaff}
           width={width}
           theme={theme}
           scheme={scheme}
@@ -196,7 +197,8 @@ export function TimeGrid({ mode, days, staff, staffFilterId, width, loading, onE
           usesSchedule={usesSchedule}
           schedule={schedule ?? null}
           todayKey={toDateKey(now)}
-          includeUnassigned={!staffFilterId && days.some((item) => item.appointments.some((event) => !event.staffId && event.staffIds.length === 0))}
+          selectedStaffIds={selectedStaffIds}
+          includeUnassigned={selectedStaffIds.length === 0 && days.some((item) => item.appointments.some((event) => !event.staffId && event.staffIds.length === 0))}
           unassignedLabel={t('calendar.unassignedStaff')}
           onEvent={onEvent}
           onSlot={onSlot}
@@ -211,7 +213,9 @@ export function TimeGrid({ mode, days, staff, staffFilterId, width, loading, onE
           usesSchedule={usesSchedule}
           schedule={schedule ?? null}
           staffIds={visibleStaff.map((member) => member.id)}
+          staffFilterIds={selectedStaffIds}
           now={now}
+          onNavigate={onNavigate}
           onEvent={onEvent}
           onSlot={onSlot}
           newAppointmentLabel={t('appointment.title')}
@@ -230,7 +234,9 @@ function DayBoard({
   usesSchedule,
   schedule,
   staffIds,
+  staffFilterIds,
   now,
+  onNavigate,
   onEvent,
   onSlot,
   newAppointmentLabel,
@@ -243,7 +249,9 @@ function DayBoard({
   usesSchedule: boolean;
   schedule: AvailabilityData | null;
   staffIds: string[];
+  staffFilterIds: string[];
   now: Date;
+  onNavigate: (direction: number) => void;
   onEvent: (event: EventItem) => void;
   onSlot: (date: string, time: string, staffId?: string) => void;
   newAppointmentLabel: string;
@@ -260,6 +268,12 @@ function DayBoard({
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const todayKey = toDateKey(now);
   const showNow = columns.some((column) => column.date === todayKey) && nowMinutes >= firstMinute && nowMinutes < lastMinute;
+  const daySwipe = React.useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponder: (_event, gesture) => Math.abs(gesture.dx) > 24 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.3,
+    onPanResponderRelease: (_event, gesture) => {
+      if (Math.abs(gesture.dx) > 48 || Math.abs(gesture.vx) > 0.45) onNavigate(gesture.dx < 0 ? 1 : -1);
+    },
+  }), [onNavigate]);
 
   React.useEffect(() => {
     const target = showNow ? nowMinutes : 9 * 60;
@@ -268,7 +282,7 @@ function DayBoard({
 
   return (
     <View style={{ flex: 1 }}>
-      <View style={{ flexDirection: 'row', height: DAY_HEADER, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }}>
+      <View {...daySwipe.panHandlers} style={{ flexDirection: 'row', height: DAY_HEADER, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }}>
         <View style={{ width: GUTTER }} />
         <ScrollView ref={headerScroll} horizontal scrollEnabled={false} showsHorizontalScrollIndicator={false}>
           {columns.map((column) => (
@@ -330,10 +344,9 @@ function DayBoard({
                             right: 0,
                             top: (gap.start - firstMinute) * PPM,
                             height: (gap.end - gap.start) * PPM,
-                            overflow: 'hidden',
-                          }}>
-                          <Hatch color={hatch} />
-                        </View>
+                            backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.035)' : 'rgba(7,29,67,0.035)',
+                          }}
+                        />
                       ))}
                       {layouts[index].map(({ event, start, end, lane, lanes }) => (
                         <Pressable
@@ -416,6 +429,7 @@ function WeekBoard({
   usesSchedule,
   schedule,
   todayKey,
+  selectedStaffIds,
   includeUnassigned,
   unassignedLabel,
   onEvent,
@@ -430,13 +444,26 @@ function WeekBoard({
   usesSchedule: boolean;
   schedule: AvailabilityData | null;
   todayKey: string;
+  selectedStaffIds: string[];
   includeUnassigned: boolean;
   unassignedLabel: string;
   onEvent: (event: EventItem) => void;
   onSlot: (date: string, time: string, staffId?: string) => void;
 }) {
-  const labelWidth = 78;
-  const columnWidth = Math.max(44, (width - labelWidth) / Math.max(1, days.length));
+  const vertical = React.useRef<ScrollView>(null);
+  const horizontalHeader = React.useRef<ScrollView>(null);
+  const singleStaffSelected = selectedStaffIds.length === 1;
+  const headerHeight = singleStaffSelected ? DAY_HEADER : 66;
+  const labelWidth = GUTTER;
+  const columnWidth = Math.max(112, (width - labelWidth) / Math.max(1, days.length));
+  const layouts = days.map((day) => layoutTimelineEvents(day.appointments.filter((event) => !event.canceled), day.dateKey));
+  const firstMinute = singleStaffSelected ? Math.max(0, Math.floor(Math.min(9 * 60, ...layouts.flat().map((event) => event.start), 9 * 60) / 60) * 60) : 0;
+  const lastMinute = singleStaffSelected ? Math.min(24 * 60, Math.ceil(Math.max(20 * 60, ...layouts.flat().map((event) => event.end), 20 * 60) / 60) * 60) : 24 * 60;
+  const height = (lastMinute - firstMinute) * PPM;
+  const hours = Array.from({ length: Math.ceil((lastMinute - firstMinute) / 60) }, (_, index) => firstMinute + index * 60);
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const showNow = days.some((day) => day.dateKey === todayKey) && nowMinutes >= firstMinute && nowMinutes < lastMinute;
   const rows: { key: string; name: string; member?: StaffMember; staffId?: string }[] = [
     ...staff.map((member) => ({
       key: member.id,
@@ -455,73 +482,55 @@ function WeekBoard({
     });
 
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }}>
-      <View style={{ flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }}>
-        <View style={{ width: labelWidth }} />
-        {days.map((day) => {
-          const date = new Date(day.dateKey + 'T00:00:00');
-          const today = day.dateKey === todayKey;
-          return (
-            <View key={day.dateKey} style={{ width: columnWidth, alignItems: 'center', paddingVertical: 8, gap: 2 }}>
-              <View
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 14,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: today ? theme.tint : 'transparent',
-                }}>
-                <Text style={{ color: today ? theme.onTint : theme.text, fontSize: 15, fontWeight: '600' }}>{day.date}</Text>
-              </View>
-              <Text style={{ color: today ? theme.tint : theme.muted, fontSize: 11 }}>{getWeekdayShort(date)}</Text>
-            </View>
-          );
-        })}
-      </View>
-      {rows.map((row) => {
-        const counts = days.map((day) => eventsFor(row.staffId, day).length);
-        const rowHeight = Math.max(108, 20 + Math.max(0, ...counts) * 30);
-        return (
-          <View key={row.key} style={{ flexDirection: 'row', minHeight: rowHeight, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }}>
-            <View style={{ width: labelWidth, alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 4 }}>
-              <RingAvatar member={row.member} name={row.name} size={36} scheme={scheme} />
-              <Text numberOfLines={2} style={{ color: theme.text, fontSize: 11, textAlign: 'center' }}>
-                {row.member?.first_name || row.name}
-              </Text>
-            </View>
+    <View style={{ flex: 1 }}>
+      <View style={{ flexDirection: 'row', height: headerHeight, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }}>
+        <View style={{ width: GUTTER }} />
+        <ScrollView ref={horizontalHeader} horizontal scrollEnabled={false} showsHorizontalScrollIndicator={false}>
+          <View style={{ flexDirection: 'row' }}>
             {days.map((day) => {
-              const events = eventsFor(row.staffId, day);
-              const off =
-                usesSchedule && schedule && row.staffId
-                  ? availableIntervals(schedule, row.staffId, day.dateKey).length === 0
-                  : false;
+              const date = new Date(day.dateKey + 'T00:00:00');
+              const today = day.dateKey === todayKey;
               return (
-                <Pressable
-                  key={day.dateKey}
-                  accessibilityLabel={`${row.name}, ${day.date}`}
-                  onPress={() => onSlot(day.dateKey, '09:00', row.staffId)}
-                  style={{ width: columnWidth, minHeight: rowHeight, borderLeftWidth: StyleSheet.hairlineWidth, borderColor: theme.border, padding: 3, gap: 4, overflow: 'hidden' }}>
-                  {off ? <Hatch color={hatch} /> : null}
-                  {events.slice(0, 4).map((event) => (
-                    <Pressable
-                      key={event.id}
-                      onPress={() => onEvent(event)}
-                      style={{ backgroundColor: event.bgColor, borderRadius: 6, paddingHorizontal: 4, paddingVertical: 3 }}>
-                      <Text numberOfLines={1} style={{ color: event.textColor, fontSize: 11, fontWeight: '700', fontVariant: ['tabular-nums'] }}>
-                        {event.startTime}
-                      </Text>
-                    </Pressable>
-                  ))}
-                  {events.length > 4 ? (
-                    <Text style={{ color: theme.muted, fontSize: 11, fontWeight: '700' }}>+{events.length - 4}</Text>
-                  ) : null}
+                <Pressable key={day.dateKey} onPress={() => onSlot(day.dateKey, '09:00')} style={{ width: columnWidth, alignItems: 'center', justifyContent: 'center', paddingVertical: 5, gap: 1, borderLeftWidth: StyleSheet.hairlineWidth, borderColor: theme.border }}>
+                  {singleStaffSelected ? <><RingAvatar member={staff.find((member) => member.id === selectedStaffIds[0])} name={staff.find((member) => member.id === selectedStaffIds[0])?.first_name ?? ''} size={40} scheme={scheme} /><Text numberOfLines={1} style={{ color: theme.text, fontSize: 11, fontWeight: '500' }}>{staff.find((member) => member.id === selectedStaffIds[0])?.first_name}</Text></> : <>
+                    <View style={{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: today ? theme.tint : 'transparent' }}>
+                      <Text style={{ color: today ? theme.onTint : theme.text, fontSize: 14, fontWeight: '600' }}>{day.date}</Text>
+                    </View>
+                    <Text style={{ color: today ? theme.tint : theme.muted, fontSize: 10 }}>{getWeekdayShort(date)}</Text>
+                  </>}
                 </Pressable>
               );
             })}
           </View>
-        );
-      })}
-    </ScrollView>
+        </ScrollView>
+      </View>
+      <ScrollView ref={vertical} style={{ flex: 1 }} nestedScrollEnabled>
+        <View style={{ height: height + 36, paddingTop: 14 }}>
+          <View style={{ flexDirection: 'row' }}>
+            <View style={{ width: GUTTER }}>{hours.map((minute) => <View key={minute} style={{ height: HOUR_HEIGHT }}><Text style={{ color: theme.muted, fontSize: 11, marginTop: -7, textAlign: 'center', fontVariant: ['tabular-nums'] }}>{timeLabel(minute)}</Text></View>)}</View>
+            <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator={false} onScroll={(event) => horizontalHeader.current?.scrollTo({ x: event.nativeEvent.contentOffset.x, animated: false })} scrollEventThrottle={16}>
+              <View style={{ flexDirection: 'row', height }}>
+                {days.map((day, dayIndex) => {
+                  const dayRows = singleStaffSelected ? [{ staffId: selectedStaffIds[0], events: day.appointments.filter((event) => event.staffIds.includes(selectedStaffIds[0]) || event.staffId === selectedStaffIds[0]) }] : rows.filter((row) => selectedStaffIds.length === 0 ? true : Boolean(row.staffId && selectedStaffIds.includes(row.staffId))).map((row) => ({ staffId: row.staffId, events: eventsFor(row.staffId, day) }));
+                  const flatEvents = dayRows.flatMap((row) => row.events);
+                  const dayLayouts = layoutTimelineEvents(flatEvents, day.dateKey);
+                  const isOff = usesSchedule && schedule && unavailableIntervals(schedule, dayRows.map((row) => row.staffId).filter((id): id is string => Boolean(id)), day.dateKey, firstMinute, lastMinute);
+                  return <View key={day.dateKey} style={{ width: columnWidth, height, borderLeftWidth: StyleSheet.hairlineWidth, borderColor: theme.border }}>
+                    {hours.map((minute) => <View key={minute} style={{ height: HOUR_HEIGHT, borderTopWidth: StyleSheet.hairlineWidth, borderColor: theme.border }}><Pressable style={{ flex: 1 }} onPress={() => onSlot(day.dateKey, timeLabel(minute), singleStaffSelected ? selectedStaffIds[0] : undefined)} /></View>)}
+                    {isOff && isOff.length > 0 ? isOff.map((gap, index) => <View key={`gap-${index}`} pointerEvents="none" style={{ position: 'absolute', top: (gap.start - firstMinute) * PPM, height: (gap.end - gap.start) * PPM, left: 0, right: 0, backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.035)' : 'rgba(7,29,67,0.035)' }} />) : null}
+                    {dayLayouts.map(({ event, start, end, lane, lanes }) => <Pressable key={event.id} onPress={() => onEvent(event)} style={{ position: 'absolute', top: (start - firstMinute) * PPM + 1, height: Math.max(36, (end - start) * PPM - 3), left: (lane * columnWidth) / lanes + 2, width: Math.max(0, columnWidth / lanes - 4), backgroundColor: event.bgColor, borderRadius: 5, paddingHorizontal: 4, paddingVertical: 3, overflow: 'hidden' }}>
+                      <Text numberOfLines={1} style={{ color: event.textColor, fontSize: singleStaffSelected ? 10 : 9, fontVariant: ['tabular-nums'] }}>{event.startTime}</Text>
+                      <Text numberOfLines={2} style={{ color: event.textColor, fontSize: singleStaffSelected ? 12 : 10, fontWeight: '700' }}>{event.label}</Text>
+                      <Text numberOfLines={1} style={{ color: event.textColor, opacity: 0.85, fontSize: 9 }}>{event.staffName}</Text>
+                    </Pressable>)}
+                    {showNow && day.dateKey === todayKey ? <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: (nowMinutes - firstMinute) * PPM, height: 2, backgroundColor: NOW }} /> : null}
+                  </View>;
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </ScrollView>
+    </View>
   );
 }

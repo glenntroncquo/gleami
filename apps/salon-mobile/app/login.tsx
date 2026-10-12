@@ -306,9 +306,9 @@ export default function LoginScreen() {
   const ink = dark ? '#FFFFFF' : '#17181B';
   const muted = dark ? '#A1A1A6' : '#777A82';
   const line = dark ? '#3A3A3C' : '#D8D8DA';
-  const fieldBorder = focused ? (dark ? '#FFFFFF' : '#5B7CF0') : line;
-  const buttonBg = dark ? '#FFFFFF' : '#0B1C3F';
-  const buttonText = dark ? '#111111' : '#FFFFFF';
+  const fieldBorder = focused ? theme.brandBlue : line;
+  const buttonBg = dark ? theme.brandBlue : '#0B1C3F';
+  const buttonText = dark ? theme.onTint : '#FFFFFF';
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>

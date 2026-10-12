@@ -15,6 +15,7 @@
       }
     },
     "android": {
+      "userInterfaceStyle": "automatic",
       "package": "com.gleami.staff",
       "adaptiveIcon": {
         "backgroundColor": "#071D43",

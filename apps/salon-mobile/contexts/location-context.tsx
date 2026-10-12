@@ -30,21 +30,20 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   const { companyId, loading: authLoading } = useAuth();
   const [locations, setLocations] = useState<ShopLocation[]>([]);
   const [locationId, setLocationIdState] = useState<string | null>(null);
-  // Starts true so consumers never see a "no location" flash between auth
-  // resolving and this provider's fetch effect actually kicking off.
-  const [loading, setLoading] = useState(true);
+  const [settledCompanyId, setSettledCompanyId] = useState<string | null>(null);
+  // True in the same render a company id appears, before the fetch effect runs.
+  const loading = authLoading || (companyId !== null && settledCompanyId !== companyId);
 
   useEffect(() => {
     if (authLoading) return;
     if (!companyId) {
       setLocations([]);
       setLocationIdState(null);
-      setLoading(false);
+      setSettledCompanyId(null);
       return;
     }
 
     let cancelled = false;
-    setLoading(true);
 
     (async () => {
       const stored = await readPreferredLocationId(companyId);
@@ -61,12 +60,12 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
       if (picked) {
         void writePreferredLocationId(companyId, picked);
       }
-      setLoading(false);
+      setSettledCompanyId(companyId);
     })().catch(() => {
       if (cancelled) return;
       setLocations([]);
       setLocationIdState((current) => current);
-      setLoading(false);
+      setSettledCompanyId(companyId);
     });
 
     return () => {

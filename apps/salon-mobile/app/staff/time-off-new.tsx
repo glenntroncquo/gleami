@@ -1,70 +1,115 @@
-import { ScreenScrollView } from '@/components/screen-scroll-view';
-import { AppIcon } from '@/components/app-icon';
-import { HeaderButton } from '@/components/header-button';
-import { Pressable } from '@/components/pressable-scale';
+import { StaffAvatar } from '@/components/staff-avatar';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { DeviceEventEmitter, StyleSheet, Text, View } from 'react-native';
+import { DeviceEventEmitter, ScrollView, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Colors, Design } from '@/constants/theme';
+import { Button, ErrorBanner, Field, FieldRow, FormScreen, ListGroup, OptionCard, RadioRow, SelectField, useModalHeader } from '@/components/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { createTimeOff } from '@/lib/api/staff';
+import { createTimeOff, fetchAllStaff, type Staff } from '@/lib/api/staff';
 
 const TIME_OFF_EVENT = 'timeOffDraft:setDateTime';
 
-function formatDateLabel(date: Date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+type PresetKey = 'custom' | 'lunch' | 'break' | 'wholeDay';
+type Preset = { key: PresetKey; icon: 'edit' | 'restaurant' | 'coffee' | 'calendar'; minutes?: number };
+
+const PRESETS: Preset[] = [
+  { key: 'custom', icon: 'edit' },
+  { key: 'lunch', icon: 'restaurant', minutes: 30 },
+  { key: 'break', icon: 'coffee', minutes: 15 },
+  { key: 'wholeDay', icon: 'calendar' },
+];
+
+function atTime(base: Date, hours: number, minutes: number) {
+  const date = new Date(base);
+  date.setHours(hours, minutes, 0, 0);
+  return date;
 }
 
-function formatTimeLabel(date: Date) {
-  const h = String(date.getHours()).padStart(2, '0');
-  const m = String(date.getMinutes()).padStart(2, '0');
-  return `${h}:${m}`;
-}
-
-function defaultDate() {
-  const date = new Date();
+function startOfDay(dateKey?: string) {
+  const date = dateKey ? new Date(`${dateKey}T00:00:00`) : new Date();
   date.setHours(0, 0, 0, 0);
   return date;
 }
 
-function defaultEnd() {
-  const date = new Date();
-  date.setHours(23, 59, 0, 0);
-  return date;
+/** Next quarter hour from now, so a new block starts at a sensible slot. */
+function nextQuarter() {
+  const now = new Date();
+  const minutes = Math.ceil((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
+  return atTime(now, Math.min(23, Math.floor(minutes / 60)), minutes >= 24 * 60 ? 45 : minutes % 60);
+}
+
+function addMinutes(date: Date, minutes: number) {
+  const next = new Date(date.getTime() + minutes * 60_000);
+  // Stay on the same day; blocks are single-day.
+  return next.getDate() === date.getDate() ? next : atTime(date, 23, 59);
+}
+
+function formatTime(date: Date) {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function minutesOf(date: Date) {
+  return date.getHours() * 60 + date.getMinutes();
 }
 
 export default function StaffTimeOffNewScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
-  const { staffId } = useLocalSearchParams<{ staffId: string }>();
-  const { companyId } = useAuth();
+  const params = useLocalSearchParams<{ staffId?: string; date?: string }>();
+  const { companyId, user } = useAuth();
+  const userId = user?.id;
   const { locationId } = useLocation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const theme = Colors[colorScheme];
+  const modalHeader = useModalHeader();
 
-  const [date, setDate] = React.useState(defaultDate);
-  const [startTime, setStartTime] = React.useState(defaultDate);
-  const [endTime, setEndTime] = React.useState(defaultEnd);
+  // Opened from a staff profile the staff member is fixed; from the calendar it's pickable.
+  const pickStaff = !params.staffId;
+
+  const [date, setDate] = React.useState(() => startOfDay(params.date));
+  const [startTime, setStartTime] = React.useState(nextQuarter);
+  const [endTime, setEndTime] = React.useState(() => addMinutes(nextQuarter(), 30));
+  const [preset, setPreset] = React.useState<PresetKey>('custom');
+  const [staffId, setStaffId] = React.useState<string | undefined>(params.staffId);
+  const [staffOptions, setStaffOptions] = React.useState<Staff[]>([]);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
+    if (!pickStaff || !companyId) return;
+    let active = true;
+    fetchAllStaff(companyId)
+      .then((list) => {
+        if (!active) return;
+        setStaffOptions(list);
+        setStaffId((current) => current ?? list.find((staff) => staff.user_id === userId)?.id ?? list[0]?.id);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [pickStaff, companyId, userId]);
+
+  React.useEffect(() => {
     const sub = DeviceEventEmitter.addListener(TIME_OFF_EVENT, ({ field, value }: { field: 'date' | 'start' | 'end'; value: string }) => {
       const picked = new Date(value);
+      setPreset('custom');
       if (field === 'date') setDate(picked);
       else if (field === 'start') setStartTime(picked);
       else setEndTime(picked);
     });
     return () => sub.remove();
   }, []);
+
+  const applyPreset = (next: Preset) => {
+    setPreset(next.key);
+    if (next.key === 'wholeDay') {
+      setStartTime(atTime(date, 0, 0));
+      setEndTime(atTime(date, 23, 59));
+    } else if (next.minutes) {
+      setEndTime(addMinutes(startTime, next.minutes));
+    }
+  };
 
   const openPicker = (field: 'date' | 'start' | 'end', mode: 'date' | 'time', value: Date, title: string) => {
     router.push({
@@ -73,7 +118,19 @@ export default function StaffTimeOffNewScreen() {
     });
   };
 
+  const durationMinutes = minutesOf(endTime) - minutesOf(startTime) + (formatTime(endTime) === '23:59' ? 1 : 0);
+  const durationLabel = durationMinutes >= 60
+    ? `${t('calendar.unavailability.hours', { count: Math.floor(durationMinutes / 60) })}${durationMinutes % 60 ? ` ${t('calendar.unavailability.minutes', { count: durationMinutes % 60 })}` : ''}`
+    : t('calendar.unavailability.minutes', { count: durationMinutes });
+  const invalidRange = durationMinutes <= 0;
+
+  const dateLabel = date.toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
+
   const handleSave = async () => {
+    if (invalidRange) {
+      setError(t('calendar.unavailability.endBeforeStart'));
+      return;
+    }
     if (!staffId || !companyId || !locationId) {
       setError(t('calendar.noLocation'));
       return;
@@ -100,114 +157,74 @@ export default function StaffTimeOffNewScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['left', 'right', 'bottom']}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: t('staff.addTimeOff'),
-          unstable_headerLeftItems: () => [
-            {
-              type: 'button',
-              label: t('common.close'),
-              icon: { type: 'sfSymbol', name: 'xmark' },
-              tintColor: theme.text,
-              onPress: () => router.back(),
-            },
-          ],
-          headerLeft: () => (
-            <HeaderButton onPress={() => router.back()} hitSlop={8}>
-              <AppIcon name="close" size={18} color={theme.text} />
-            </HeaderButton>
-          ),
-          headerRight: () => (
-            <HeaderButton onPress={handleSave} disabled={saving} hitSlop={8} style={styles.headerTextButton}>
-              <Text style={[styles.saveText, { color: theme.tint }]}>{t('client.save')}</Text>
-            </HeaderButton>
-          ),
-        }}
-      />
+    <>
+      <Stack.Screen options={modalHeader} />
+      <FormScreen
+        closable
+        title={pickStaff ? t('calendar.addUnavailability') : t('staff.addTimeOff').replace(/^\+\s*/, '')}
+        footer={<Button label={t('client.save')} onPress={handleSave} loading={saving} disabled={invalidRange} />}>
+        <Field label={t('calendar.unavailability.type')}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow} style={styles.bleed}>
+            {PRESETS.map((item) => (
+              <OptionCard
+                key={item.key}
+                icon={item.icon}
+                title={t(`calendar.unavailability.${item.key}`)}
+                subtitle={item.minutes ? t('calendar.unavailability.minutes', { count: item.minutes }) : item.key === 'wholeDay' ? '00:00 – 23:59' : '—'}
+                selected={preset === item.key}
+                onPress={() => applyPreset(item)}
+              />
+            ))}
+          </ScrollView>
+        </Field>
 
-      {error ? (
-        <View style={[styles.errorBanner, { backgroundColor: `${theme.error}22` }]}>
-          <Text style={[styles.errorBannerText, { color: theme.error }]}>{error}</Text>
-        </View>
-      ) : null}
+        <SelectField
+          label={t('calendar.unavailability.date')}
+          value={dateLabel}
+          onPress={() => openPicker('date', 'date', date, t('calendar.unavailability.date'))}
+        />
 
-      <ScreenScrollView contentContainerStyle={styles.body}>
-        <View style={styles.row}>
-          <Text style={[styles.rowLabel, { color: theme.text }]}>{t('staff.date')}</Text>
-          <Pressable
-            style={[styles.pill, { borderColor: theme.border, backgroundColor: theme.surface }]}
-            onPress={() => openPicker('date', 'date', date, t('staff.date'))}>
-            <Text style={[styles.pillText, { color: theme.text }]}>{formatDateLabel(date)}</Text>
-          </Pressable>
-        </View>
-        <View style={styles.row}>
-          <Text style={[styles.rowLabel, { color: theme.text }]}>{t('appointment.starts')}</Text>
-          <Pressable
-            style={[styles.pill, { borderColor: theme.border, backgroundColor: theme.surface }]}
-            onPress={() => openPicker('start', 'time', startTime, t('appointment.starts'))}>
-            <Text style={[styles.pillText, { color: theme.text }]}>{formatTimeLabel(startTime)}</Text>
-          </Pressable>
-        </View>
-        <View style={styles.row}>
-          <Text style={[styles.rowLabel, { color: theme.text }]}>{t('appointment.ends')}</Text>
-          <Pressable
-            style={[styles.pill, { borderColor: theme.border, backgroundColor: theme.surface }]}
-            onPress={() => openPicker('end', 'time', endTime, t('appointment.ends'))}>
-            <Text style={[styles.pillText, { color: theme.text }]}>{formatTimeLabel(endTime)}</Text>
-          </Pressable>
-        </View>
-      </ScreenScrollView>
-    </SafeAreaView>
+        <FieldRow>
+          <SelectField
+            label={t('calendar.unavailability.start')}
+            value={formatTime(startTime)}
+            onPress={() => openPicker('start', 'time', startTime, t('calendar.unavailability.start'))}
+          />
+          <SelectField
+            label={t('calendar.unavailability.end')}
+            value={formatTime(endTime)}
+            onPress={() => openPicker('end', 'time', endTime, t('calendar.unavailability.end'))}
+            error={invalidRange ? t('calendar.unavailability.endBeforeStart') : null}
+            helper={t('calendar.unavailability.duration', { value: durationLabel })}
+          />
+        </FieldRow>
+
+        {pickStaff ? (
+          <Field label={t('calendar.unavailability.teamMember')}>
+            <ListGroup inset={58}>
+              {staffOptions.map((staff) => {
+                const name = `${staff.first_name ?? ''} ${staff.last_name ?? ''}`.trim();
+                return (
+                  <RadioRow
+                    key={staff.id}
+                    title={name}
+                    leading={<StaffAvatar imagePath={staff.image_path} name={name} size={32} fontSize={12} />}
+                    selected={staff.id === staffId}
+                    onPress={() => setStaffId(staff.id)}
+                  />
+                );
+              })}
+            </ListGroup>
+          </Field>
+        ) : null}
+
+        <ErrorBanner message={invalidRange ? null : error} />
+      </FormScreen>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  headerTextButton: {
-    width: 'auto',
-    minWidth: 0,
-    paddingHorizontal: 4,
-  },
-  saveText: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  errorBanner: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 12,
-    borderRadius: Design.controlRadius,
-  },
-  errorBannerText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  body: {
-    padding: 16,
-    gap: 12,
-  },
-  row: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  rowLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  pill: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 18,
-    borderWidth: 1,
-  },
-  pillText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  bleed: { marginHorizontal: -20 },
+  presetRow: { gap: 10, paddingHorizontal: 20 },
 });

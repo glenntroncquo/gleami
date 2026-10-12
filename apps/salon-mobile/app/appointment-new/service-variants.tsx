@@ -1,20 +1,19 @@
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
-import { Pressable } from '@/components/pressable-scale';
 import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { DeviceEventEmitter, StyleSheet, Text, View } from 'react-native';
+import { DeviceEventEmitter, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { RowListSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
-import { Colors, Design } from '@/constants/theme';
+import { ListGroup, ListRow, ScreenTitle, useTheme } from '@/components/ui';
+import { Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   fetchServices,
   phasesForEditor,
@@ -32,9 +31,7 @@ export default function ServiceVariantsScreen() {
   const { serviceId, staffId } = useLocalSearchParams<{ serviceId: string; staffId: string }>();
   const { companyId } = useAuth();
   const { locationId } = useLocation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const theme = Colors[colorScheme];
-  const styles = React.useMemo(() => createStyles(theme), [theme]);
+  const theme = useTheme();
 
   const [service, setService] = React.useState<ServiceWithVariants | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -70,11 +67,12 @@ export default function ServiceVariantsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['left', 'right', 'bottom']}>
       <Stack.Screen
         options={{
           headerShown: true,
-          title: service?.name ?? '',
+          title: '',
+          headerShadowVisible: false,
           unstable_headerLeftItems: () => [
             {
               type: 'button',
@@ -85,7 +83,7 @@ export default function ServiceVariantsScreen() {
             },
           ],
           headerLeft: () => (
-            <HeaderButton onPress={() => router.back()} hitSlop={8}>
+            <HeaderButton onPress={() => router.back()} hitSlop={8} accessibilityLabel={t('common.back')}>
               <AppIcon name="back" size={22} color={theme.text} />
             </HeaderButton>
           ),
@@ -97,70 +95,28 @@ export default function ServiceVariantsScreen() {
         <EmptyState icon="gridView" title={t('service.noVariants')} subtitle={t('service.noVariantsHint')} />
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent} contentInsetAdjustmentBehavior="automatic">
-          {service.service_variant.map((variant) => (
-            <Pressable key={variant.id} style={styles.row} onPress={() => addVariant(variant)}>
-              <View style={[styles.swatch, { backgroundColor: COLOR_MAP[mapTreatmentColorToEventColor(service.color, service.name)] }]} />
-              <View style={styles.flexFill}>
-                <Text style={styles.rowTitle}>{variant.name}</Text>
-                <Text style={styles.rowMeta}>{`${variantDurationMinutes(variant)} ${t('appointment.minutesShort')} · €${variant.price}`}</Text>
-              </View>
-              <View style={styles.plusButton}>
-                <AppIcon name="add" size={18} color={theme.text} />
-              </View>
-            </Pressable>
-          ))}
+          <ScreenTitle title={service.name} />
+          <ListGroup>
+            {service.service_variant.map((variant) => (
+              <ListRow
+                key={variant.id}
+                title={variant.name}
+                subtitle={`${variantDurationMinutes(variant)} ${t('appointment.minutesShort')} · €${variant.price}`}
+                leading={<View style={[styles.swatch, { backgroundColor: COLOR_MAP[mapTreatmentColorToEventColor(service.color, service.name)] }]} />}
+                chevron={false}
+                trailing={<AppIcon name="add" size={18} color={theme.muted} />}
+                onPress={() => addVariant(variant)}
+              />
+            ))}
+          </ListGroup>
         </ScrollView>
       )}
     </SafeAreaView>
   );
 }
 
-function createStyles(theme: typeof Colors.light) {
-  return StyleSheet.create({
-    safeArea: {
-      flex: 1,
-      backgroundColor: theme.background,
-    },
-    flexFill: {
-      flex: 1,
-    },
-    loading: {
-      marginTop: 24,
-    },
-    scrollContent: {
-      padding: 16,
-      paddingBottom: 32,
-    },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      paddingVertical: 10,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
-    swatch: {
-      width: 40,
-      height: 40,
-      borderRadius: Design.controlRadius,
-    },
-    rowTitle: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.text,
-    },
-    rowMeta: {
-      fontSize: 13,
-      color: theme.muted,
-      marginTop: 2,
-    },
-    plusButton: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.surface,
-    },
-  });
-}
+const styles = StyleSheet.create({
+  safeArea: { flex: 1 },
+  scrollContent: { paddingHorizontal: Design.screenPadding, paddingTop: 4, paddingBottom: 32, gap: 16 },
+  swatch: { width: 40, height: 40, borderRadius: 12 },
+});

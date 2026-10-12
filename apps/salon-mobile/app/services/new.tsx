@@ -1,16 +1,12 @@
-import { ScreenScrollView } from '@/components/screen-scroll-view';
-import { Pressable } from '@/components/pressable-scale';
-import { AppIcon } from '@/components/app-icon';
-import { HeaderButton } from '@/components/header-button';
 import { Stack, useRouter } from 'expo-router';
 import React from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { Colors, Design } from '@/constants/theme';
+import { AppIcon } from '@/components/app-icon';
+import { Pressable } from '@/components/pressable-scale';
+import { Button, ErrorBanner, Field, FormScreen, TextField, useModalHeader, useTheme } from '@/components/ui';
 import { useAuth } from '@/contexts/auth-context';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { createService } from '@/lib/api/services';
 import { COLOR_MAP, TREATMENT_COLORS, TreatmentColor } from '@/lib/treatment-colors';
 
@@ -18,9 +14,8 @@ export default function NewTreatmentScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { companyId } = useAuth();
-  const colorScheme = useColorScheme() ?? 'light';
-  const theme = Colors[colorScheme];
-  const styles = createStyles(theme);
+  const theme = useTheme();
+  const modalHeader = useModalHeader();
 
   const [name, setName] = React.useState('');
   const [description, setDescription] = React.useState('');
@@ -45,153 +40,47 @@ export default function NewTreatmentScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: t('service.addNew'),
-          unstable_headerLeftItems: () => [
-            {
-              type: 'button',
-              label: t('common.close'),
-              icon: { type: 'sfSymbol', name: 'xmark' },
-              tintColor: theme.text,
-              onPress: () => router.back(),
-            },
-          ],
-          headerLeft: () => (
-            <HeaderButton onPress={() => router.back()} hitSlop={8}>
-              <AppIcon name="close" size={18} color={theme.text} />
-            </HeaderButton>
-          ),
-          headerRight: () => (
-            <HeaderButton onPress={handleSave} disabled={!canSave} hitSlop={8} style={styles.headerTextButton}>
-              <Text style={[styles.saveText, !canSave && styles.saveTextDisabled]}>{t('client.save')}</Text>
-            </HeaderButton>
-          ),
-        }}
-      />
-
-      {errorMessage ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorBannerText}>{errorMessage}</Text>
-        </View>
-      ) : null}
-
-      <ScreenScrollView contentContainerStyle={styles.form}>
-        <TextInput style={styles.input} placeholder={t('service.name')} value={name} onChangeText={setName} />
-        <TextInput
-          style={[styles.input, styles.multilineInput]}
+    <>
+      <Stack.Screen options={modalHeader} />
+      <FormScreen
+        closable
+        title={t('service.addNew')}
+        footer={<Button label={t('client.save')} onPress={handleSave} loading={saving} disabled={!canSave} />}>
+        <ErrorBanner message={errorMessage} />
+        <TextField label={t('service.name')} value={name} onChangeText={setName} autoCapitalize="sentences" />
+        <TextField
+          label={t('service.description')}
           placeholder={t('service.descriptionPlaceholder')}
           value={description}
           onChangeText={setDescription}
           multiline
         />
-
-        <Text style={styles.sectionLabel}>{t('service.color')}</Text>
-        <View style={styles.colorRow}>
-          {TREATMENT_COLORS.map((option) => (
-            <Pressable
-              key={option}
-              style={[
-                styles.colorSwatch,
-                { backgroundColor: COLOR_MAP[option as TreatmentColor] },
-                color === option && styles.colorSwatchSelected,
-              ]}
-              onPress={() => setColor(option)}>
-              {color === option ? <AppIcon name="check" size={16} color="#ffffff" /> : null}
-            </Pressable>
-          ))}
-        </View>
-      </ScreenScrollView>
-    </SafeAreaView>
+        <Field label={t('service.color')}>
+          <View style={styles.colorRow}>
+            {TREATMENT_COLORS.map((option) => {
+              const selected = color === option;
+              return (
+                <Pressable
+                  key={option}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  style={[
+                    styles.colorSwatch,
+                    { backgroundColor: COLOR_MAP[option as TreatmentColor], borderColor: selected ? theme.text : 'transparent' },
+                  ]}
+                  onPress={() => setColor(option)}>
+                  {selected ? <AppIcon name="check" size={16} color={theme.onTint} /> : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        </Field>
+      </FormScreen>
+    </>
   );
 }
 
-const createStyles = (theme: typeof Colors.light) =>
-  StyleSheet.create({
-    safeArea: {
-      flex: 1,
-      backgroundColor: theme.background,
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    headerTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.text,
-    },
-    headerTextButton: {
-      width: 'auto',
-      minWidth: 0,
-      paddingHorizontal: 4,
-    },
-    saveText: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.tint,
-    },
-    saveTextDisabled: {
-      color: theme.muted,
-    },
-    errorBanner: {
-      marginHorizontal: 16,
-      marginTop: 12,
-      padding: 12,
-      borderRadius: Design.controlRadius,
-      backgroundColor: theme.errorSurface,
-    },
-    errorBannerText: {
-      color: theme.error,
-      fontSize: 13,
-      fontWeight: '600',
-    },
-    form: {
-      padding: 16,
-    },
-    sectionLabel: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: theme.muted,
-      textTransform: 'uppercase',
-      marginBottom: 8,
-    },
-    input: {
-      minHeight: Design.touchTarget,
-      borderWidth: 1,
-      borderColor: theme.border,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      fontSize: 15,
-      color: theme.text,
-      marginBottom: 12,
-    },
-    multilineInput: {
-      minHeight: 70,
-      textAlignVertical: 'top',
-    },
-    colorRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 10,
-    },
-    colorSwatch: {
-      width: 44,
-      minHeight: 44,
-      borderRadius: 16,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    colorSwatchSelected: {
-      borderWidth: 2,
-      borderColor: theme.text,
-    },
-  });
+const styles = StyleSheet.create({
+  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  colorSwatch: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+});

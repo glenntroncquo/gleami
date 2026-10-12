@@ -769,7 +769,7 @@ export default function CalendarScreen() {
                     hitSlop={8}
                     style={styles.periodStep}
                     onPress={() => setGridDate(toDateKey(addDays(gridAnchor, viewMode === 'weekGrid' ? -7 : -1)))}>
-                    <AppIcon name="chevronLeft" size={18} color={theme.text} />
+                    <AppIcon name="chevronLeft" size={22} color={theme.text} />
                   </Pressable>
                 ) : null}
                 <Pressable
@@ -783,7 +783,7 @@ export default function CalendarScreen() {
                   <Text style={styles.monthText} numberOfLines={1}>
                     {gridPeriodLabel ?? activeMonthLabel}
                   </Text>
-                  <AppIcon name="arrowDown" size={18} color={theme.muted} />
+                  <AppIcon name="arrowDown" size={16} color={theme.muted} />
                 </Pressable>
                 {gridPeriodLabel ? (
                   <Pressable
@@ -791,19 +791,19 @@ export default function CalendarScreen() {
                     hitSlop={8}
                     style={styles.periodStep}
                     onPress={() => setGridDate(toDateKey(addDays(gridAnchor, viewMode === 'weekGrid' ? 7 : 1)))}>
-                    <AppIcon name="chevronRight" size={18} color={theme.text} />
+                    <AppIcon name="chevronRight" size={22} color={theme.text} />
                   </Pressable>
                 ) : null}
 
                 <CalendarGlass style={styles.headerIcons}>
                   <Pressable ref={staffChipRef} collapsable={false} accessibilityLabel={`${t('calendar.employee')}: ${selectedStaffName}`} accessibilityState={{ expanded: showStaffMenu }} style={styles.iconButton} onPress={openStaffMenu}>
-                    {selectedStaff ? <StaffAvatar imagePath={selectedStaff.image_path} name={selectedStaffName} size={26} fontSize={11} /> : <AppIcon name="peopleOutline" size={23} color={theme.text} />}
+                    {selectedStaff ? <StaffAvatar imagePath={selectedStaff.image_path} name={selectedStaffName} size={26} fontSize={11} /> : <AppIcon name="peopleOutline" size={22} color={theme.text} />}
                   </Pressable>
                   <Pressable ref={modeButtonRef} collapsable={false} accessibilityLabel={`${t('calendar.month')}, ${t('calendar.week')}, ${t('calendar.list')}, ${t('calendar.dayGrid')}, ${t('calendar.weekGrid')}`} accessibilityState={{ expanded: showModeMenu }} style={styles.iconButton} onPress={openModeMenu}>
-                    <AppIcon name={viewMode === 'month' ? 'calendar' : viewMode === 'dayGrid' ? 'schedule' : viewMode === 'weekGrid' || viewMode === 'week' ? 'viewWeek' : 'viewList'} size={23} color={theme.text} />
+                    <AppIcon name={viewMode === 'month' ? 'calendar' : viewMode === 'dayGrid' ? 'schedule' : viewMode === 'weekGrid' || viewMode === 'week' ? 'viewWeek' : 'viewList'} size={22} color={theme.text} />
                   </Pressable>
-                  <Pressable accessibilityLabel={t('appointment.title')} style={styles.iconButton} onPress={() => router.push({ pathname: '/appointment-new', params: { date: todayKey } })}>
-                    <AppIcon name="add" size={25} color={theme.text} />
+                  <Pressable accessibilityLabel={t('calendar.addTitle')} style={styles.iconButton} onPress={() => router.push({ pathname: '/calendar-add', params: { date: viewMode === 'dayGrid' ? gridDate : todayKey, ...(selectedStaff ? { staffId: selectedStaff.id } : {}) } })}>
+                    <AppIcon name="add" size={24} color={theme.text} />
                   </Pressable>
                 </CalendarGlass>
               </View>
@@ -815,7 +815,7 @@ export default function CalendarScreen() {
                   <Text style={styles.errorBannerText} numberOfLines={2}>
                     {error}
                   </Text>
-                  <Pressable onPress={handleRefresh}>
+                  <Pressable accessibilityRole="button" hitSlop={12} onPress={handleRefresh}>
                     <Text style={styles.errorBannerRetry}>{t('calendar.retry')}</Text>
                   </Pressable>
                 </View>
@@ -1005,7 +1005,7 @@ export default function CalendarScreen() {
                           Haptics.selectionAsync();
                           React.startTransition(() => setSelectedStaffIds((current) => current.includes(staff.id) ? current.filter((id) => id !== staff.id) : [...current, staff.id]));
                         }}>
-                        <StaffAvatar imagePath={staff.image_path} name={name} size={22} fontSize={9} />
+                        <StaffAvatar imagePath={staff.image_path} name={name} size={24} fontSize={10} />
                         <Text style={styles.staffMenuName}>{name}</Text>
                         {selectedStaffIds.includes(staff.id) ? <AppIcon name="check" size={18} color={theme.tint} /> : null}
                       </Pressable>

@@ -1,22 +1,22 @@
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { Pressable } from '@/components/pressable-scale';
-import { AppIcon } from '@/components/app-icon';
+import { AppIcon, type AppIconName } from '@/components/app-icon';
+import { ListGroup, ListRow, ScreenTitle, SectionHeader, useTheme } from '@/components/ui';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { AccountDeletionButton } from '@/components/account-deletion-button';
 import { SkeletonBlock } from '@/components/skeleton-block';
-import { LegalLinkRows, useLegalUrls } from '@/components/legal-link-rows';
+import { LegalLinkRows } from '@/components/legal-link-rows';
 import { TabScreen } from '@/components/tab-screen';
-import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors, Design } from '@/constants/theme';
+import { Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import type { PermissionKey } from '@/lib/auth/permissions';
 import i18n, { SUPPORTED_LANGUAGES, SupportedLanguage, setLanguage } from '@/lib/i18n';
 import { fetchOwnStaffProfile, StaffProfile } from '@/lib/api/profile';
 import { getCompanyImageUrl, uploadStaffPhoto, removeStaffPhoto } from '@/lib/storage';
@@ -29,15 +29,20 @@ const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
   pt: 'Português',
 };
 
+const MANAGE_ITEMS: { permission: PermissionKey; href: '/staff' | '/services' | '/orders' | '/products' | '/dashboard' | '/settings'; icon: AppIconName; labelKey: string }[] = [
+  { permission: 'staff:manage', href: '/staff', icon: 'groups', labelKey: 'more.staff' },
+  { permission: 'treatments:manage', href: '/services', icon: 'cut', labelKey: 'more.services' },
+  { permission: 'orders:manage', href: '/orders', icon: 'orders', labelKey: 'more.orders' },
+  { permission: 'products:manage', href: '/products', icon: 'inventory', labelKey: 'more.products' },
+  { permission: 'dashboard:read', href: '/dashboard', icon: 'dashboard', labelKey: 'more.dashboard' },
+  { permission: 'settings:manage', href: '/settings', icon: 'settings', labelKey: 'more.settings' },
+];
+
 export default function MoreScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? 'light';
-  const theme = Colors[colorScheme];
-  const styles = createStyles(theme);
+  const theme = useTheme();
   const { user, companyId, signOut, hasPermission } = useAuth();
-  const { privacyUrl, termsUrl } = useLegalUrls();
-  const hasLegalLinks = Boolean(privacyUrl || termsUrl);
   const [profile, setProfile] = React.useState<StaffProfile | null>(null);
   const [profileLoading, setProfileLoading] = React.useState(true);
   const photoBusy = React.useRef(false);
@@ -106,11 +111,15 @@ export default function MoreScreen() {
     `${profile?.first_name ?? ''} ${profile?.last_name ?? ''}`.trim() || user?.email || '';
   const avatarUrl = getCompanyImageUrl(profile?.image_path);
 
+  const canManage = MANAGE_ITEMS.some((item) => hasPermission(item.permission));
+
   return (
     <TabScreen>
     <ThemedView style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.profileSection}>
+      <ScreenTitle title={t('tabs.more')} />
+
+      <View style={[styles.profileCard, { borderColor: theme.border }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('staff.changePhoto')}
@@ -118,122 +127,69 @@ export default function MoreScreen() {
           disabled={!profile || profileLoading || uploadingPhoto}
           onPress={handleChangePhoto}
           style={styles.avatarButton}>
-        {profileLoading ? (
-          <SkeletonBlock style={[styles.avatar, { backgroundColor: theme.border }]} />
-        ) : avatarUrl ? (
-          <Image source={{ uri: avatarUrl }} style={styles.avatar} contentFit="cover" />
-        ) : (
-          <View style={styles.avatar}>
-            <ThemedText style={styles.avatarInitials}>{getInitialsFromLabel(displayName)}</ThemedText>
-          </View>
-        )}
-        {profile && !profileLoading ? (
-          <View style={styles.avatarEditBadge}>
-            <AppIcon name="camera" size={14} color={theme.onTint} />
-          </View>
-        ) : null}
+          {profileLoading ? (
+            <SkeletonBlock style={[styles.avatar, { backgroundColor: theme.border }]} />
+          ) : avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={styles.avatar} contentFit="cover" />
+          ) : (
+            <View style={[styles.avatar, { backgroundColor: theme.surface }]}>
+              <Text style={[styles.avatarInitials, { color: theme.muted }]}>{getInitialsFromLabel(displayName)}</Text>
+            </View>
+          )}
+          {profile && !profileLoading ? (
+            <View style={[styles.avatarEditBadge, { backgroundColor: theme.tint, borderColor: theme.background }]}>
+              <AppIcon name="camera" size={12} color={theme.onTint} />
+            </View>
+          ) : null}
         </Pressable>
-        {displayName ? <ThemedText style={styles.name}>{displayName}</ThemedText> : null}
-        {user?.email && user.email !== displayName ? (
-          <ThemedText style={styles.email}>{user.email}</ThemedText>
-        ) : null}
-      </View>
-
-      <View style={styles.section}>
-        <ThemedText style={styles.languageLabel}>{t('profile.language')}</ThemedText>
-        <View style={styles.languageRow}>
-          {SUPPORTED_LANGUAGES.map((language) => {
-            const isActive = i18n.language === language;
-            return (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ selected: isActive }}
-                key={language}
-                style={[styles.languageChip, isActive && styles.languageChipActive]}
-                onPress={() => setLanguage(language)}>
-                <ThemedText
-                  style={styles.languageChipText}
-                  lightColor={isActive ? theme.onTint : undefined}
-                  darkColor={isActive ? theme.onTint : undefined}>
-                  {LANGUAGE_LABELS[language]}
-                </ThemedText>
-              </Pressable>
-            );
-          })}
+        <View style={styles.profileText}>
+          {displayName ? <Text style={[styles.name, { color: theme.text }]} numberOfLines={1}>{displayName}</Text> : null}
+          {user?.email && user.email !== displayName ? (
+            <Text style={[styles.email, { color: theme.muted }]} numberOfLines={1}>{user.email}</Text>
+          ) : null}
         </View>
       </View>
 
-      {(hasPermission('staff:manage') || hasPermission('treatments:manage') || hasPermission('orders:manage') || hasPermission('products:manage') || hasPermission('dashboard:read') || hasPermission('settings:manage')) ? (
-      <View style={styles.section}>
-        <ThemedText style={styles.sectionLabel}>{t('more.manage')}</ThemedText>
-        {hasPermission('staff:manage') ? (
-        <Pressable accessibilityRole="button" style={styles.manageRow} onPress={() => router.push('/staff')}>
-          <AppIcon name="groups" size={21} color={theme.text} />
-          <ThemedText style={styles.manageRowText}>{t('more.staff')}</ThemedText>
-          <AppIcon name="chevronRight" size={15} color={theme.muted} />
-        </Pressable>
-        ) : null}
-        {hasPermission('treatments:manage') ? (
-        <Pressable accessibilityRole="button" style={styles.manageRow} onPress={() => router.push('/services')}>
-          <AppIcon name="cut" size={21} color={theme.text} />
-          <ThemedText style={styles.manageRowText}>{t('more.services')}</ThemedText>
-          <AppIcon name="chevronRight" size={15} color={theme.muted} />
-        </Pressable>
-        ) : null}
-        {hasPermission('orders:manage') ? (
-        <Pressable accessibilityRole="button" style={styles.manageRow} onPress={() => router.push('/orders')}>
-          <AppIcon name="orders" size={21} color={theme.text} />
-          <ThemedText style={styles.manageRowText}>{t('more.orders')}</ThemedText>
-          <AppIcon name="chevronRight" size={15} color={theme.muted} />
-        </Pressable>
-        ) : null}
-        {hasPermission('products:manage') ? (
-        <Pressable accessibilityRole="button" style={styles.manageRow} onPress={() => router.push('/products')}>
-          <AppIcon name="inventory" size={21} color={theme.text} />
-          <ThemedText style={styles.manageRowText}>{t('more.products')}</ThemedText>
-          <AppIcon name="chevronRight" size={15} color={theme.muted} />
-        </Pressable>
-        ) : null}
-        {hasPermission('dashboard:read') ? (
-        <Pressable accessibilityRole="button" style={styles.manageRow} onPress={() => router.push('/dashboard')}>
-          <AppIcon name="dashboard" size={21} color={theme.text} />
-          <ThemedText style={styles.manageRowText}>{t('more.dashboard')}</ThemedText>
-          <AppIcon name="chevronRight" size={15} color={theme.muted} />
-        </Pressable>
-        ) : null}
-        {hasPermission('settings:manage') ? (
-        <Pressable accessibilityRole="button" style={styles.manageRow} onPress={() => router.push('/settings')}>
-          <AppIcon name="settings" size={21} color={theme.text} />
-          <ThemedText style={styles.manageRowText}>{t('more.settings')}</ThemedText>
-          <AppIcon name="chevronRight" size={15} color={theme.muted} />
-        </Pressable>
-        ) : null}
-      </View>
-      ) : null}
-
-      {hasLegalLinks ? (
+      {canManage ? (
         <View style={styles.section}>
-          <ThemedText style={styles.sectionLabel}>{t('legal.section')}</ThemedText>
-          <LegalLinkRows showIcons rowStyle={styles.manageRow} textStyle={styles.manageRowText} chevronColor={theme.muted} />
+          <SectionHeader title={t('more.manage')} />
+          <ListGroup>
+            {MANAGE_ITEMS.filter((item) => hasPermission(item.permission)).map((item) => (
+              <ListRow key={item.href} icon={item.icon} title={t(item.labelKey)} onPress={() => router.push(item.href)} />
+            ))}
+          </ListGroup>
         </View>
       ) : null}
 
-      <View style={styles.accountActions}>
-        {__DEV__ ? (
-          <Pressable style={styles.signOutButton} onPress={() => setShouldCrash(true)}>
-            <ThemedText style={styles.signOutText} lightColor={Colors.light.error} darkColor={Colors.dark.error}>
-              {t('errorBoundary.testCrash')}
-            </ThemedText>
-          </Pressable>
-        ) : null}
+      <View style={styles.section}>
+        <SectionHeader title={t('profile.language')} />
+        <ListGroup inset={14}>
+          {SUPPORTED_LANGUAGES.map((language) => (
+            <ListRow
+              key={language}
+              title={LANGUAGE_LABELS[language]}
+              selected={i18n.language === language}
+              onPress={() => setLanguage(language)}
+            />
+          ))}
+        </ListGroup>
+      </View>
 
-        <AccountDeletionButton style={styles.signOutButton} />
+      <View style={styles.section}>
+        <LegalLinkRows />
+      </View>
 
-        <Pressable style={styles.signOutButton} onPress={signOut}>
-          <ThemedText style={styles.signOutText} lightColor={Colors.light.error} darkColor={Colors.dark.error}>
-            {t('profile.signOut')}
-          </ThemedText>
-        </Pressable>
+      <View style={styles.section}>
+        <SectionHeader title={t('account.section')} />
+        <ListGroup>
+          {__DEV__ ? (
+            <ListRow destructive icon="flash" chevron={false} title={t('errorBoundary.testCrash')} onPress={() => setShouldCrash(true)} />
+          ) : null}
+          <AccountDeletionButton />
+        </ListGroup>
+        <ListGroup style={styles.signOutGroup}>
+          <ListRow destructive chevron={false} title={t('profile.signOut')} onPress={signOut} />
+        </ListGroup>
       </View>
       </ScrollView>
     </ThemedView>
@@ -241,108 +197,39 @@ export default function MoreScreen() {
   );
 }
 
-const createStyles = (theme: typeof Colors.light) =>
-  StyleSheet.create({
-    container: {
-      flexGrow: 1,
-      alignItems: 'center',
-      paddingTop: 24,
-      paddingBottom: 24,
-      paddingHorizontal: Design.screenPadding,
-      gap: Design.sectionGap,
-    },
-    profileSection: {
-      alignItems: 'center',
-      gap: 6,
-    },
-    avatarButton: { position: 'relative', marginBottom: 8 },
-    avatarEditBadge: {
-      position: 'absolute', right: -2, bottom: -2,
-      width: 26, height: 26, borderRadius: 13,
-      alignItems: 'center', justifyContent: 'center',
-      backgroundColor: theme.tint, borderWidth: 2, borderColor: theme.background,
-    },
-    avatar: {
-      width: 68,
-      height: 68,
-      borderRadius: 34,
-      backgroundColor: theme.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    avatarInitials: {
-      fontSize: 23,
-      fontWeight: '700',
-      color: theme.muted,
-    },
-    name: {
-      fontSize: 18,
-      fontWeight: '700',
-    },
-    email: {
-      fontSize: 14,
-      opacity: 0.6,
-    },
-    section: {
-      width: '100%',
-      gap: 0,
-    },
-    languageLabel: { fontSize: 14, fontWeight: '600', marginBottom: 10 },
-    sectionLabel: {
-      fontSize: 11,
-      fontWeight: '600',
-      marginBottom: 8,
-      opacity: 0.6,
-      textTransform: 'uppercase',
-    },
-    languageRow: {
-      flexDirection: 'row',
-      gap: 8,
-    },
-    languageChip: {
-      minHeight: Design.touchTarget,
-      justifyContent: 'center',
-      flex: 1,
-      paddingVertical: 10,
-      borderRadius: Design.controlRadius,
-      borderWidth: 1,
-      borderColor: theme.border,
-      alignItems: 'center',
-    },
-    languageChipActive: {
-      backgroundColor: theme.tint,
-      borderColor: theme.tint,
-    },
-    languageChipText: {
-      fontSize: 14,
-      fontWeight: '600',
-    },
-    manageRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 14,
-      minHeight: 48,
-      paddingVertical: 12,
-      paddingHorizontal: 6,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.border,
-    },
-    manageRowText: {
-      flex: 1,
-      fontSize: 14,
-      fontWeight: '400',
-    },
-    accountActions: {
-      marginTop: 'auto',
-      alignItems: 'center',
-      marginBottom: 24,
-    },
-    signOutButton: {
-      paddingVertical: 12,
-      paddingHorizontal: Design.screenPadding,
-    },
-    signOutText: {
-      fontSize: 16,
-      fontWeight: '600',
-    },
-  });
+const styles = StyleSheet.create({
+  container: {
+    paddingTop: 12,
+    paddingBottom: 40,
+    paddingHorizontal: Design.screenPadding,
+    gap: 24,
+  },
+  section: { gap: 8 },
+  signOutGroup: { marginTop: 8 },
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderRadius: 16,
+  },
+  avatarButton: { position: 'relative' },
+  avatarEditBadge: {
+    position: 'absolute', right: -2, bottom: -2,
+    width: 24, height: 24, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2,
+  },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitials: { fontSize: 20, fontWeight: '700' },
+  profileText: { flex: 1, gap: 2 },
+  name: { fontSize: 17, fontWeight: '700' },
+  email: { fontSize: 14 },
+});

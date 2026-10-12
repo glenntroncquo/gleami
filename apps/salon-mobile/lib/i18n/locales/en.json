@@ -118,7 +118,27 @@
       "Fri",
       "Sat"
     ],
-    "employeesSelected": "{{count}} employees selected"
+    "employeesSelected": "{{count}} employees selected",
+    "addTitle": "Add",
+    "addAppointment": "Appointment",
+    "addUnavailability": "Unavailability",
+    "unavailability": {
+      "appointmentHint": "Book a client in",
+      "unavailabilityHint": "Block time for a break or absence",
+      "type": "Type",
+      "custom": "Custom",
+      "lunch": "Lunch",
+      "break": "Break",
+      "wholeDay": "Whole day",
+      "date": "Date",
+      "start": "Start time",
+      "end": "End time",
+      "duration": "Duration {{value}}",
+      "teamMember": "Team member",
+      "endBeforeStart": "End time must be after start time.",
+      "minutes": "{{count}} min",
+      "hours": "{{count}} h"
+    }
   },
   "appointment": {
     "detailTitle": "Appointment",

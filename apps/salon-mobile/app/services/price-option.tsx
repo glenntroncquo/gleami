@@ -1,33 +1,14 @@
-import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
-import { AppIcon } from '@/components/app-icon';
-import { HeaderButton } from '@/components/header-button';
-import {
-  PhaseBlockEditor,
-  defaultEditorPhases,
-  editorPhasesFromDrafts,
-  type EditorPhase,
-} from '@/components/phase-block-editor';
+import { PhaseBlockEditor, defaultEditorPhases, editorPhasesFromDrafts, type EditorPhase } from '@/components/phase-block-editor';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import {
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { FormSkeleton } from '@/components/content-skeletons';
-import { Colors, Design } from '@/constants/theme';
+import { Button, ErrorBanner, FormScreen, TextField, useModalHeader } from '@/components/ui';
+import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import {
-  createServiceVariant,
-  fetchService,
-  phasesForEditor,
-  updateServiceVariant,
-} from '@/lib/api/services';
+import { createServiceVariant, fetchService, phasesForEditor, updateServiceVariant } from '@/lib/api/services';
 
 export default function PriceOptionScreen() {
   const { t } = useTranslation();
@@ -41,6 +22,7 @@ export default function PriceOptionScreen() {
   const { companyId } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
+  const modalHeader = useModalHeader();
 
   const isEditing = Boolean(params.optionId);
   const [poName, setPoName] = React.useState(params.name ?? '');
@@ -119,113 +101,24 @@ export default function PriceOptionScreen() {
     }
   };
 
+  const title = (isEditing ? t('service.editVariant') : t('service.addVariant')).replace(/^\+\s*/, '');
+
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['left', 'right', 'bottom']}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: isEditing ? t('service.editVariant') : t('service.addVariant'),
-          unstable_headerLeftItems: () => [
-            {
-              type: 'button',
-              label: t('common.close'),
-              icon: { type: 'sfSymbol', name: 'xmark' },
-              tintColor: theme.text,
-              onPress: () => router.back(),
-            },
-          ],
-          headerLeft: () => (
-            <HeaderButton onPress={() => router.back()} hitSlop={8}>
-              <AppIcon name="close" size={18} color={theme.text} />
-            </HeaderButton>
-          ),
-          headerRight: () => (
-            <HeaderButton onPress={handleSave} disabled={!canSave} hitSlop={8} style={styles.headerTextButton}>
-              <Text style={[styles.saveText, { color: canSave ? theme.tint : theme.muted }]}>{t('client.save')}</Text>
-            </HeaderButton>
-          ),
-        }}
-      />
-
-      {error ? (
-        <View style={[styles.errorBanner, { backgroundColor: `${theme.error}22` }]}>
-          <Text style={[styles.errorBannerText, { color: theme.error }]}>{error}</Text>
-        </View>
-      ) : null}
-
+    <>
+      <Stack.Screen options={modalHeader} />
       {loading ? (
         <FormSkeleton fields={4} />
       ) : (
-        <View style={styles.flex}>
-          <ScrollView
-            contentContainerStyle={styles.body}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag">
-            <TextInput
-              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
-              placeholder={t('service.optionName')}
-              placeholderTextColor={theme.muted}
-              value={poName}
-              onChangeText={setPoName}
-            />
-            <TextInput
-              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
-              placeholder={t('service.price')}
-              placeholderTextColor={theme.muted}
-              value={poPrice}
-              onChangeText={setPoPrice}
-              keyboardType="decimal-pad"
-            />
-            <PhaseBlockEditor phases={phases} onChange={setPhases} serviceColor={serviceColor} theme={theme} />
-          </ScrollView>
-        </View>
+        <FormScreen
+          closable
+          title={title}
+          footer={<Button label={t('client.save')} onPress={handleSave} loading={saving} disabled={!canSave} />}>
+          <ErrorBanner message={error} />
+          <TextField label={t('service.optionName')} value={poName} onChangeText={setPoName} />
+          <TextField label={t('service.price')} value={poPrice} onChangeText={setPoPrice} keyboardType="decimal-pad" />
+          <PhaseBlockEditor phases={phases} onChange={setPhases} serviceColor={serviceColor} theme={theme} />
+        </FormScreen>
       )}
-    </SafeAreaView>
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  flex: {
-    flex: 1,
-  },
-  headerTextButton: {
-    width: 'auto',
-    minWidth: 0,
-    paddingHorizontal: 4,
-  },
-  saveText: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  errorBanner: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 12,
-    borderRadius: Design.controlRadius,
-  },
-  errorBannerText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  body: {
-    padding: 16,
-    paddingBottom: 48,
-    gap: 4,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 15,
-    marginBottom: 8,
-  },
-});

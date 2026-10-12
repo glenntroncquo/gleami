@@ -111,14 +111,14 @@ export default function StaffScheduleScreen() {
       <Stack.Screen options={{ headerShown: true, title: t('staff.schedule') }} />
 
       <View style={styles.weekNavRow}>
-        <Pressable onPress={() => setWeekOffset((prev) => prev - 1)} hitSlop={8}>
-          <AppIcon name="chevronLeft" size={24} color={theme.text} />
+        <Pressable accessibilityRole="button" style={styles.weekNavButton} onPress={() => setWeekOffset((prev) => prev - 1)} hitSlop={8}>
+          <AppIcon name="chevronLeft" size={20} color={theme.text} />
         </Pressable>
         <Pressable onPress={() => setWeekOffset(0)}>
           <Text style={styles.weekLabel}>{t('calendar.weekLabel', { number: weekNumber })}</Text>
         </Pressable>
-        <Pressable onPress={() => setWeekOffset((prev) => prev + 1)} hitSlop={8}>
-          <AppIcon name="chevronRight" size={24} color={theme.text} />
+        <Pressable accessibilityRole="button" style={styles.weekNavButton} onPress={() => setWeekOffset((prev) => prev + 1)} hitSlop={8}>
+          <AppIcon name="chevronRight" size={20} color={theme.text} />
         </Pressable>
       </View>
 
@@ -210,38 +210,33 @@ const createStyles = (theme: typeof Colors.light) =>
       flex: 1,
       backgroundColor: theme.background,
     },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    headerTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.text,
-    },
     weekNavRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      gap: 16,
+      justifyContent: 'space-between',
+      paddingHorizontal: Design.screenPadding,
       paddingVertical: 10,
-      borderBottomWidth: 1,
+      borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
+    weekNavButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: theme.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     weekLabel: {
-      fontSize: 15,
-      fontWeight: '700',
+      fontSize: 16,
+      fontWeight: '600',
       color: theme.text,
       minWidth: 100,
       textAlign: 'center',
     },
     errorBanner: {
-      marginHorizontal: 16,
+      marginHorizontal: Design.screenPadding,
       marginTop: 12,
       padding: 12,
       borderRadius: Design.controlRadius,
@@ -252,20 +247,16 @@ const createStyles = (theme: typeof Colors.light) =>
       fontSize: 13,
       fontWeight: '600',
     },
-    stateContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
     scrollContent: {
-      padding: 16,
+      paddingHorizontal: Design.screenPadding,
+      paddingTop: 16,
       paddingBottom: 48,
       gap: 12,
     },
     dayCard: {
       borderWidth: 1,
       borderColor: theme.border,
-      borderRadius: 14,
+      borderRadius: Design.cardRadius - 4,
       padding: 14,
       gap: 8,
     },
@@ -275,16 +266,15 @@ const createStyles = (theme: typeof Colors.light) =>
       justifyContent: 'space-between',
     },
     dayHeaderTitle: {
-      fontSize: 15,
-      fontWeight: '700',
+      fontSize: 16,
+      fontWeight: '600',
       color: theme.text,
       textTransform: 'capitalize',
     },
     todayBadge: {
-      fontSize: 11,
-      fontWeight: '700',
+      fontSize: 12,
+      fontWeight: '600',
       color: theme.tint,
-      textTransform: 'uppercase',
     },
     metaRow: {
       flexDirection: 'row',
@@ -294,7 +284,6 @@ const createStyles = (theme: typeof Colors.light) =>
     metaText: {
       fontSize: 13,
       color: theme.muted,
-      fontWeight: '600',
     },
     absentRow: {
       flexDirection: 'row',
@@ -304,39 +293,30 @@ const createStyles = (theme: typeof Colors.light) =>
     absentText: {
       fontSize: 13,
       color: theme.error,
-      fontWeight: '600',
-    },
-    noAppointmentsText: {
-      fontSize: 13,
-      color: theme.muted,
+      fontWeight: '500',
     },
     appointmentRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      paddingVertical: 6,
-      borderTopWidth: 1,
+      gap: 10,
+      paddingVertical: 8,
+      borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.border,
     },
-    colorBar: {
-      width: 3,
-      height: 20,
-      borderRadius: 2,
-    },
     appointmentTime: {
-      fontSize: 12,
-      fontWeight: '700',
-      color: theme.text,
-      width: 72,
-    },
-    appointmentLabel: {
       fontSize: 13,
       fontWeight: '600',
+      color: theme.text,
+      width: 78,
+    },
+    appointmentLabel: {
+      fontSize: 15,
+      fontWeight: '500',
       color: theme.text,
       flex: 1,
     },
     appointmentClient: {
-      fontSize: 12,
+      fontSize: 13,
       color: theme.muted,
       maxWidth: 100,
     },

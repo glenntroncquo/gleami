@@ -7,8 +7,8 @@ import { DeviceEventEmitter, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { useTheme } from '@/components/ui';
 import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
 /**
  * Shared native date/time picker sheet, presented as `formSheet` (see
@@ -28,8 +28,7 @@ export default function DateTimePickerScreen() {
     field: string;
     title?: string;
   }>();
-  const colorScheme = useColorScheme() ?? 'light';
-  const theme = Colors[colorScheme];
+  const theme = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   const [current, setCurrent] = React.useState(() => new Date(value));
@@ -39,6 +38,7 @@ export default function DateTimePickerScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
+          headerShadowVisible: false,
           title: title || (mode === 'date' ? t('appointment.dateAndTime') : t('appointment.starts')),
           headerRight: () => (
             <HeaderButton onPress={() => router.back()} hitSlop={8} style={styles.headerTextButton}>
@@ -76,8 +76,8 @@ function createStyles(theme: typeof Colors.light) {
       paddingHorizontal: 4,
     },
     headerLinkText: {
-      fontSize: 15,
-      fontWeight: '700',
+      fontSize: 16,
+      fontWeight: '600',
       color: theme.tint,
     },
     content: {

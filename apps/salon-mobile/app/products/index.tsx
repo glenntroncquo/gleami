@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 
 import { RowListSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
+import { IconTile, ListRow } from '@/components/ui';
 import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -115,6 +115,7 @@ export default function ProductsScreen() {
           contentContainerStyle={[styles.listContent, filteredProducts.length === 0 && styles.listContentEmpty]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
           keyboardShouldPersistTaps="handled"
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
           ListEmptyComponent={
             searchTerm ? (
               <EmptyState icon="search" title={t('products.noResults')} />
@@ -131,33 +132,37 @@ export default function ProductsScreen() {
           renderItem={({ item }) => {
             const tone = stockTone(item.stock_qty);
             return (
-              <Pressable
-                style={styles.row}
-                onPress={() => router.push({ pathname: '/products/[id]', params: { id: item.id } })}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.rowName, item.active === false && styles.rowNameInactive]}>
-                    {item.name || t('products.unnamed')}
-                  </Text>
-                  {item.sku ? <Text style={styles.rowSubtitle}>{item.sku}</Text> : null}
-                </View>
-                <View style={[styles.stockBadge, { backgroundColor: theme[`${tone}Surface`] }]}>
-                  <Text style={[styles.stockBadgeText, { color: theme[tone] }]}>{item.stock_qty ?? 0}</Text>
-                </View>
-                <AppIcon name="chevronRight" size={22} color={theme.muted} />
-              </Pressable>
+              <ListRow
+                title={item.name || t('products.unnamed')}
+                subtitle={[item.sku, item.active === false ? t('service.inactive') : null].filter(Boolean).join(' · ')}
+                leading={<IconTile name="inventory" />}
+                trailing={
+                  <View style={[styles.stockBadge, { backgroundColor: theme[`${tone}Surface`] }]}>
+                    <Text style={[styles.stockBadgeText, { color: theme[tone] }]}>{item.stock_qty ?? 0}</Text>
+                  </View>
+                }
+                onPress={() => router.push({ pathname: '/products/[id]', params: { id: item.id } })}
+              />
             );
           }}
         />
       )}
 
       {!showNoCompanyState ? (
-        <TouchableOpacity style={styles.fab} onPress={() => router.push('/products/new')}>
-          <AppIcon name="add" size={26} color={theme.text} />
-        </TouchableOpacity>
+        <Pressable
+          style={styles.fab}
+          accessibilityRole="button"
+          accessibilityLabel={t('products.addNew')}
+          onPress={() => router.push('/products/new')}>
+          <AppIcon name="add" size={26} color={theme.onTint} />
+        </Pressable>
       ) : null}
     </SafeAreaView>
   );
 }
+
+// ListRow carries 14px horizontal padding, so the list pads only the remainder to align with the screen edge.
+const ROW_INSET = 14;
 
 const createStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({
@@ -165,26 +170,8 @@ const createStyles = (theme: typeof Colors.light) =>
       flex: 1,
       backgroundColor: theme.background,
     },
-    searchRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      marginHorizontal: 16,
-      marginTop: 12,
-      marginBottom: 4,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    searchInput: {
-      flex: 1,
-      fontSize: 15,
-      color: theme.text,
-    },
     errorBanner: {
-      marginHorizontal: 16,
+      marginHorizontal: Design.screenPadding,
       marginTop: 12,
       padding: 12,
       borderRadius: Design.controlRadius,
@@ -195,40 +182,39 @@ const createStyles = (theme: typeof Colors.light) =>
       fontSize: 13,
       fontWeight: '600',
     },
-    stateContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingTop: 60,
-    },
     listContent: {
-      paddingHorizontal: 16,
+      paddingHorizontal: Design.screenPadding - ROW_INSET,
       paddingTop: 8,
       paddingBottom: 100,
     },
     listContentEmpty: {
       flexGrow: 1,
     },
-    row: {
+    separator: {
+      height: StyleSheet.hairlineWidth,
+      marginLeft: ROW_INSET + 40 + 14,
+      marginRight: ROW_INSET,
+      backgroundColor: theme.border,
+    },
+    searchRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
+      height: 50,
+      marginHorizontal: Design.screenPadding,
+      marginTop: 12,
+      marginBottom: 4,
+      paddingHorizontal: 14,
+      borderRadius: Design.controlRadius,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.background,
     },
-    rowName: {
-      fontSize: 15,
-      fontWeight: '600',
+    searchInput: {
+      flex: 1,
+      height: '100%',
+      fontSize: 16,
       color: theme.text,
-    },
-    rowNameInactive: {
-      color: theme.muted,
-    },
-    rowSubtitle: {
-      fontSize: 13,
-      color: theme.muted,
-      marginTop: 2,
     },
     stockBadge: {
       minWidth: 34,
@@ -239,24 +225,22 @@ const createStyles = (theme: typeof Colors.light) =>
     },
     stockBadgeText: {
       fontSize: 13,
-      fontWeight: '700',
+      fontWeight: '600',
     },
     fab: {
       position: 'absolute',
-      right: 20,
+      right: Design.screenPadding,
       bottom: 24,
-      width: 54,
-      height: 54,
-      borderRadius: 27,
-      backgroundColor: theme.background,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: theme.text,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 6,
+      backgroundColor: theme.tint,
+      shadowColor: theme.text,
+      shadowOpacity: 0.12,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 4 },
       elevation: 4,
     },
   });

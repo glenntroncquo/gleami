@@ -1,10 +1,9 @@
-import { ScreenScrollView } from '@/components/screen-scroll-view';
 import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
-import { HeaderButton } from '@/components/header-button';
+import { Button, ErrorBanner, Field, FieldRow, FormScreen, ListGroup, SwitchRow, TextField } from '@/components/ui';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { Alert, DeviceEventEmitter, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, DeviceEventEmitter, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -175,159 +174,124 @@ export default function ProductDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: product?.name || t('products.edit'),
-          headerRight: () => (
-            <View style={styles.headerActions}>
-              <HeaderButton onPress={handleDelete} disabled={deleting} hitSlop={8}>
-                <AppIcon name="delete" size={20} color={theme.error} />
-              </HeaderButton>
-              <HeaderButton onPress={handleSave} disabled={!canSave} hitSlop={8} style={styles.headerTextButton}>
-                <Text style={[styles.saveText, !canSave && styles.saveTextDisabled]}>{t('client.save')}</Text>
-              </HeaderButton>
-            </View>
-          ),
-        }}
-      />
+    <>
+      <Stack.Screen options={{ headerShown: true, title: product?.name || t('products.edit') }} />
+      <FormScreen footer={<Button label={t('client.save')} onPress={handleSave} loading={saving} disabled={!canSave} />}>
+        <ErrorBanner message={errorMessage} />
 
-      {errorMessage ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorBannerText}>{errorMessage}</Text>
-        </View>
-      ) : null}
-
-      <ScreenScrollView contentContainerStyle={styles.form}>
-        <Text style={styles.sectionLabel}>{t('products.form.name')}</Text>
-        <TextInput
-          style={styles.input}
+        <TextField
+          label={t('products.form.name')}
           placeholder={t('products.form.namePlaceholder')}
-          placeholderTextColor={theme.muted}
           value={name}
           onChangeText={setName}
         />
 
-        <View style={styles.rowFields}>
-          <View style={styles.rowField}>
-            <Text style={styles.sectionLabel}>{t('products.form.sku')}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder={t('products.form.skuPlaceholder')}
-              placeholderTextColor={theme.muted}
-              value={sku}
-              onChangeText={setSku}
-              autoCapitalize="characters"
-            />
-          </View>
-          <View style={styles.rowField}>
-            <Text style={styles.sectionLabel}>{t('products.form.barcode')}</Text>
-            <View style={styles.barcodeRow}>
-              <TextInput
-                style={[styles.input, styles.barcodeInput]}
-                placeholder={t('products.form.barcodePlaceholder')}
-                placeholderTextColor={theme.muted}
-                value={barcode}
-                onChangeText={setBarcode}
-                keyboardType="number-pad"
-              />
-              <Pressable
-                style={styles.scanButton}
-                onPress={() => router.push({ pathname: '/barcode-scanner', params: { event: BARCODE_SCAN_EVENT } })}>
-                <AppIcon name="barcode" size={20} color={theme.text} />
-              </Pressable>
-            </View>
-          </View>
-        </View>
+        <TextField
+          label={t('products.form.sku')}
+          placeholder={t('products.form.skuPlaceholder')}
+          value={sku}
+          onChangeText={setSku}
+          autoCapitalize="characters"
+        />
 
-        <Text style={styles.sectionLabel}>{t('products.form.description')}</Text>
-        <TextInput
-          style={[styles.input, styles.multilineInput]}
+        <Field label={t('products.form.barcode')}>
+          <View style={styles.barcodeRow}>
+            <TextField
+              containerStyle={styles.flex}
+              accessibilityLabel={t('products.form.barcode')}
+              placeholder={t('products.form.barcodePlaceholder')}
+              value={barcode}
+              onChangeText={setBarcode}
+              keyboardType="number-pad"
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('products.form.barcode')}
+              style={styles.scanButton}
+              onPress={() => router.push({ pathname: '/barcode-scanner', params: { event: BARCODE_SCAN_EVENT } })}>
+              <AppIcon name="barcode" size={20} color={theme.text} />
+            </Pressable>
+          </View>
+        </Field>
+
+        <TextField
+          label={t('products.form.description')}
           placeholder={t('products.form.descriptionPlaceholder')}
-          placeholderTextColor={theme.muted}
           value={description}
           onChangeText={setDescription}
           multiline
         />
 
-        <Text style={styles.sectionLabel}>{t('products.form.productCategory')}</Text>
-        <TaxonomyChipPicker
-          options={categories}
-          selectedId={categoryId}
-          onSelect={setCategoryId}
-          noneLabel={t('products.form.noneOption')}
-          theme={theme}
+        <Field label={t('products.form.productCategory')}>
+          <TaxonomyChipPicker
+            options={categories}
+            selectedId={categoryId}
+            onSelect={setCategoryId}
+            noneLabel={t('products.form.noneOption')}
+            theme={theme}
+          />
+        </Field>
+
+        <Field label={t('products.form.productLine')}>
+          <TaxonomyChipPicker
+            options={lines}
+            selectedId={lineId}
+            onSelect={setLineId}
+            noneLabel={t('products.form.noneOption')}
+            theme={theme}
+            createLabel={t('products.addLine.trigger')}
+            createPlaceholder={t('products.addLine.namePlaceholder')}
+            onCreate={(newName) => createProductLine(companyId!, newName)}
+          />
+        </Field>
+
+        <FieldRow>
+          <TextField
+            label={t('products.form.costPrice')}
+            placeholder="0.00"
+            value={costPrice}
+            onChangeText={setCostPrice}
+            keyboardType="decimal-pad"
+          />
+          <TextField
+            label={t('products.form.priceInclVat')}
+            placeholder="0.00"
+            value={priceInclVat}
+            onChangeText={setPriceInclVat}
+            keyboardType="decimal-pad"
+          />
+        </FieldRow>
+
+        <FieldRow>
+          <TextField
+            label={t('products.form.vatRate')}
+            placeholder="21"
+            value={vatRate}
+            onChangeText={setVatRate}
+            keyboardType="decimal-pad"
+          />
+          <TextField
+            label={t('products.form.stockQty')}
+            placeholder="0"
+            value={stockQty}
+            onChangeText={setStockQty}
+            keyboardType="number-pad"
+          />
+        </FieldRow>
+
+        <ListGroup>
+          <SwitchRow title={t('products.form.active')} value={active} onValueChange={setActive} />
+        </ListGroup>
+
+        <Button
+          label={t('common.delete')}
+          icon="delete"
+          variant="destructive"
+          onPress={handleDelete}
+          loading={deleting}
         />
-
-        <Text style={styles.sectionLabel}>{t('products.form.productLine')}</Text>
-        <TaxonomyChipPicker
-          options={lines}
-          selectedId={lineId}
-          onSelect={setLineId}
-          noneLabel={t('products.form.noneOption')}
-          theme={theme}
-          createLabel={t('products.addLine.trigger')}
-          createPlaceholder={t('products.addLine.namePlaceholder')}
-          onCreate={(newName) => createProductLine(companyId!, newName)}
-        />
-
-        <View style={styles.rowFields}>
-          <View style={styles.rowField}>
-            <Text style={styles.sectionLabel}>{t('products.form.costPrice')}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="0.00"
-              placeholderTextColor={theme.muted}
-              value={costPrice}
-              onChangeText={setCostPrice}
-              keyboardType="decimal-pad"
-            />
-          </View>
-          <View style={styles.rowField}>
-            <Text style={styles.sectionLabel}>{t('products.form.priceInclVat')}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="0.00"
-              placeholderTextColor={theme.muted}
-              value={priceInclVat}
-              onChangeText={setPriceInclVat}
-              keyboardType="decimal-pad"
-            />
-          </View>
-        </View>
-
-        <View style={styles.rowFields}>
-          <View style={styles.rowField}>
-            <Text style={styles.sectionLabel}>{t('products.form.vatRate')}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="21"
-              placeholderTextColor={theme.muted}
-              value={vatRate}
-              onChangeText={setVatRate}
-              keyboardType="decimal-pad"
-            />
-          </View>
-          <View style={styles.rowField}>
-            <Text style={styles.sectionLabel}>{t('products.form.stockQty')}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="0"
-              placeholderTextColor={theme.muted}
-              value={stockQty}
-              onChangeText={setStockQty}
-              keyboardType="number-pad"
-            />
-          </View>
-        </View>
-
-        <View style={styles.activeRow}>
-          <Text style={styles.activeLabel}>{t('products.form.active')}</Text>
-          <Switch value={active} onValueChange={setActive} />
-        </View>
-      </ScreenScrollView>
-    </SafeAreaView>
+      </FormScreen>
+    </>
   );
 }
 
@@ -337,99 +301,19 @@ const createStyles = (theme: typeof Colors.light) =>
       flex: 1,
       backgroundColor: theme.background,
     },
-    stateContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    headerActions: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    headerTextButton: {
-      width: 'auto',
-      minWidth: 0,
-      paddingHorizontal: 4,
-    },
-    saveText: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.tint,
-    },
-    saveTextDisabled: {
-      color: theme.muted,
-    },
-    errorBanner: {
-      marginHorizontal: 16,
-      marginTop: 12,
-      padding: 12,
-      borderRadius: Design.controlRadius,
-      backgroundColor: theme.errorSurface,
-    },
-    errorBannerText: {
-      color: theme.error,
-      fontSize: 13,
-      fontWeight: '600',
-    },
-    form: {
-      padding: 16,
-      gap: 4,
-    },
-    sectionLabel: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: theme.muted,
-      textTransform: 'uppercase',
-      marginBottom: 8,
-      marginTop: 12,
-    },
-    input: {
-      minHeight: Design.touchTarget,
-      borderWidth: 1,
-      borderColor: theme.border,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      fontSize: 15,
-      color: theme.text,
-    },
-    multilineInput: {
-      minHeight: 70,
-      textAlignVertical: 'top',
-    },
-    rowFields: {
-      flexDirection: 'row',
-      gap: 12,
-    },
-    rowField: {
-      flex: 1,
-    },
+    flex: { flex: 1 },
     barcodeRow: {
       flexDirection: 'row',
       gap: 8,
       alignItems: 'center',
     },
-    barcodeInput: {
-      flex: 1,
-    },
     scanButton: {
-      width: Design.touchTarget,
-      height: Design.touchTarget,
-      borderRadius: 12,
+      width: 50,
+      height: 50,
+      borderRadius: Design.controlRadius,
       borderWidth: 1,
       borderColor: theme.border,
       alignItems: 'center',
       justifyContent: 'center',
-    },
-    activeRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginTop: 20,
-    },
-    activeLabel: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.text,
     },
   });

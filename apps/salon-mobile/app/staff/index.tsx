@@ -2,13 +2,14 @@ import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import React from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { RowListSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
 import { StaffAvatar } from '@/components/staff-avatar';
+import { ListRow } from '@/components/ui';
 import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -81,6 +82,7 @@ export default function StaffListScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={[styles.listContent, staff.length === 0 && styles.listContentEmpty]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
           ListEmptyComponent={
             <EmptyState
               icon="groups"
@@ -94,34 +96,41 @@ export default function StaffListScreen() {
             const name = staffName(item, t('calendar.employee'));
             const subtitle = item.specialization ?? '';
             return (
-              <Pressable style={styles.row} onPress={() => router.push({ pathname: '/staff/[id]', params: { id: item.id } })}>
-                <StaffAvatar
-                  imagePath={item.image_path}
-                  name={name}
-                  size={40}
-                  backgroundColor={theme.border}
-                  textColor={theme.text}
-                  fontSize={14}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.rowName}>{name}</Text>
-                  {subtitle ? <Text style={styles.rowSubtitle}>{subtitle}</Text> : null}
-                </View>
-                <AppIcon name="chevronRight" size={22} color={theme.muted} />
-              </Pressable>
+              <ListRow
+                title={name}
+                subtitle={subtitle}
+                leading={
+                  <StaffAvatar
+                    imagePath={item.image_path}
+                    name={name}
+                    size={40}
+                    backgroundColor={theme.surface}
+                    textColor={theme.text}
+                    fontSize={14}
+                  />
+                }
+                onPress={() => router.push({ pathname: '/staff/[id]', params: { id: item.id } })}
+              />
             );
           }}
         />
       )}
 
       {!showNoCompanyState ? (
-        <TouchableOpacity style={styles.fab} onPress={() => router.push('/staff/new')}>
-          <AppIcon name="add" size={26} color={theme.text} />
-        </TouchableOpacity>
+        <Pressable
+          style={styles.fab}
+          accessibilityRole="button"
+          accessibilityLabel={t('staff.addNew')}
+          onPress={() => router.push('/staff/new')}>
+          <AppIcon name="add" size={26} color={theme.onTint} />
+        </Pressable>
       ) : null}
     </SafeAreaView>
   );
 }
+
+// ListRow carries 14px horizontal padding, so the list pads only the remainder to align with the screen edge.
+const ROW_INSET = 14;
 
 const createStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({
@@ -129,22 +138,8 @@ const createStyles = (theme: typeof Colors.light) =>
       flex: 1,
       backgroundColor: theme.background,
     },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    headerTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.text,
-    },
     errorBanner: {
-      marginHorizontal: 16,
+      marginHorizontal: Design.screenPadding,
       marginTop: 12,
       padding: 12,
       borderRadius: Design.controlRadius,
@@ -155,57 +150,34 @@ const createStyles = (theme: typeof Colors.light) =>
       fontSize: 13,
       fontWeight: '600',
     },
-    stateContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingTop: 60,
-    },
-    stateText: {
-      fontSize: 15,
-      color: theme.muted,
-    },
     listContent: {
-      paddingHorizontal: 16,
+      paddingHorizontal: Design.screenPadding - ROW_INSET,
+      paddingTop: 8,
       paddingBottom: 100,
     },
     listContentEmpty: {
       flexGrow: 1,
     },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    rowName: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.text,
-    },
-    rowSubtitle: {
-      fontSize: 13,
-      color: theme.muted,
-      marginTop: 2,
+    separator: {
+      height: StyleSheet.hairlineWidth,
+      marginLeft: ROW_INSET + 40 + 14,
+      marginRight: ROW_INSET,
+      backgroundColor: theme.border,
     },
     fab: {
       position: 'absolute',
-      right: 20,
+      right: Design.screenPadding,
       bottom: 24,
-      width: 54,
-      height: 54,
-      borderRadius: 27,
-      backgroundColor: theme.background,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: theme.text,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 6,
+      backgroundColor: theme.tint,
+      shadowColor: theme.text,
+      shadowOpacity: 0.12,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 4 },
       elevation: 4,
     },
   });

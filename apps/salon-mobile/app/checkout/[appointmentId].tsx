@@ -5,12 +5,13 @@ import { HeaderButton } from '@/components/header-button';
 import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { DeviceEventEmitter, StyleSheet, Text, TextInput, View } from 'react-native';
+import { DeviceEventEmitter, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { DetailSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
+import { Button, DetailRow, ErrorBanner, FormFooter, ListGroup, ListRow, RadioRow, SectionHeader, TextField } from '@/components/ui';
 import { Colors, Design } from '@/constants/theme';
 import { useCheckout } from '@/contexts/checkout-context';
 import { useAuth } from '@/contexts/auth-context';
@@ -277,21 +278,18 @@ export default function CheckoutScreen() {
     <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
       {header}
 
-
-      {error ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorBannerText}>{error}</Text>
-        </View>
-      ) : null}
-
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <ErrorBanner message={error} />
+
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('client.title')}</Text>
-          <Text style={styles.clientName}>{clientName}</Text>
+          <SectionHeader title={t('client.title')} />
+          <ListGroup>
+            <ListRow title={clientName} icon="person" />
+          </ListGroup>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('appointment.services')}</Text>
+          <SectionHeader title={t('appointment.services')} />
           {lineItems.length === 0 ? (
             <EmptyState
               compact
@@ -299,353 +297,158 @@ export default function CheckoutScreen() {
               subtitle={t('checkout.noLineItemsHint')}
             />
           ) : (
-            lineItems.map((item, index) => (
-              <View key={`${item.appointmentSegmentId}-${index}`} style={styles.lineItemRow}>
-                <Text style={styles.lineItemName}>{item.name}</Text>
-                <Text style={styles.lineItemPrice}>{`€${item.price.toFixed(2)}`}</Text>
-              </View>
-            ))
+            <ListGroup inset={14}>
+              {lineItems.map((item, index) => (
+                <ListRow key={`${item.appointmentSegmentId}-${index}`} title={item.name} value={`€${item.price.toFixed(2)}`} />
+              ))}
+            </ListGroup>
           )}
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>{t('checkout.total')}</Text>
-            <Text style={styles.totalValue}>{`€${total.toFixed(2)}`}</Text>
-          </View>
-          {balance.collected > 0 ? (
-            <>
-              <View style={styles.totalRow}>
-                <Text style={styles.lineItemName}>{t('checkout.paid')}</Text>
-                <Text style={styles.lineItemPrice}>{`€${balance.collected.toFixed(2)}`}</Text>
-              </View>
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>{t('checkout.remaining')}</Text>
-                <Text style={styles.totalValue}>{`€${balance.remainder.toFixed(2)}`}</Text>
-              </View>
-            </>
-          ) : null}
         </View>
 
         <View style={styles.section}>
-          <View style={styles.productsSectionHeader}>
-            <Text style={styles.sectionLabel}>{t('checkout.products')}</Text>
-            <View style={styles.productActionsRow}>
-              <Pressable
-                style={styles.productActionButton}
-                onPress={() =>
-                  router.push({ pathname: '/barcode-scanner', params: { event: CHECKOUT_BARCODE_EVENT } })
-                }>
-                <AppIcon name="barcode" size={18} color={theme.text} />
-              </Pressable>
-              <Pressable
-                style={styles.productActionButton}
-                onPress={() => setShowProductPicker((current) => !current)}>
-                <AppIcon name="add" size={18} color={theme.text} />
-              </Pressable>
-            </View>
-          </View>
+          <SectionHeader
+            title={t('checkout.products')}
+            action={
+              <View style={styles.productActionsRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('products.form.barcode')}
+                  style={styles.productActionButton}
+                  onPress={() =>
+                    router.push({ pathname: '/barcode-scanner', params: { event: CHECKOUT_BARCODE_EVENT } })
+                  }>
+                  <AppIcon name="barcode" size={20} color={theme.text} />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('checkout.products')}
+                  accessibilityState={{ expanded: showProductPicker }}
+                  style={styles.productActionButton}
+                  onPress={() => setShowProductPicker((current) => !current)}>
+                  <AppIcon name="add" size={20} color={theme.text} />
+                </Pressable>
+              </View>
+            }
+          />
 
-          {productLines.map((line, index) => (
-            <View key={`${line.productId}-${index}`} style={styles.lineItemRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.lineItemName}>{line.name}</Text>
-                {line.stockQty != null ? (
-                  <Text style={styles.productStockHint}>{t('checkout.stockLeft', { count: line.stockQty })}</Text>
-                ) : null}
-              </View>
-              <View style={styles.qtyStepper}>
-                <Pressable style={styles.qtyButton} onPress={() => updateProductQuantity(index, line.quantity - 1)}>
-                  <Text style={styles.qtyButtonText}>–</Text>
-                </Pressable>
-                <Text style={styles.qtyValue}>{line.quantity}</Text>
-                <Pressable style={styles.qtyButton} onPress={() => updateProductQuantity(index, line.quantity + 1)}>
-                  <Text style={styles.qtyButtonText}>+</Text>
-                </Pressable>
-              </View>
-              <Text style={styles.lineItemPrice}>{`€${(line.price * line.quantity).toFixed(2)}`}</Text>
-            </View>
-          ))}
+          {productLines.length > 0 ? (
+            <ListGroup inset={14}>
+              {productLines.map((line, index) => (
+                <View key={`${line.productId}-${index}`} style={styles.lineItemRow}>
+                  <View style={styles.flex}>
+                    <Text style={styles.lineItemName} numberOfLines={1}>{line.name}</Text>
+                    {line.stockQty != null ? (
+                      <Text style={styles.productStockHint}>{t('checkout.stockLeft', { count: line.stockQty })}</Text>
+                    ) : null}
+                  </View>
+                  <View style={styles.qtyStepper}>
+                    <Pressable accessibilityRole="button" accessibilityLabel="-" style={styles.qtyButton} onPress={() => updateProductQuantity(index, line.quantity - 1)}>
+                      <Text style={styles.qtyButtonText}>–</Text>
+                    </Pressable>
+                    <Text style={styles.qtyValue}>{line.quantity}</Text>
+                    <Pressable accessibilityRole="button" accessibilityLabel="+" style={styles.qtyButton} onPress={() => updateProductQuantity(index, line.quantity + 1)}>
+                      <Text style={styles.qtyButtonText}>+</Text>
+                    </Pressable>
+                  </View>
+                  <Text style={styles.lineItemPrice}>{`€${(line.price * line.quantity).toFixed(2)}`}</Text>
+                </View>
+              ))}
+            </ListGroup>
+          ) : null}
 
           {showProductPicker ? (
             <View style={styles.productPicker}>
-              <TextInput
-                style={styles.input}
+              <TextField
                 placeholder={t('products.searchPlaceholder')}
-                placeholderTextColor={theme.muted}
                 value={productSearchTerm}
                 onChangeText={setProductSearchTerm}
               />
-              {filteredProductOptions.slice(0, 20).map((product) => (
-                <Pressable
-                  key={product.id}
-                  style={styles.productOptionRow}
-                  onPress={() => addProductToCart(product)}>
-                  <Text style={styles.productOptionName}>{product.name || t('products.unnamed')}</Text>
-                  <Text style={styles.productOptionPrice}>{`€${(product.price_gross ?? 0).toFixed(2)}`}</Text>
-                </Pressable>
-              ))}
               {filteredProductOptions.length === 0 ? (
                 <Text style={styles.productStockHint}>{t('products.noResults')}</Text>
-              ) : null}
+              ) : (
+                <ListGroup inset={14}>
+                  {filteredProductOptions.slice(0, 20).map((product) => (
+                    <ListRow
+                      key={product.id}
+                      title={product.name || t('products.unnamed')}
+                      value={`€${(product.price_gross ?? 0).toFixed(2)}`}
+                      chevron={false}
+                      onPress={() => addProductToCart(product)}
+                    />
+                  ))}
+                </ListGroup>
+              )}
             </View>
           ) : null}
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('checkout.paymentMethod')}</Text>
-          <View style={styles.paymentRow}>
-            {PAYMENT_TYPES.map((type) => {
-              const isSelected = paymentType === type;
-              return (
-                <Pressable
-                  key={type}
-                  style={[styles.paymentChip, isSelected && styles.paymentChipActive]}
-                  onPress={() => setPaymentType(type)}>
-                  <Text style={[styles.paymentChipText, isSelected && styles.paymentChipTextActive]}>
-                    {t(`checkout.paymentTypes.${type}`)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <SectionHeader title={t('checkout.total')} />
+          <ListGroup inset={14}>
+            <DetailRow label={t('checkout.total')} value={`€${total.toFixed(2)}`} />
+            {balance.collected > 0 ? <DetailRow label={t('checkout.paid')} value={`€${balance.collected.toFixed(2)}`} /> : null}
+            {balance.collected > 0 ? <DetailRow label={t('checkout.remaining')} value={`€${balance.remainder.toFixed(2)}`} /> : null}
+          </ListGroup>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('checkout.amount')}</Text>
-          <TextInput
-            style={styles.input}
-            value={amount}
-            onChangeText={(value) => {
-              if (appointmentId) setAmountDraft({ id: appointmentId, value });
-            }}
-            keyboardType="decimal-pad"
-          />
+          <SectionHeader title={t('checkout.paymentMethod')} />
+          <ListGroup inset={14}>
+            {PAYMENT_TYPES.map((type) => (
+              <RadioRow
+                key={type}
+                title={t(`checkout.paymentTypes.${type}`)}
+                selected={paymentType === type}
+                onPress={() => setPaymentType(type)}
+              />
+            ))}
+          </ListGroup>
         </View>
+
+        <TextField
+          label={t('checkout.amount')}
+          value={amount}
+          onChangeText={(value) => {
+            if (appointmentId) setAmountDraft({ id: appointmentId, value });
+          }}
+          keyboardType="decimal-pad"
+        />
       </ScrollView>
 
-      <View style={styles.footer}>
-        <Pressable style={[styles.completeButton, !canSubmit && styles.completeButtonDisabled]} onPress={handleComplete} disabled={!canSubmit}>
-          <Text style={styles.completeButtonText}>{alreadySettled && amountValue <= 0 ? t('checkout.done') : t('checkout.complete')}</Text>
-        </Pressable>
-      </View>
+      <FormFooter>
+        <Button
+          label={alreadySettled && amountValue <= 0 ? t('checkout.done') : t('checkout.complete')}
+          onPress={handleComplete}
+          disabled={!canSubmit}
+          loading={submitting}
+        />
+      </FormFooter>
     </SafeAreaView>
   );
 }
 
 const createStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({
-    safeArea: {
-      flex: 1,
-      backgroundColor: theme.background,
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    headerTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.text,
-    },
-    errorBanner: {
-      marginHorizontal: 16,
-      marginTop: 12,
-      padding: 12,
-      borderRadius: Design.controlRadius,
-      backgroundColor: theme.errorSurface,
-    },
-    errorBannerText: {
-      color: theme.error,
-      fontSize: 13,
-      fontWeight: '600',
-    },
-    stateContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    scrollContent: {
-      padding: 16,
-      paddingBottom: 24,
-      gap: 24,
-    },
-    section: {
-      gap: 10,
-    },
-    sectionLabel: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: theme.muted,
-      textTransform: 'uppercase',
-    },
-    clientName: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: theme.text,
-    },
-    emptyText: {
-      fontSize: 14,
-      color: theme.muted,
-    },
-    lineItemRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 8,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    lineItemName: {
-      fontSize: 15,
-      color: theme.text,
-    },
-    lineItemPrice: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.text,
-    },
-    productsSectionHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    productActionsRow: {
-      flexDirection: 'row',
-      gap: 8,
-    },
+    flex: { flex: 1, minWidth: 0 },
+    safeArea: { flex: 1, backgroundColor: theme.background },
+    scrollContent: { paddingHorizontal: Design.screenPadding, paddingTop: 12, paddingBottom: 32, gap: 22 },
+    section: { gap: 8 },
+    productActionsRow: { flexDirection: 'row', gap: 8 },
     productActionButton: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    productStockHint: {
-      fontSize: 12,
-      color: theme.muted,
-      marginTop: 2,
-    },
-    qtyStepper: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-    },
-    qtyButton: {
-      width: 26,
-      height: 26,
-      borderRadius: 13,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    qtyButtonText: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.text,
-    },
-    qtyValue: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.text,
-      minWidth: 18,
-      textAlign: 'center',
-    },
-    productPicker: {
-      marginTop: 10,
-      gap: 8,
-    },
-    productOptionRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 10,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    productOptionName: {
-      fontSize: 14,
-      color: theme.text,
-      flex: 1,
-    },
-    productOptionPrice: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.text,
-    },
-    totalRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingTop: 8,
-    },
-    totalLabel: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: theme.text,
-    },
-    totalValue: {
-      fontSize: 18,
-      fontWeight: '700',
-      color: theme.text,
-    },
-    paymentRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-    },
-    paymentChip: {
-      minHeight: Design.touchTarget,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      borderRadius: 18,
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    paymentChipActive: {
-      backgroundColor: theme.tint,
-      borderColor: theme.tint,
-    },
-    paymentChipText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.text,
-    },
-    paymentChipTextActive: {
-      color: theme.onTint,
-    },
-    input: {
-      minHeight: Design.touchTarget,
-      borderWidth: 1,
-      borderColor: theme.border,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      fontSize: 15,
-      color: theme.text,
-    },
-    footer: {
-      padding: 16,
-      borderTopWidth: 1,
-      borderTopColor: theme.border,
-    },
-    completeButton: {
-      backgroundColor: theme.tint,
-      borderRadius: 14,
-      paddingVertical: 14,
+      width: Design.touchTarget,
+      height: Design.touchTarget,
+      borderRadius: Design.touchTarget / 2,
+      backgroundColor: theme.surface,
       alignItems: 'center',
     },
-    completeButtonDisabled: {
-      backgroundColor: theme.border,
-    },
-    completeButtonText: {
-      color: theme.onTint,
-      fontSize: 16,
-      fontWeight: '700',
-    },
+    // The shared Pressable defaults to justifyContent: 'center', which centres a row's children.
+    lineItemRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 12, paddingHorizontal: 14, paddingVertical: 10, minHeight: 56 },
+    lineItemName: { fontSize: 16, fontWeight: '500', color: theme.text },
+    lineItemPrice: { fontSize: 15, fontWeight: '600', color: theme.text, fontVariant: ['tabular-nums'] },
+    productStockHint: { fontSize: 13, color: theme.muted, marginTop: 2 },
+    qtyStepper: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    qtyButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: theme.surface, alignItems: 'center' },
+    qtyButtonText: { fontSize: 18, fontWeight: '600', color: theme.text },
+    qtyValue: { minWidth: 22, textAlign: 'center', fontSize: 15, fontWeight: '600', color: theme.text, fontVariant: ['tabular-nums'] },
+    productPicker: { gap: 10 },
   });

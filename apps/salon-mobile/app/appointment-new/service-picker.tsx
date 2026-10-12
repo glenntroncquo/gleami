@@ -1,20 +1,18 @@
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { AppIcon } from '@/components/app-icon';
-import { HeaderButton } from '@/components/header-button';
-import { Pressable } from '@/components/pressable-scale';
 import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { DeviceEventEmitter, StyleSheet, Text, TextInput, View } from 'react-native';
+import { DeviceEventEmitter, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { RowListSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
-import { Colors, Design } from '@/constants/theme';
+import { Button, FormFooter, ListGroup, ListRow, ScreenTitle, useTheme } from '@/components/ui';
+import { Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   fetchServices,
   phasesForEditor,
@@ -32,9 +30,7 @@ export default function ServicePickerScreen() {
   const { staffId, selected } = useLocalSearchParams<{ staffId: string; selected?: string }>();
   const { companyId } = useAuth();
   const { locationId } = useLocation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const theme = Colors[colorScheme];
-  const styles = React.useMemo(() => createStyles(theme), [theme]);
+  const theme = useTheme();
 
   const [servicesList, setServicesList] = React.useState<ServiceWithVariants[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -84,19 +80,60 @@ export default function ServicePickerScreen() {
 
   const filteredServices = servicesList.filter((service) => service.name.toLowerCase().includes(searchTerm.trim().toLowerCase()));
 
-  return (
-    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: t('appointment.selectService'),
-          headerRight: () => (
-            <HeaderButton onPress={() => router.back()} hitSlop={8} style={styles.headerTextButton}>
-              <Text style={styles.headerDoneText}>{t('appointment.done')}</Text>
-            </HeaderButton>
-          ),
+  const rows: React.ReactElement[] = [];
+  filteredServices.forEach((service) => {
+    const variants = service.service_variant;
+    const single = variants.length === 1 ? variants[0] : null;
+    const added = single ? addedIds.has(single.id) : variants.some((variant) => addedIds.has(variant.id));
+    const expanded = expandedId === service.id;
+    rows.push(
+      <ListRow
+        key={service.id}
+        title={service.name}
+        subtitle={
+          single
+            ? `${variantDurationMinutes(single)} ${t('appointment.minutesShort')} · €${single.price}`
+            : t('appointment.optionsCount', { count: variants.length })
+        }
+        leading={<View style={[styles.swatch, { backgroundColor: COLOR_MAP[mapTreatmentColorToEventColor(service.color, service.name)] }]} />}
+        chevron={false}
+        trailing={
+          <AppIcon
+            name={single ? (added ? 'check' : 'add') : expanded ? 'arrowUp' : 'expandMore'}
+            size={18}
+            color={added ? theme.tint : theme.muted}
+          />
+        }
+        onPress={() => {
+          if (single) {
+            toggleService(service, single);
+            return;
+          }
+          setExpandedId(expanded ? null : service.id);
         }}
       />
+    );
+    if (!single && expanded) {
+      variants.forEach((variant) => {
+        const variantAdded = addedIds.has(variant.id);
+        rows.push(
+          <ListRow
+            key={variant.id}
+            title={variant.name}
+            subtitle={`${variantDurationMinutes(variant)} ${t('appointment.minutesShort')} · €${variant.price}`}
+            leading={<View style={styles.swatchSpacer} />}
+            chevron={false}
+            trailing={<AppIcon name={variantAdded ? 'check' : 'add'} size={18} color={variantAdded ? theme.tint : theme.muted} />}
+            onPress={() => toggleService(service, variant)}
+          />
+        );
+      });
+    }
+  });
+
+  return (
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['left', 'right', 'bottom']}>
+      <Stack.Screen options={{ headerShown: false }} />
       {loading ? (
         <RowListSkeleton count={8} />
       ) : servicesList.length === 0 ? (
@@ -112,145 +149,41 @@ export default function ServicePickerScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           contentInsetAdjustmentBehavior="automatic">
-          <View style={styles.searchInputRow}>
+          <ScreenTitle title={t('appointment.selectService')} />
+          <View style={[styles.search, { borderColor: theme.border, backgroundColor: theme.background }]}>
             <AppIcon name="search" size={18} color={theme.muted} />
             <TextInput
-              style={styles.searchInputText}
+              style={[styles.searchInput, { color: theme.text }]}
               placeholder={t('appointment.searchServicePlaceholder')}
               placeholderTextColor={theme.muted}
               value={searchTerm}
               onChangeText={setSearchTerm}
+              accessibilityLabel={t('appointment.searchServicePlaceholder')}
             />
           </View>
-          {filteredServices.map((service) => {
-            const variants = service.service_variant;
-            const single = variants.length === 1 ? variants[0] : null;
-            const added = single ? addedIds.has(single.id) : variants.some((variant) => addedIds.has(variant.id));
-            const expanded = expandedId === service.id;
-            return (
-              <View key={service.id}>
-                <Pressable
-                  style={styles.row}
-                  onPress={() => {
-                    if (single) {
-                      toggleService(service, single);
-                      return;
-                    }
-                    setExpandedId(expanded ? null : service.id);
-                  }}>
-                  <View style={[styles.swatch, { backgroundColor: COLOR_MAP[mapTreatmentColorToEventColor(service.color, service.name)] }]} />
-                  <View style={styles.flexFill}>
-                    <Text style={styles.rowTitle}>{service.name}</Text>
-                    <Text style={styles.rowMeta}>
-                      {single
-                        ? `${variantDurationMinutes(single)} ${t('appointment.minutesShort')} · €${single.price}`
-                        : t('appointment.optionsCount', { count: variants.length })}
-                    </Text>
-                  </View>
-                  <AppIcon
-                    name={single ? (added ? 'check' : 'add') : expanded ? 'arrowUp' : 'expandMore'}
-                    size={18}
-                    color={added && single ? theme.tint : theme.muted}
-                  />
-                </Pressable>
-                {!single && expanded
-                  ? variants.map((variant) => {
-                      const variantAdded = addedIds.has(variant.id);
-                      return (
-                        <Pressable key={variant.id} style={styles.variantRow} onPress={() => toggleService(service, variant)}>
-                          <View style={styles.flexFill}>
-                            <Text style={styles.rowTitle}>{variant.name}</Text>
-                            <Text style={styles.rowMeta}>{`${variantDurationMinutes(variant)} ${t('appointment.minutesShort')} · €${variant.price}`}</Text>
-                          </View>
-                          <AppIcon name={variantAdded ? 'check' : 'add'} size={18} color={variantAdded ? theme.tint : theme.muted} />
-                        </Pressable>
-                      );
-                    })
-                  : null}
-              </View>
-            );
-          })}
+          {rows.length > 0 ? <ListGroup>{rows}</ListGroup> : null}
         </ScrollView>
       )}
+      <FormFooter>
+        <Button label={t('appointment.done')} onPress={() => router.back()} />
+      </FormFooter>
     </SafeAreaView>
   );
 }
 
-function createStyles(theme: typeof Colors.light) {
-  return StyleSheet.create({
-    safeArea: {
-      flex: 1,
-      backgroundColor: theme.background,
-    },
-    headerTextButton: {
-      width: 'auto',
-      minWidth: 0,
-      paddingHorizontal: 4,
-    },
-    headerDoneText: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.tint,
-    },
-    loading: {
-      marginTop: 24,
-    },
-    flexFill: {
-      flex: 1,
-    },
-    scrollContent: {
-      padding: 16,
-      paddingBottom: 32,
-      gap: 12,
-    },
-    searchInputRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.surface,
-      borderRadius: 14,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-    },
-    searchInputText: {
-      flex: 1,
-      fontSize: 15,
-      color: theme.text,
-      padding: 0,
-    },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      paddingVertical: 10,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
-    swatch: {
-      width: 40,
-      height: 40,
-      borderRadius: Design.controlRadius,
-    },
-    rowTitle: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.text,
-    },
-    rowMeta: {
-      fontSize: 13,
-      color: theme.muted,
-      marginTop: 2,
-    },
-    variantRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      marginLeft: 52,
-      paddingVertical: 10,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
-  });
-}
+const styles = StyleSheet.create({
+  safeArea: { flex: 1 },
+  scrollContent: { paddingHorizontal: Design.screenPadding, paddingTop: 24, paddingBottom: 32, gap: 16 },
+  search: {
+    minHeight: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: Design.controlRadius,
+    paddingHorizontal: 14,
+  },
+  searchInput: { flex: 1, fontSize: 16, paddingVertical: 12 },
+  swatch: { width: 40, height: 40, borderRadius: 12 },
+  swatchSpacer: { width: 40 },
+});

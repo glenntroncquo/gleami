@@ -1,20 +1,18 @@
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
-import { AppIcon } from '@/components/app-icon';
-import { Pressable } from '@/components/pressable-scale';
 import { StaffAvatar } from '@/components/staff-avatar';
 import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { DeviceEventEmitter, StyleSheet, Text } from 'react-native';
+import { DeviceEventEmitter, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { RowListSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
-import { Colors } from '@/constants/theme';
+import { ListGroup, ListRow, ScreenTitle, useTheme } from '@/components/ui';
+import { Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchStaff, StaffMember } from '@/lib/api/calendar';
 
 import { APPOINTMENT_DRAFT_EVENTS } from '@/lib/appointment-draft';
@@ -29,9 +27,7 @@ export default function StaffPickerScreen() {
   const { staffId: selectedStaffId, next } = useLocalSearchParams<{ staffId?: string; next?: string }>();
   const { companyId } = useAuth();
   const { locationId } = useLocation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const theme = Colors[colorScheme];
-  const styles = React.useMemo(() => createStyles(theme), [theme]);
+  const theme = useTheme();
 
   const [staffList, setStaffList] = React.useState<StaffMember[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -58,62 +54,37 @@ export default function StaffPickerScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: t('appointment.staffMember'),
-        }}
-      />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['left', 'right', 'bottom']}>
+      <Stack.Screen options={{ headerShown: false }} />
       {loading ? (
         <RowListSkeleton count={6} />
       ) : staffList.length === 0 ? (
         <EmptyState compact icon="groups" title={t('staff.noStaff')} subtitle={t('staff.noStaffHint')} />
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent} contentInsetAdjustmentBehavior="automatic">
-          {staffList.map((staff) => {
-            const name = clientDisplayName(staff.first_name, staff.last_name, t('calendar.employee'));
-            const isSelected = selectedStaffId === staff.id;
-            return (
-              <Pressable key={staff.id} style={styles.row} onPress={() => selectStaff(staff.id)}>
-                <StaffAvatar imagePath={staff.image_path} name={name} size={40} />
-                <Text style={[styles.rowName, styles.flexFill]}>{name}</Text>
-                {isSelected ? <AppIcon name="check" size={18} color={theme.text} /> : null}
-              </Pressable>
-            );
-          })}
+          <ScreenTitle title={t('appointment.staffMember')} />
+          <ListGroup>
+            {staffList.map((staff) => {
+              const name = clientDisplayName(staff.first_name, staff.last_name, t('calendar.employee'));
+              return (
+                <ListRow
+                  key={staff.id}
+                  title={name}
+                  leading={<StaffAvatar imagePath={staff.image_path} name={name} size={40} />}
+                  selected={selectedStaffId === staff.id}
+                  chevron={false}
+                  onPress={() => selectStaff(staff.id)}
+                />
+              );
+            })}
+          </ListGroup>
         </ScrollView>
       )}
     </SafeAreaView>
   );
 }
 
-function createStyles(theme: typeof Colors.light) {
-  return StyleSheet.create({
-    safeArea: {
-      flex: 1,
-      backgroundColor: theme.background,
-    },
-    flexFill: {
-      flex: 1,
-    },
-    loading: {
-      marginTop: 24,
-    },
-    scrollContent: {
-      padding: 16,
-      paddingBottom: 32,
-    },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      paddingVertical: 10,
-    },
-    rowName: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.text,
-    },
-  });
-}
+const styles = StyleSheet.create({
+  safeArea: { flex: 1 },
+  scrollContent: { paddingHorizontal: Design.screenPadding, paddingTop: 24, paddingBottom: 32, gap: 16 },
+});

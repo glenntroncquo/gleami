@@ -1,17 +1,14 @@
-import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { HeaderButton } from '@/components/header-button';
-import { Pressable } from '@/components/pressable-scale';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { DeviceEventEmitter, StyleSheet, Switch, Text, View } from 'react-native';
+import { DeviceEventEmitter, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { RowListSkeleton } from '@/components/content-skeletons';
-import { Colors, Design } from '@/constants/theme';
+import { ErrorBanner, FieldRow, FormScreen, ListGroup, ListRow, SelectField, SwitchRow, useTheme } from '@/components/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import i18n from '@/lib/i18n';
 import {
   ScheduleRule,
@@ -72,9 +69,7 @@ export default function StaffAvailabilityScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { companyId } = useAuth();
   const { locationId } = useLocation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const theme = Colors[colorScheme];
-  const styles = createStyles(theme);
+  const theme = useTheme();
 
   const [days, setDays] = React.useState<Record<number, DayState>>(() => {
     const initial: Record<number, DayState> = {};
@@ -203,7 +198,7 @@ export default function StaffAvailabilityScreen() {
         title: t('staff.availability'),
         headerRight: () => (
           <HeaderButton onPress={handleSave} disabled={saving} hitSlop={8} style={styles.headerTextButton}>
-            <Text style={styles.saveText}>{t('client.save')}</Text>
+            <Text style={[styles.saveText, { color: saving ? theme.muted : theme.tint }]}>{t('client.save')}</Text>
           </HeaderButton>
         ),
       }}
@@ -212,7 +207,7 @@ export default function StaffAvailabilityScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['left', 'right', 'bottom']}>
         {screenOptions}
         <RowListSkeleton count={7} avatar={false} />
       </SafeAreaView>
@@ -220,151 +215,53 @@ export default function StaffAvailabilityScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+    <>
       {screenOptions}
-
-      {error ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorBannerText}>{error}</Text>
-        </View>
-      ) : null}
-
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {DISPLAY_DAYS.map((day) => {
-          const state = days[day];
-          return (
-            <View key={day} style={styles.dayRow}>
-              <View style={styles.dayHeaderRow}>
-                <Text style={styles.dayLabel}>{weekdaysLong[day]}</Text>
-                {!state.multiple ? (
-                  <Switch
-                    value={state.working}
-                    onValueChange={(value) =>
-                      setDays((prev) => ({ ...prev, [day]: { ...prev[day], working: value } }))
-                    }
-                  />
+      <FormScreen contentStyle={styles.content}>
+        <ErrorBanner message={error} />
+        <ListGroup inset={0}>
+          {DISPLAY_DAYS.map((day) => {
+            const state = days[day];
+            if (state.multiple) {
+              return <ListRow key={day} title={weekdaysLong[day]} subtitle={t('staff.multipleSlots')} />;
+            }
+            return (
+              <View key={day}>
+                <SwitchRow
+                  title={weekdaysLong[day]}
+                  subtitle={state.working ? undefined : t('staff.dayOff')}
+                  value={state.working}
+                  onValueChange={(value) => setDays((prev) => ({ ...prev, [day]: { ...prev[day], working: value } }))}
+                />
+                {state.working ? (
+                  <View style={styles.times}>
+                    <FieldRow>
+                      <SelectField
+                        label={t('appointment.starts')}
+                        value={formatTimeLabel(state.start)}
+                        onPress={() => openPicker({ day, field: 'start' }, state.start, t('appointment.starts'))}
+                      />
+                      <SelectField
+                        label={t('appointment.ends')}
+                        value={formatTimeLabel(state.end)}
+                        onPress={() => openPicker({ day, field: 'end' }, state.end, t('appointment.ends'))}
+                      />
+                    </FieldRow>
+                  </View>
                 ) : null}
               </View>
-              {state.multiple ? (
-                <Text style={styles.multipleHint}>{t('staff.multipleSlots')}</Text>
-              ) : state.working ? (
-                <View style={styles.timeRow}>
-                  <Pressable style={styles.pill} onPress={() => openPicker({ day, field: 'start' }, state.start, t('appointment.starts'))}>
-                    <Text style={styles.pillText}>{formatTimeLabel(state.start)}</Text>
-                  </Pressable>
-                  <Text style={styles.timeSeparator}>–</Text>
-                  <Pressable style={styles.pill} onPress={() => openPicker({ day, field: 'end' }, state.end, t('appointment.ends'))}>
-                    <Text style={styles.pillText}>{formatTimeLabel(state.end)}</Text>
-                  </Pressable>
-                </View>
-              ) : (
-                <Text style={styles.dayOffText}>{t('staff.dayOff')}</Text>
-              )}
-            </View>
-          );
-        })}
-      </ScrollView>
-    </SafeAreaView>
+            );
+          })}
+        </ListGroup>
+      </FormScreen>
+    </>
   );
 }
 
-const createStyles = (theme: typeof Colors.light) =>
-  StyleSheet.create({
-    safeArea: {
-      flex: 1,
-      backgroundColor: theme.background,
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    headerTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.text,
-    },
-    headerTextButton: {
-      width: 'auto',
-      minWidth: 0,
-      paddingHorizontal: 4,
-    },
-    saveText: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: theme.tint,
-    },
-    errorBanner: {
-      marginHorizontal: 16,
-      marginTop: 12,
-      padding: 12,
-      borderRadius: Design.controlRadius,
-      backgroundColor: theme.errorSurface,
-    },
-    errorBannerText: {
-      color: theme.error,
-      fontSize: 13,
-      fontWeight: '600',
-    },
-    stateContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    scrollContent: {
-      padding: 16,
-      paddingBottom: 48,
-    },
-    dayRow: {
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-      gap: 8,
-    },
-    dayHeaderRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    dayLabel: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.text,
-    },
-    timeRow: {
-      flexDirection: 'row',
-    flexWrap: 'wrap',
-      alignItems: 'center',
-      gap: 10,
-    },
-    timeSeparator: {
-      fontSize: 14,
-      color: theme.muted,
-    },
-    dayOffText: {
-      fontSize: 13,
-      color: theme.muted,
-    },
-    multipleHint: {
-      fontSize: 13,
-      color: theme.muted,
-      fontStyle: 'italic',
-    },
-    pill: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 18,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.surface,
-    },
-    pillText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.text,
-    },
-  });
+const styles = StyleSheet.create({
+  safeArea: { flex: 1 },
+  content: { paddingTop: 16 },
+  headerTextButton: { width: 'auto', minWidth: 0, paddingHorizontal: 4 },
+  saveText: { fontSize: 16, fontWeight: '600' },
+  times: { paddingHorizontal: 14, paddingBottom: 14 },
+});

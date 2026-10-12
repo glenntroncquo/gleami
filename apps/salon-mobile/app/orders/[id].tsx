@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 
 import { DetailSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
+import { DetailRow, ListGroup, ListRow, SectionHeader } from '@/components/ui';
 import { Colors, Design } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchOrder, OrderDetail } from '@/lib/api/orders';
@@ -68,28 +69,28 @@ export default function OrderDetailScreen() {
         <DetailSkeleton />
       ) : !order ? null : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>{t('client.title')}</Text>
-            <Text style={styles.value}>{clientName}</Text>
-            <Text style={styles.subvalue}>{formatDateTime(order.date ?? order.created_at)}</Text>
+          <View>
+            <SectionHeader title={t('client.title')} />
+            <ListGroup>
+              <ListRow icon="person" title={clientName} subtitle={formatDateTime(order.date ?? order.created_at)} />
+            </ListGroup>
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>{t('appointment.services')}</Text>
-            {order.order_item.map((item) => (
-              <View key={item.id} style={styles.itemRow}>
-                <Text style={styles.itemName}>{itemName(item)}</Text>
-                <Text style={styles.itemPrice}>{`€${(item.total ?? item.unit_price ?? 0).toFixed(2)}`}</Text>
+          <View>
+            <SectionHeader title={t('appointment.services')} />
+            <ListGroup inset={14}>
+              {order.order_item.map((item) => (
+                <DetailRow key={item.id} label={itemName(item)} value={`€${(item.total ?? item.unit_price ?? 0).toFixed(2)}`} />
+              ))}
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>{t('checkout.total')}</Text>
+                <Text style={styles.totalValue}>{`€${(order.total_amount ?? 0).toFixed(2)}`}</Text>
               </View>
-            ))}
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>{t('checkout.total')}</Text>
-              <Text style={styles.totalValue}>{`€${(order.total_amount ?? 0).toFixed(2)}`}</Text>
-            </View>
+            </ListGroup>
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>{t('order.payments')}</Text>
+          <View>
+            <SectionHeader title={t('order.payments')} />
             {order.payment.length === 0 ? (
               <EmptyState
                 compact
@@ -97,14 +98,15 @@ export default function OrderDetailScreen() {
                 subtitle={t('order.noPaymentsHint')}
               />
             ) : (
-              order.payment.map((payment) => (
-                <View key={payment.id} style={styles.itemRow}>
-                  <Text style={styles.itemName}>
-                    {payment.payment_method ? t(`checkout.paymentTypes.${payment.payment_method}`) : '—'}
-                  </Text>
-                  <Text style={styles.itemPrice}>{`€${(payment.amount_gross ?? 0).toFixed(2)}`}</Text>
-                </View>
-              ))
+              <ListGroup inset={14}>
+                {order.payment.map((payment) => (
+                  <DetailRow
+                    key={payment.id}
+                    label={payment.payment_method ? t(`checkout.paymentTypes.${payment.payment_method}`) : '—'}
+                    value={`€${(payment.amount_gross ?? 0).toFixed(2)}`}
+                  />
+                ))}
+              </ListGroup>
             )}
           </View>
         </ScrollView>
@@ -119,25 +121,8 @@ const createStyles = (theme: typeof Colors.light) =>
       flex: 1,
       backgroundColor: theme.background,
     },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 12,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    headerTitle: {
-      flex: 1,
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.text,
-      textAlign: 'center',
-    },
     errorBanner: {
-      marginHorizontal: 16,
+      marginHorizontal: Design.screenPadding,
       marginTop: 12,
       padding: 12,
       borderRadius: Design.controlRadius,
@@ -148,60 +133,23 @@ const createStyles = (theme: typeof Colors.light) =>
       fontSize: 13,
       fontWeight: '600',
     },
-    stateContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
     scrollContent: {
-      padding: 16,
+      paddingHorizontal: Design.screenPadding,
+      paddingTop: 16,
       paddingBottom: 48,
       gap: 24,
-    },
-    section: {
-      gap: 8,
-    },
-    sectionLabel: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: theme.muted,
-      textTransform: 'uppercase',
-    },
-    value: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: theme.text,
-    },
-    subvalue: {
-      fontSize: 13,
-      color: theme.muted,
-    },
-    itemRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 8,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    itemName: {
-      fontSize: 15,
-      color: theme.text,
-    },
-    itemPrice: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.text,
     },
     totalRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingTop: 8,
+      paddingHorizontal: 14,
+      minHeight: 56,
+      backgroundColor: theme.surface,
     },
     totalLabel: {
-      fontSize: 15,
-      fontWeight: '700',
+      fontSize: 16,
+      fontWeight: '600',
       color: theme.text,
     },
     totalValue: {

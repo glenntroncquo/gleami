@@ -137,7 +137,7 @@ function RootNavigator() {
       <Stack.Protected guard={showApp}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'none' }} />
         <Stack.Screen name="day/[date]" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="appointment-new/index" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="appointment-new/index" options={{ presentation: 'modal', headerShown: false }} />
         {/*
           Single-detent formSheet, not [0.5, 1]: with two detents, dragging
           between them makes RN re-layout the whole subtree every frame,
@@ -153,15 +153,15 @@ function RootNavigator() {
         */}
         <Stack.Screen
           name="appointment-new/client-picker"
-          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.75], sheetGrabberVisible: true }}
+          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.75], sheetGrabberVisible: true, headerShown: false }}
         />
         <Stack.Screen
           name="appointment-new/new-client"
-          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.7], sheetGrabberVisible: true }}
+          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.7], sheetGrabberVisible: true, headerShown: false }}
         />
         <Stack.Screen
           name="appointment-new/service-picker"
-          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.75], sheetGrabberVisible: true }}
+          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.75], sheetGrabberVisible: true, headerShown: false }}
         />
         {/*
           service-variants and staff-picker fetch their list after the sheet
@@ -176,26 +176,30 @@ function RootNavigator() {
         />
         <Stack.Screen
           name="appointment-new/staff-picker"
-          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.5], sheetGrabberVisible: true }}
+          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.5], sheetGrabberVisible: true, headerShown: false }}
         />
         <Stack.Screen
           name="date-time-picker"
           options={{ presentation: 'formSheet', sheetAllowedDetents: [0.38], sheetGrabberVisible: true }}
         />
+        <Stack.Screen
+          name="calendar-add"
+          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.3], sheetGrabberVisible: true, headerShown: false }}
+        />
         <Stack.Screen name="appointment/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="client/[id]" />
-        <Stack.Screen name="client/new" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="client/new" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="services/index" />
         <Stack.Screen name="services/[id]" />
-        <Stack.Screen name="services/new" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="services/price-option" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="services/new" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="services/price-option" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="staff/index" />
         <Stack.Screen name="staff/[id]" />
-        <Stack.Screen name="staff/new" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="staff/new" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="staff/[id]/availability" />
         <Stack.Screen name="staff/[id]/time-off" />
         <Stack.Screen name="staff/[id]/schedule" />
-        <Stack.Screen name="staff/time-off-new" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="staff/time-off-new" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="checkout/[appointmentId]" options={{ presentation: 'modal', headerShown: true }} />
         <Stack.Screen name="orders/index" />
         <Stack.Screen name="orders/[id]" />
@@ -203,7 +207,7 @@ function RootNavigator() {
         <Stack.Screen name="settings/index" />
         <Stack.Screen name="products/index" />
         <Stack.Screen name="products/[id]" />
-        <Stack.Screen name="products/new" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="products/new" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="barcode-scanner" options={{ presentation: 'fullScreenModal', headerShown: false }} />
       </Stack.Protected>
       <Stack.Protected guard={!showApp}>

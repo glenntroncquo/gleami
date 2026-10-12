@@ -1,9 +1,9 @@
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
-import { Pressable } from '@/components/pressable-scale';
 import { SwipeableRow } from '@/components/swipeable-row';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Button, ListGroup, ListRow } from '@/components/ui';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -95,26 +95,27 @@ export default function StaffTimeOffScreen() {
               subtitle={t('staff.noTimeOffHint')}
             />
           ) : (
-            blocks.map((block) => {
-              const start = block.starts_at ? new Date(block.starts_at) : null;
-              const end = block.ends_at ? new Date(block.ends_at) : null;
-              return (
-                <SwipeableRow key={block.id} onDelete={() => handleDelete(block.id)} deleteLabel={t('common.delete')}>
-                  <View style={styles.blockRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.blockDate}>{start ? formatDateLabel(start) : '—'}</Text>
-                      <Text style={styles.blockTime}>
-                        {start && end ? `${formatTimeLabel(start)} – ${formatTimeLabel(end)}` : '—'}
-                      </Text>
-                    </View>
-                  </View>
-                </SwipeableRow>
-              );
-            })
+            <ListGroup>
+              {blocks.map((block) => {
+                const start = block.starts_at ? new Date(block.starts_at) : null;
+                const end = block.ends_at ? new Date(block.ends_at) : null;
+                return (
+                  <SwipeableRow key={block.id} onDelete={() => handleDelete(block.id)} deleteLabel={t('common.delete')}>
+                    <ListRow
+                      icon="eventBusy"
+                      title={start ? formatDateLabel(start) : '—'}
+                      subtitle={start && end ? `${formatTimeLabel(start)} – ${formatTimeLabel(end)}` : '—'}
+                    />
+                  </SwipeableRow>
+                );
+              })}
+            </ListGroup>
           )}
-          <Pressable style={{ marginTop: 12 }} onPress={() => router.push({ pathname: '/staff/time-off-new', params: { staffId: id } })}>
-            <Text style={styles.addLink}>{t('staff.addTimeOff')}</Text>
-          </Pressable>
+          <Button
+            label={t('staff.addTimeOff')}
+            icon="add"
+            onPress={() => router.push({ pathname: '/staff/time-off-new', params: { staffId: id } })}
+          />
         </ScrollView>
       )}
     </SafeAreaView>
@@ -127,22 +128,8 @@ const createStyles = (theme: typeof Colors.light) =>
       flex: 1,
       backgroundColor: theme.background,
     },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    headerTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.text,
-    },
     errorBanner: {
-      marginHorizontal: 16,
+      marginHorizontal: Design.screenPadding,
       marginTop: 12,
       padding: 12,
       borderRadius: Design.controlRadius,
@@ -153,39 +140,10 @@ const createStyles = (theme: typeof Colors.light) =>
       fontSize: 13,
       fontWeight: '600',
     },
-    stateContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
     scrollContent: {
-      padding: 16,
+      paddingHorizontal: Design.screenPadding,
+      paddingTop: 16,
       paddingBottom: 48,
-    },
-    emptyText: {
-      fontSize: 14,
-      color: theme.muted,
-    },
-    blockRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 10,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    blockDate: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.text,
-    },
-    blockTime: {
-      fontSize: 13,
-      color: theme.muted,
-      marginTop: 2,
-    },
-    addLink: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.tint,
+      gap: 16,
     },
   });

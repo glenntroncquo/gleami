@@ -1,4 +1,3 @@
-import { Pressable } from '@/components/pressable-scale';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import React from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
@@ -7,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 
 import { RowListSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
+import { IconTile, ListRow } from '@/components/ui';
 import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
@@ -99,6 +99,7 @@ export default function OrdersListScreen() {
           keyExtractor={(item) => item.id}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
           contentContainerStyle={[styles.listContent, orders.length === 0 && styles.listContentEmpty]}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
           ListEmptyComponent={
             <EmptyState icon="pointOfSale" title={t('order.noOrders')} subtitle={t('order.noOrdersHint')} />
           }
@@ -108,16 +109,20 @@ export default function OrdersListScreen() {
             const normalizedStatus = normalizePaymentStatus(item.payment_status);
             const badge = statusStyle(normalizedStatus, theme);
             return (
-              <Pressable style={styles.row} onPress={() => router.push({ pathname: '/orders/[id]', params: { id: item.id } })}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.rowClient}>{clientName}</Text>
-                  <Text style={styles.rowDate}>{formatDate(item.date ?? item.created_at)}</Text>
-                </View>
-                <Text style={styles.rowTotal}>{`€${(item.total_amount ?? 0).toFixed(2)}`}</Text>
-                <View style={[styles.badge, { backgroundColor: badge.backgroundColor }]}>
-                  <Text style={[styles.badgeText, { color: badge.color }]}>{t(`order.status.${normalizedStatus}`)}</Text>
-                </View>
-              </Pressable>
+              <ListRow
+                title={clientName}
+                subtitle={formatDate(item.date ?? item.created_at)}
+                leading={<IconTile name="pointOfSale" />}
+                trailing={
+                  <View style={styles.trailing}>
+                    <Text style={styles.rowTotal}>{`€${(item.total_amount ?? 0).toFixed(2)}`}</Text>
+                    <View style={[styles.badge, { backgroundColor: badge.backgroundColor }]}>
+                      <Text style={[styles.badgeText, { color: badge.color }]}>{t(`order.status.${normalizedStatus}`)}</Text>
+                    </View>
+                  </View>
+                }
+                onPress={() => router.push({ pathname: '/orders/[id]', params: { id: item.id } })}
+              />
             );
           }}
         />
@@ -126,28 +131,17 @@ export default function OrdersListScreen() {
   );
 }
 
+// ListRow carries 14px horizontal padding, so the list pads only the remainder to align with the screen edge.
+const ROW_INSET = 14;
+
 const createStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
       backgroundColor: theme.background,
     },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    headerTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.text,
-    },
     errorBanner: {
-      marginHorizontal: 16,
+      marginHorizontal: Design.screenPadding,
       marginTop: 12,
       padding: 12,
       borderRadius: Design.controlRadius,
@@ -158,40 +152,23 @@ const createStyles = (theme: typeof Colors.light) =>
       fontSize: 13,
       fontWeight: '600',
     },
-    stateContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingTop: 60,
-    },
-    stateText: {
-      fontSize: 15,
-      color: theme.muted,
-    },
     listContent: {
-      paddingHorizontal: 16,
+      paddingHorizontal: Design.screenPadding - ROW_INSET,
+      paddingTop: 8,
       paddingBottom: 24,
     },
     listContentEmpty: {
       flexGrow: 1,
     },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
+    separator: {
+      height: StyleSheet.hairlineWidth,
+      marginLeft: ROW_INSET + 40 + 14,
+      marginRight: ROW_INSET,
+      backgroundColor: theme.border,
     },
-    rowClient: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.text,
-    },
-    rowDate: {
-      fontSize: 13,
-      color: theme.muted,
-      marginTop: 2,
+    trailing: {
+      alignItems: 'flex-end',
+      gap: 4,
     },
     rowTotal: {
       fontSize: 15,
@@ -199,12 +176,12 @@ const createStyles = (theme: typeof Colors.light) =>
       color: theme.text,
     },
     badge: {
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 12,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 10,
     },
     badgeText: {
-      fontSize: 11,
-      fontWeight: '700',
+      fontSize: 12,
+      fontWeight: '600',
     },
   });

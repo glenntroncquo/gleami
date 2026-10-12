@@ -116,7 +116,27 @@
       "sex",
       "sáb"
     ],
-    "employeesSelected": "{{count}} funcionários selecionados"
+    "employeesSelected": "{{count}} funcionários selecionados",
+    "addTitle": "Adicionar",
+    "addAppointment": "Marcação",
+    "addUnavailability": "Indisponibilidade",
+    "unavailability": {
+      "appointmentHint": "Marcar um cliente",
+      "unavailabilityHint": "Bloquear tempo para pausa ou ausência",
+      "type": "Tipo",
+      "custom": "Personalizado",
+      "lunch": "Almoço",
+      "break": "Pausa",
+      "wholeDay": "Dia inteiro",
+      "date": "Data",
+      "start": "Hora de início",
+      "end": "Hora de fim",
+      "duration": "Duração {{value}}",
+      "teamMember": "Membro da equipa",
+      "endBeforeStart": "A hora de fim tem de ser depois da hora de início.",
+      "minutes": "{{count}} min",
+      "hours": "{{count}} h"
+    }
   },
   "appointment": {
     "title": "Novo agendamento",

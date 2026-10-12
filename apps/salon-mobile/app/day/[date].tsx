@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/empty-state';
+import { ListGroup, ScreenTitle } from '@/components/ui';
 import { StaffAvatar } from '@/components/staff-avatar';
 import { Colors } from '@/constants/theme';
 import { useCheckout } from '@/contexts/checkout-context';
@@ -162,10 +163,8 @@ export default function DayScreen() {
         />
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <View accessibilityRole="header">
-            <Text style={[styles.title, { color: theme.text }]}>{date ? getFullDateLabel(date) : ''}</Text>
-            <Text style={[styles.subtitle, { color: theme.muted }]}>{t('calendar.weekLabel', { number: weekNumber })}</Text>
-          </View>
+          <ScreenTitle title={date ? getFullDateLabel(date) : ''} subtitle={t('calendar.weekLabel', { number: weekNumber })} />
+          <ListGroup inset={14}>
           {events.map((event) => {
             const payment = payments[event.appointmentId];
             const paid = payment?.status === 'paid';
@@ -190,10 +189,10 @@ export default function DayScreen() {
                 <Text style={[styles.timeMuted, { color: theme.muted }]}>{event.endTime}</Text>
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={[styles.eventText, { color: theme.text }]}>
+                <Text style={[styles.eventText, { color: theme.text }]} numberOfLines={1}>
                   {event.label}
                 </Text>
-                <Text style={[styles.eventSubtitle, { color: theme.muted }]}>
+                <Text style={[styles.eventSubtitle, { color: theme.muted }]} numberOfLines={1}>
                   {event.clientName}
                 </Text>
               </View>
@@ -211,13 +210,13 @@ export default function DayScreen() {
                 name={event.staffName}
                 size={32}
                 backgroundColor={theme.surface}
-                fontSize={9}
+                fontSize={11}
               />
-
             </View>
             </SwipeActionRow>
             );
           })}
+          </ListGroup>
         </ScrollView>
       )}
     </SafeAreaView>
@@ -225,79 +224,15 @@ export default function DayScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  subtitle: {
-    fontSize: 13,
-    marginTop: 2,
-  },
-  stateContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 48,
-    gap: 14,
-  },
-  emptyText: {
-    fontSize: 15,
-    textAlign: 'center',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  colorBar: {
-    width: 3,
-    height: 40,
-    borderRadius: 2,
-  },
-  rowTimeCol: {
-    width: 56,
-  },
-  time: {
-    fontSize: 14,
-  },
-  timeMuted: {
-    fontSize: 12,
-  },
-  eventText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  eventSubtitle: {
-    marginTop: 2,
-    fontSize: 13,
-  },
-  paymentBadge: {
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    alignItems: 'flex-end',
-  },
-  paymentBadgeAmount: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-
+  safeArea: { flex: 1 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 48, gap: 20 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12, minHeight: 64 },
+  colorBar: { width: 4, alignSelf: 'stretch', borderRadius: 2 },
+  rowTimeCol: { gap: 2 },
+  time: { fontSize: 15, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  timeMuted: { fontSize: 13, fontVariant: ['tabular-nums'] },
+  eventText: { fontSize: 16, fontWeight: '500' },
+  eventSubtitle: { marginTop: 2, fontSize: 13 },
+  paymentBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  paymentBadgeAmount: { fontSize: 12, fontWeight: '600' },
 });

@@ -1,17 +1,16 @@
-import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
-import { HeaderButton } from '@/components/header-button';
+import { Button, ErrorBanner, FieldRow, FormScreen, ListGroup, ListRow, TextField } from '@/components/ui';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import React from 'react';
-import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { FormSkeleton } from '@/components/content-skeletons';
 import { StaffAvatar } from '@/components/staff-avatar';
-import { Colors, Design } from '@/constants/theme';
+import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchStaffMember, Staff, updateStaff, updateStaffImagePath } from '@/lib/api/staff';
@@ -129,11 +128,6 @@ export default function StaffDetailScreen() {
       options={{
         headerShown: true,
         title: name || t('staff.title'),
-        headerRight: () => (
-          <HeaderButton onPress={handleSave} disabled={saving || !email.trim()} hitSlop={8} style={styles.headerTextButton}>
-            <Text style={[styles.saveText, !email.trim() && styles.saveTextDisabled]}>{t('client.save')}</Text>
-          </HeaderButton>
-        ),
       }}
     />
   );
@@ -148,21 +142,17 @@ export default function StaffDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+    <>
       {screenOptions}
+      <FormScreen
+        footer={<Button label={t('client.save')} onPress={handleSave} loading={saving} disabled={!email.trim()} />}>
+        <ErrorBanner message={error} />
 
-      {error ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorBannerText}>{error}</Text>
-        </View>
-      ) : null}
-
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.profileSection}>
           <Pressable accessibilityRole="button" accessibilityLabel={t('staff.changePhoto')} style={styles.avatarPressable} onPress={handleChangePhoto} disabled={uploadingPhoto}>
             <StaffAvatar imagePath={staff?.image_path} name={name} size={72} fontSize={24} />
             <View style={styles.avatarEditBadge}>
-              <AppIcon name="camera" size={14} color={theme.background} />
+              <AppIcon name="camera" size={14} color={theme.onTint} />
             </View>
           </Pressable>
           <Pressable onPress={handleChangePhoto} disabled={uploadingPhoto} hitSlop={8}>
@@ -170,51 +160,40 @@ export default function StaffDetailScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.section}>
-          <TextInput style={styles.input} placeholder={t('client.firstName')} value={firstName} onChangeText={setFirstName} />
-          <TextInput style={styles.input} placeholder={t('client.lastName')} value={lastName} onChangeText={setLastName} />
-          <TextInput
-            style={styles.input}
-            placeholder={t('client.email')}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder={t('client.phone')}
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder={t('staff.specialization')}
-            value={specialization}
-            onChangeText={setSpecialization}
-          />
-          <TextInput style={styles.input} placeholder={t('staff.status')} value={status} onChangeText={setStatus} />
-        </View>
+        <FieldRow>
+          <TextField label={t('client.firstName')} value={firstName} onChangeText={setFirstName} />
+          <TextField label={t('client.lastName')} value={lastName} onChangeText={setLastName} />
+        </FieldRow>
+        <TextField
+          label={t('client.email')}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        <TextField label={t('client.phone')} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+        <TextField label={t('staff.specialization')} value={specialization} onChangeText={setSpecialization} />
+        <TextField label={t('staff.status')} value={status} onChangeText={setStatus} />
 
-        <View style={styles.section}>
-          <Pressable
-            style={styles.navRow}
-            onPress={() => router.push({ pathname: '/staff/[id]/availability', params: { id } })}>
-            <Text style={styles.navRowText}>{t('staff.availability')}</Text>
-            <AppIcon name="chevronRight" size={20} color={theme.muted} />
-          </Pressable>
-          <Pressable style={styles.navRow} onPress={() => router.push({ pathname: '/staff/[id]/time-off', params: { id } })}>
-            <Text style={styles.navRowText}>{t('staff.timeOff')}</Text>
-            <AppIcon name="chevronRight" size={20} color={theme.muted} />
-          </Pressable>
-          <Pressable style={styles.navRow} onPress={() => router.push({ pathname: '/staff/[id]/schedule', params: { id } })}>
-            <Text style={styles.navRowText}>{t('staff.schedule')}</Text>
-            <AppIcon name="chevronRight" size={20} color={theme.muted} />
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        <ListGroup>
+          <ListRow
+            icon="calendar"
+            title={t('staff.availability')}
+            onPress={() => router.push({ pathname: '/staff/[id]/availability', params: { id } })}
+          />
+          <ListRow
+            icon="eventBusy"
+            title={t('staff.timeOff')}
+            onPress={() => router.push({ pathname: '/staff/[id]/time-off', params: { id } })}
+          />
+          <ListRow
+            icon="schedule"
+            title={t('staff.schedule')}
+            onPress={() => router.push({ pathname: '/staff/[id]/schedule', params: { id } })}
+          />
+        </ListGroup>
+      </FormScreen>
+    </>
   );
 }
 
@@ -224,60 +203,10 @@ const createStyles = (theme: typeof Colors.light) =>
       flex: 1,
       backgroundColor: theme.background,
     },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 12,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    headerTitle: {
-      flex: 1,
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.text,
-    },
-    headerTextButton: {
-      width: 'auto',
-      minWidth: 0,
-      paddingHorizontal: 4,
-    },
-    saveText: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: theme.tint,
-    },
-    saveTextDisabled: {
-      color: theme.muted,
-    },
-    errorBanner: {
-      marginHorizontal: 16,
-      marginTop: 12,
-      padding: 12,
-      borderRadius: Design.controlRadius,
-      backgroundColor: theme.errorSurface,
-    },
-    errorBannerText: {
-      color: theme.error,
-      fontSize: 13,
-      fontWeight: '600',
-    },
-    stateContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    scrollContent: {
-      padding: 16,
-      paddingBottom: 48,
-      gap: 24,
-    },
     profileSection: {
       alignItems: 'center',
-      gap: 8,
+      gap: 10,
+      paddingTop: 8,
     },
     avatarPressable: {
       position: 'relative',
@@ -296,38 +225,8 @@ const createStyles = (theme: typeof Colors.light) =>
       borderColor: theme.background,
     },
     changePhotoText: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '600',
       color: theme.tint,
-    },
-    section: {
-      gap: 10,
-    },
-    input: {
-      minHeight: Design.touchTarget,
-      borderWidth: 1,
-      borderColor: theme.border,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      fontSize: 15,
-      color: theme.text,
-      marginBottom: 8,
-    },
-    navRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.border,
-      marginBottom: 8,
-    },
-    navRowText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.text,
     },
   });

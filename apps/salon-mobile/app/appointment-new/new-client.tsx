@@ -1,18 +1,14 @@
-import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { AppIcon } from '@/components/app-icon';
-import { HeaderButton } from '@/components/header-button';
-import { Pressable } from '@/components/pressable-scale';
 import * as Haptics from 'expo-haptics';
 import { Stack, useRouter } from 'expo-router';
 import React from 'react';
-import { DeviceEventEmitter, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { DeviceEventEmitter, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { RowListSkeleton } from '@/components/content-skeletons';
-import { Colors, Design } from '@/constants/theme';
+import { Button, FieldRow, FormScreen, TextField, useModalHeader, useTheme } from '@/components/ui';
+import { Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ClientSearchResult, searchClients } from '@/lib/api/clients';
 
 import { APPOINTMENT_DRAFT_EVENTS } from '@/lib/appointment-draft';
@@ -28,9 +24,8 @@ export default function NewClientScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { companyId } = useAuth();
-  const colorScheme = useColorScheme() ?? 'light';
-  const theme = Colors[colorScheme];
-  const styles = React.useMemo(() => createStyles(theme), [theme]);
+  const theme = useTheme();
+  const modalHeader = useModalHeader();
 
   const [firstName, setFirstName] = React.useState('');
   const [lastName, setLastName] = React.useState('');
@@ -89,139 +84,73 @@ export default function NewClientScreen() {
   }, [duplicateMatch, router]);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: t('appointment.newClientTitle'),
-          headerRight: () => (
-            <HeaderButton onPress={handleSave} disabled={!canSave} hitSlop={8} style={styles.headerTextButton}>
-              <Text style={[styles.headerSaveText, { color: canSave ? theme.tint : theme.muted }]}>{t('appointment.save')}</Text>
-            </HeaderButton>
-          ),
-        }}
-      />
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        contentInsetAdjustmentBehavior="automatic">
-        <View style={styles.formGroup}>
-          <Text style={styles.fieldLabel}>{`${t('appointment.firstName')} *`}</Text>
-          <TextInput style={styles.fieldInput} value={firstName} onChangeText={setFirstName} placeholderTextColor={theme.muted} />
-        </View>
-        <View style={styles.formGroup}>
-          <Text style={styles.fieldLabel}>{`${t('appointment.lastName')} *`}</Text>
-          <TextInput style={styles.fieldInput} value={lastName} onChangeText={setLastName} placeholderTextColor={theme.muted} />
-        </View>
-        <View style={styles.formGroup}>
-          <Text style={styles.fieldLabel}>{`${t('appointment.email')} *`}</Text>
-          <TextInput
-            style={styles.fieldInput}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            placeholderTextColor={theme.muted}
+    <>
+      <Stack.Screen options={modalHeader} />
+      <FormScreen
+        closable
+        title={t('appointment.newClientTitle')}
+        footer={<Button label={t('appointment.save')} onPress={handleSave} disabled={!canSave} />}>
+        <FieldRow>
+          <TextField
+            label={t('appointment.firstName')}
+            value={firstName}
+            onChangeText={setFirstName}
+            autoCapitalize="words"
+            textContentType="givenName"
           />
-        </View>
+          <TextField
+            label={t('appointment.lastName')}
+            value={lastName}
+            onChangeText={setLastName}
+            autoCapitalize="words"
+            textContentType="familyName"
+          />
+        </FieldRow>
+        <TextField
+          label={t('appointment.email')}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoComplete="email"
+          textContentType="emailAddress"
+        />
 
         {duplicateStatus === 'checking' ? (
-          <RowListSkeleton count={1} avatar={false} style={{ paddingHorizontal: 0, paddingTop: 0 }} />
+          <RowListSkeleton count={1} avatar={false} style={styles.skeleton} />
         ) : duplicateStatus === 'clear' ? (
-          <View style={[styles.duplicateBanner, styles.duplicateBannerClear]}>
-            <AppIcon name="checkCircle" size={18} color={theme.text} />
-            <View style={styles.flexFill}>
-              <Text style={styles.duplicateBannerTitle}>{t('appointment.noDuplicateFound')}</Text>
-              <Text style={styles.rowMeta}>{t('appointment.noDuplicateFoundHint')}</Text>
+          <View style={[styles.banner, { backgroundColor: theme.successSurface }]}>
+            <AppIcon name="checkCircle" size={18} color={theme.success} />
+            <View style={styles.flex}>
+              <Text style={[styles.bannerTitle, { color: theme.text }]}>{t('appointment.noDuplicateFound')}</Text>
+              <Text style={[styles.bannerMeta, { color: theme.muted }]}>{t('appointment.noDuplicateFoundHint')}</Text>
             </View>
           </View>
         ) : duplicateStatus === 'duplicate' && duplicateMatch ? (
-          <View style={[styles.duplicateBanner, styles.duplicateBannerWarn]}>
-            <View style={styles.flexFill}>
-              <Text style={styles.duplicateBannerTitle}>{t('appointment.duplicateFound')}</Text>
-              <Text style={styles.rowMeta}>{clientDisplayName(duplicateMatch.first_name, duplicateMatch.last_name, duplicateMatch.email)}</Text>
+          <View style={[styles.banner, styles.bannerColumn, { backgroundColor: theme.warningSurface }]}>
+            <View style={styles.bannerHeading}>
+              <AppIcon name="person" size={18} color={theme.warning} />
+              <View style={styles.flex}>
+                <Text style={[styles.bannerTitle, { color: theme.text }]}>{t('appointment.duplicateFound')}</Text>
+                <Text style={[styles.bannerMeta, { color: theme.muted }]}>
+                  {clientDisplayName(duplicateMatch.first_name, duplicateMatch.last_name, duplicateMatch.email)}
+                </Text>
+              </View>
             </View>
-            <Pressable onPress={useExistingClient}>
-              <Text style={styles.headerLinkText}>{t('appointment.useExistingClient')}</Text>
-            </Pressable>
+            <Button label={t('appointment.useExistingClient')} variant="secondary" size="medium" onPress={useExistingClient} />
           </View>
         ) : null}
-      </ScrollView>
-    </SafeAreaView>
+      </FormScreen>
+    </>
   );
 }
 
-function createStyles(theme: typeof Colors.light) {
-  return StyleSheet.create({
-    safeArea: {
-      flex: 1,
-      backgroundColor: theme.background,
-    },
-    flexFill: {
-      flex: 1,
-    },
-    headerTextButton: {
-      width: 'auto',
-      minWidth: 0,
-      paddingHorizontal: 4,
-    },
-    headerLinkText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.tint,
-    },
-    headerSaveText: {
-      fontSize: 16,
-      fontWeight: '700',
-    },
-    scrollContent: {
-      padding: 16,
-      paddingBottom: 32,
-      gap: 16,
-    },
-    formGroup: {
-      gap: 6,
-    },
-    fieldLabel: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: theme.muted,
-    },
-    fieldInput: {
-      minHeight: Design.touchTarget,
-      borderWidth: 1,
-      borderColor: theme.border,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      fontSize: 15,
-      color: theme.text,
-    },
-    inlineSpinner: {
-      marginTop: 8,
-    },
-    rowMeta: {
-      fontSize: 13,
-      color: theme.muted,
-      marginTop: 2,
-    },
-    duplicateBanner: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      borderRadius: 12,
-      padding: 12,
-    },
-    duplicateBannerClear: {
-      backgroundColor: `${theme.text}0F`,
-    },
-    duplicateBannerWarn: {
-      backgroundColor: `${theme.error}1A`,
-    },
-    duplicateBannerTitle: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.text,
-    },
-  });
-}
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  skeleton: { paddingHorizontal: 0, paddingTop: 0 },
+  banner: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: Design.controlRadius, padding: 14 },
+  bannerColumn: { flexDirection: 'column', alignItems: 'stretch', gap: 12 },
+  bannerHeading: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  bannerTitle: { fontSize: 14, fontWeight: '600' },
+  bannerMeta: { fontSize: 13, marginTop: 2 },
+});

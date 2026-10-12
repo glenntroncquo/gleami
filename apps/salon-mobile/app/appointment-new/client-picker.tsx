@@ -1,19 +1,18 @@
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { AppIcon } from '@/components/app-icon';
-import { Pressable } from '@/components/pressable-scale';
 import { StaffAvatar } from '@/components/staff-avatar';
 import { Stack, useRouter } from 'expo-router';
 import React from 'react';
-import { DeviceEventEmitter, StyleSheet, Text, TextInput, View } from 'react-native';
+import { DeviceEventEmitter, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { RowListSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
-import { Colors } from '@/constants/theme';
+import { Button, ListGroup, ListRow, ScreenTitle, SectionHeader, useTheme } from '@/components/ui';
+import { Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Client, ClientSearchResult, fetchClients, searchClients } from '@/lib/api/clients';
 
 import { APPOINTMENT_DRAFT_EVENTS } from '@/lib/appointment-draft';
@@ -30,9 +29,7 @@ export default function ClientPickerScreen() {
   const router = useRouter();
   const { companyId } = useAuth();
   const { locationId } = useLocation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const theme = Colors[colorScheme];
-  const styles = React.useMemo(() => createStyles(theme), [theme]);
+  const theme = useTheme();
 
   const [searchTerm, setSearchTerm] = React.useState('');
   const [results, setResults] = React.useState<ClientSearchResult[]>([]);
@@ -89,173 +86,107 @@ export default function ClientPickerScreen() {
   const visibleRecentClients = recentClients.slice(0, showAllRecent ? RECENT_CLIENTS_EXPANDED_COUNT : RECENT_CLIENTS_COLLAPSED_COUNT);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: t('appointment.client'),
-        }}
-      />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['left', 'right', 'bottom']}>
+      <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         contentInsetAdjustmentBehavior="automatic">
-        <View style={styles.searchInputRow}>
+        <ScreenTitle title={t('appointment.client')} />
+        <View style={[styles.search, { borderColor: theme.border, backgroundColor: theme.background }]}>
           <AppIcon name="search" size={18} color={theme.muted} />
           <TextInput
-            style={styles.searchInputText}
+            style={[styles.searchInput, { color: theme.text }]}
             placeholder={t('appointment.searchClientPlaceholder')}
             placeholderTextColor={theme.muted}
             value={searchTerm}
             onChangeText={handleSearchChange}
+            accessibilityLabel={t('appointment.searchClientPlaceholder')}
           />
         </View>
 
         {searchTerm.trim().length >= 2 ? (
           searching ? (
-            <RowListSkeleton count={4} style={{ paddingHorizontal: 0 }} />
+            <RowListSkeleton count={4} style={styles.skeleton} />
           ) : results.length === 0 ? (
             <EmptyState compact icon="search" title={t('appointment.noResults')} subtitle={t('appointment.noResultsHint')} />
           ) : (
-            <View>
-              {results.map((result) => (
-                <Pressable key={result.id} style={styles.row} onPress={() => selectClient(result)}>
-                  <StaffAvatar imagePath={null} name={clientDisplayName(result.first_name, result.last_name, result.email)} size={40} />
-                  <View style={styles.flexFill}>
-                    <Text style={styles.rowName}>{clientDisplayName(result.first_name, result.last_name, result.email)}</Text>
-                    <Text style={styles.rowMeta}>{result.email}</Text>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
+            <ListGroup>
+              {results.map((result) => {
+                const name = clientDisplayName(result.first_name, result.last_name, result.email);
+                return (
+                  <ListRow
+                    key={result.id}
+                    title={name}
+                    subtitle={result.email}
+                    leading={<StaffAvatar imagePath={null} name={name} size={40} />}
+                    chevron={false}
+                    onPress={() => selectClient(result)}
+                  />
+                );
+              })}
+            </ListGroup>
           )
         ) : (
           <View>
-            <Text style={styles.listLabel}>{t('appointment.recentClients')}</Text>
+            <SectionHeader title={t('appointment.recentClients')} />
             {recentClientsLoading ? (
-              <RowListSkeleton count={5} style={{ paddingHorizontal: 0 }} />
+              <RowListSkeleton count={5} style={styles.skeleton} />
             ) : recentClients.length === 0 ? (
               <EmptyState compact icon="peopleOutline" title={t('appointment.noResults')} subtitle={t('appointment.noResultsHint')} />
             ) : (
-              <View>
-                {visibleRecentClients.map((client) => (
-                  <Pressable
-                    key={client.id}
-                    style={styles.row}
-                    onPress={() =>
-                      selectClient({ id: client.id, first_name: client.first_name, last_name: client.last_name, email: client.email ?? '' })
-                    }>
-                    <StaffAvatar imagePath={null} name={clientDisplayName(client.first_name, client.last_name, client.email ?? '')} size={40} />
-                    <View style={styles.flexFill}>
-                      <Text style={styles.rowName}>{clientDisplayName(client.first_name, client.last_name, client.email ?? '')}</Text>
-                      {client.email ? <Text style={styles.rowMeta}>{client.email}</Text> : null}
-                    </View>
-                  </Pressable>
-                ))}
+              <View style={styles.recent}>
+                <ListGroup>
+                  {visibleRecentClients.map((client) => {
+                    const name = clientDisplayName(client.first_name, client.last_name, client.email ?? '');
+                    return (
+                      <ListRow
+                        key={client.id}
+                        title={name}
+                        subtitle={client.email || null}
+                        leading={<StaffAvatar imagePath={null} name={name} size={40} />}
+                        chevron={false}
+                        onPress={() =>
+                          selectClient({ id: client.id, first_name: client.first_name, last_name: client.last_name, email: client.email ?? '' })
+                        }
+                      />
+                    );
+                  })}
+                </ListGroup>
                 {!showAllRecent && recentClients.length > RECENT_CLIENTS_COLLAPSED_COUNT ? (
-                  <Pressable onPress={() => setShowAllRecent(true)} style={styles.showMoreRow}>
-                    <Text style={styles.headerLinkText}>{t('appointment.showMore')}</Text>
-                  </Pressable>
+                  <Button label={t('appointment.showMore')} variant="ghost" size="medium" onPress={() => setShowAllRecent(true)} />
                 ) : null}
               </View>
             )}
           </View>
         )}
 
-        <Pressable style={styles.newClientRow} onPress={() => router.push('/appointment-new/new-client')}>
-          <View style={styles.newClientRowIcon}>
-            <AppIcon name="personAdd" size={18} color={theme.muted} />
-          </View>
-          <View style={styles.flexFill}>
-            <Text style={styles.rowName}>{t('appointment.addNewClient')}</Text>
-            <Text style={styles.rowMeta}>{t('appointment.addNewClientHint')}</Text>
-          </View>
-        </Pressable>
+        <ListGroup>
+          <ListRow
+            title={t('appointment.addNewClient')}
+            subtitle={t('appointment.addNewClientHint')}
+            icon="personAdd"
+            onPress={() => router.push('/appointment-new/new-client')}
+          />
+        </ListGroup>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function createStyles(theme: typeof Colors.light) {
-  return StyleSheet.create({
-    safeArea: {
-      flex: 1,
-      backgroundColor: theme.background,
-    },
-    flexFill: {
-      flex: 1,
-    },
-    headerLinkText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.tint,
-    },
-    scrollContent: {
-      padding: 16,
-      paddingBottom: 32,
-      gap: 12,
-    },
-    searchInputRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.surface,
-      borderRadius: 14,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-    },
-    searchInputText: {
-      flex: 1,
-      fontSize: 15,
-      color: theme.text,
-      padding: 0,
-    },
-    inlineSpinner: {
-      marginTop: 8,
-    },
-    listLabel: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: theme.muted,
-      marginBottom: 4,
-    },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      paddingVertical: 10,
-    },
-    rowName: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.text,
-    },
-    rowMeta: {
-      fontSize: 13,
-      color: theme.muted,
-      marginTop: 2,
-    },
-    showMoreRow: {
-      paddingVertical: 8,
-    },
-    newClientRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      paddingTop: 14,
-      marginTop: 4,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.border,
-    },
-    newClientRowIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.background,
-    },
-  });
-}
+const styles = StyleSheet.create({
+  safeArea: { flex: 1 },
+  scrollContent: { paddingHorizontal: Design.screenPadding, paddingTop: 24, paddingBottom: 32, gap: 16 },
+  search: {
+    minHeight: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: Design.controlRadius,
+    paddingHorizontal: 14,
+  },
+  searchInput: { flex: 1, fontSize: 16, paddingVertical: 12 },
+  skeleton: { paddingHorizontal: 0 },
+  recent: { gap: 4 },
+});

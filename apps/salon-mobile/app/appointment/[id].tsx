@@ -1,26 +1,19 @@
 import { useAppointmentPayments } from '@/hooks/use-appointment-payments';
 import { SwipeableRow } from '@/components/swipeable-row';
-import { deleteClientNote } from '@/lib/api/clients';
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
-import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import {
-  Alert,
-  DeviceEventEmitter,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, DeviceEventEmitter, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { DetailSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
-import { Colors } from '@/constants/theme';
+import { Button, ErrorBanner, ListGroup, ListRow, SectionHeader, TextField } from '@/components/ui';
+import { Colors, Design } from '@/constants/theme';
+import type { AppointmentPaymentInfo } from '@/lib/api/orders';
 import { useCheckout } from '@/contexts/checkout-context';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
@@ -28,7 +21,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { cancelAppointment } from '@/lib/api/appointment-cancel';
 import { isAppointmentCanceled } from '@/lib/api/appointment-status';
 import { fetchAppointmentById, fetchClientAppointments, type AppointmentRow } from '@/lib/api/calendar';
-import { addClientNote, Client, ClientNote, fetchClient, fetchClientNotes } from '@/lib/api/clients';
+import { addClientNote, Client, ClientNote, deleteClientNote, fetchClient, fetchClientNotes } from '@/lib/api/clients';
 import { getInitialsFromLabel } from '@/lib/text';
 
 import { appointmentToEvent, visitDurationMinutes } from '@/components/calendar/calendar-data';
@@ -241,55 +234,48 @@ export default function AppointmentDetailScreen() {
         <EmptyState icon="eventBusy" title={error ?? t('client.failedToLoad')} />
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <View style={[styles.section, { borderBottomColor: theme.border }]}>
-            <View style={styles.summaryHeading}>
-              <Text style={[styles.appointmentTitle, { color: theme.text }]}>{serviceNames[0] ?? event.label}</Text>
-              {serviceNames.length > 1 ? (
-                <Text style={[styles.serviceSubtitle, { color: theme.muted }]}>{serviceNames.slice(1).join(' · ')}</Text>
-              ) : null}
-            </View>
-            <View style={styles.detailRow}>
-              <AppIcon name="calendar" size={21} color={theme.text} />
-              <Text style={[styles.detailText, { color: theme.muted }]}>{getListHeaderLabel(toDateKeyFromSalonClock(event.startISO))}</Text>
-            </View>
-            <View style={styles.detailRow}>
-              <AppIcon name="schedule" size={21} color={theme.text} />
-              <Text style={[styles.detailText, { color: theme.muted }]}>
-                {`${event.startTime}–${event.endTime}${duration > 0 ? `  (${duration} ${t('appointment.minutesShort')})` : ''}`}
-              </Text>
-            </View>
-            <View style={styles.detailRow}>
-              <AppIcon name="person" size={21} color={theme.text} />
-              <Text style={[styles.detailText, { color: theme.muted }]}>{event.staffName}</Text>
-            </View>
-            {canceled ? <Text style={[styles.canceledBadge, { color: theme.error }]}>{t('appointment.canceled')}</Text> : null}
+          <View style={styles.summaryHeading}>
+            <Text style={[styles.appointmentTitle, { color: theme.text }]}>{serviceNames[0] ?? event.label}</Text>
+            {serviceNames.length > 1 ? (
+              <Text style={[styles.serviceSubtitle, { color: theme.muted }]}>{serviceNames.slice(1).join(' · ')}</Text>
+            ) : null}
+            {canceled ? (
+              <View style={[styles.canceledBadge, { backgroundColor: theme.errorSurface }]}>
+                <Text style={[styles.canceledBadgeText, { color: theme.error }]}>{t('appointment.canceled')}</Text>
+              </View>
+            ) : null}
           </View>
 
-          {error ? <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text> : null}
+          <ListGroup>
+            <ListRow icon="calendar" title={getListHeaderLabel(toDateKeyFromSalonClock(event.startISO))} />
+            <ListRow
+              icon="schedule"
+              title={`${event.startTime}–${event.endTime}`}
+              value={duration > 0 ? `${duration} ${t('appointment.minutesShort')}` : null}
+            />
+            <ListRow icon="person" title={event.staffName} />
+          </ListGroup>
 
-          <View style={[styles.section, { borderBottomColor: theme.border }]}>
-            <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('appointment.client')}</Text>
-            <Pressable
-              accessibilityRole="button"
-              disabled={!event.clientId}
-              style={styles.clientRow}
-              onPress={() => {
-                if (event.clientId) router.push({ pathname: '/client/[id]', params: { id: event.clientId } });
-              }}>
-              <View style={[styles.clientAvatar, { backgroundColor: theme.surface }]}>
-                <Text style={[styles.clientAvatarText, { color: theme.text }]}>{getInitialsFromLabel(clientDisplayName)}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.clientName, { color: theme.text }]}>{clientDisplayName}</Text>
-                {client?.email ? <Text style={[styles.clientDetail, { color: theme.muted }]}>{client.email}</Text> : null}
-                {client?.phone ? <Text style={[styles.clientDetail, { color: theme.muted }]}>{client.phone}</Text> : null}
-              </View>
-              {event.clientId ? <AppIcon name="chevronRight" size={20} color={theme.muted} /> : null}
-            </Pressable>
+          <ErrorBanner message={error} />
+
+          <View>
+            <SectionHeader title={t('appointment.client')} />
+            <ListGroup>
+              <ListRow
+                title={clientDisplayName}
+                subtitle={[client?.email, client?.phone].filter(Boolean).join(' · ')}
+                leading={
+                  <View style={[styles.clientAvatar, { backgroundColor: theme.surface }]}>
+                    <Text style={[styles.clientAvatarText, { color: theme.text }]}>{getInitialsFromLabel(clientDisplayName)}</Text>
+                  </View>
+                }
+                onPress={event.clientId ? () => router.push({ pathname: '/client/[id]', params: { id: event.clientId! } }) : undefined}
+              />
+            </ListGroup>
           </View>
 
-          <View style={[styles.section, { borderBottomColor: theme.border }]}>
-            <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('client.history')}</Text>
+          <View>
+            <SectionHeader title={t('client.history')} />
             {history.length === 0 ? (
               <EmptyState
                 compact
@@ -298,7 +284,9 @@ export default function AppointmentDetailScreen() {
                 subtitle={t('client.noHistoryHint')}
               />
             ) : (
+              <View style={[styles.scrollGroup, { borderColor: theme.border }]}>
               <ScrollView style={styles.historyList} nestedScrollEnabled showsVerticalScrollIndicator>
+              <ListGroup style={styles.innerGroup} inset={32}>
               {history.map((historyEvent) => {
                 const payment = paymentStatuses[historyEvent.appointmentId];
                 const badgeColors: Record<AppointmentPaymentInfo['status'], { background: string; text: string }> = {
@@ -312,37 +300,37 @@ export default function AppointmentDetailScreen() {
                     ? `€${(payment.amountPaid ?? 0).toFixed(2)}`
                     : t(`order.status.${payment?.status ?? 'unpaid'}`);
                 return (
-                <Pressable key={historyEvent.id} accessibilityRole="button" onPress={() => router.replace({ pathname: '/appointment/[id]', params: { id: historyEvent.appointmentId } })} style={[styles.historyRow, { borderBottomColor: theme.border }]}>
-                  <View style={[styles.historyColorBar, { backgroundColor: historyEvent.color }]} />
-                  <View style={{ flex: 1 }}>
-                    <Text numberOfLines={2} style={[styles.historyTitle, { color: theme.text }]}>{historyEvent.label}</Text>
-                    <Text style={[styles.historySubtitle, { color: theme.muted }]}>
-                      {`${getListHeaderLabel(toDateKeyFromSalonClock(historyEvent.startISO))} · ${historyEvent.startTime}–${historyEvent.endTime}`}
-                    </Text>
-                  </View>
-                  <View style={[styles.paymentBadge, { backgroundColor: badge.background }]}>
-                    <Text style={[styles.paymentBadgeText, { color: badge.text }]}>
-                      {badgeLabel}
-                    </Text>
-                  </View>
-                  <AppIcon name="chevronRight" size={16} color={theme.muted} />
-                </Pressable>
+                <ListRow
+                  key={historyEvent.id}
+                  title={historyEvent.label}
+                  subtitle={`${getListHeaderLabel(toDateKeyFromSalonClock(historyEvent.startISO))} · ${historyEvent.startTime}–${historyEvent.endTime}`}
+                  leading={<View style={[styles.historyColorBar, { backgroundColor: historyEvent.color }]} />}
+                  trailing={
+                    <View style={[styles.paymentBadge, { backgroundColor: badge.background }]}>
+                      <Text style={[styles.paymentBadgeText, { color: badge.text }]}>{badgeLabel}</Text>
+                    </View>
+                  }
+                  onPress={() => router.replace({ pathname: '/appointment/[id]', params: { id: historyEvent.appointmentId } })}
+                />
                 );
               })}
+              </ListGroup>
               </ScrollView>
+              </View>
             )}
           </View>
 
-          <View style={[styles.section, { borderBottomColor: theme.border }]}>
-            <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('client.notes')}</Text>
-
+          <View>
+            <SectionHeader title={t('client.notes')} />
             {notes.length === 0 ? (
               <Text style={[styles.emptyText, { color: theme.muted }]}>{t('client.noNotes')}</Text>
             ) : (
+              <View style={[styles.scrollGroup, { borderColor: theme.border }]}>
               <ScrollView style={styles.notesList} nestedScrollEnabled showsVerticalScrollIndicator>
+                <ListGroup style={styles.innerGroup} inset={14}>
                 {notes.map((note) => (
                 <SwipeableRow key={note.id} deleteLabel={t('common.delete')} onDelete={() => handleDeleteNote(note.id)}>
-                <View style={[styles.noteRow, { borderBottomColor: theme.border }]}>
+                <View style={[styles.noteRow, { backgroundColor: theme.background }]}>
                   <Text style={[styles.noteText, { color: theme.text }]}>{note.note}</Text>
                   <Text style={[styles.noteDate, { color: theme.muted }]}>
                     {getListHeaderLabel(toDateKey(new Date(note.created_at)))}
@@ -350,42 +338,49 @@ export default function AppointmentDetailScreen() {
                 </View>
                 </SwipeableRow>
                 ))}
+                </ListGroup>
               </ScrollView>
+              </View>
             )}
             {event.clientId ? (noteComposerOpen ? (
             <View style={styles.addNoteRow}>
-              <TextInput
+              <TextField
                 autoFocus
                 multiline
+                containerStyle={styles.flex}
                 accessibilityLabel={t('client.addNotePlaceholder')}
-                style={[styles.input, { borderColor: theme.border, color: theme.text, flex: 1, marginBottom: 0 }]}
+                style={styles.noteInput}
                 placeholder={t('client.addNotePlaceholder')}
-                placeholderTextColor={theme.muted}
                 value={newNote}
                 onChangeText={setNewNote}
               />
-              <Pressable style={[styles.addNoteButton, { borderColor: theme.border }]} onPress={handleAddNote} disabled={addingNote || !newNote.trim()}>
-                <Text style={[styles.addNoteButtonText, { color: theme.text }]}>{t('client.addNote')}</Text>
-              </Pressable>
+              <Button
+                label={t('client.addNote')}
+                variant="secondary"
+                onPress={handleAddNote}
+                disabled={addingNote || !newNote.trim()}
+                style={styles.addNoteButton}
+              />
             </View>
             ) : (
-              <Pressable accessibilityRole="button" style={styles.noteAction} onPress={() => setNoteComposerOpen(true)}>
-                <View style={[styles.noteActionIcon, { backgroundColor: theme.surface }]}>
-                  <AppIcon name="add" size={21} color={theme.text} />
-                </View>
-                <Text style={[styles.detailText, { color: theme.text }]}>{t('appointment.addNoteAction')}</Text>
-              </Pressable>
+              <Button
+                label={t('appointment.addNoteAction')}
+                icon="add"
+                variant="secondary"
+                size="medium"
+                onPress={() => setNoteComposerOpen(true)}
+                style={styles.noteAction}
+              />
             )) : null}
           </View>
 
           {!canceled ? (
-            <Pressable
-              accessibilityRole="button"
-              style={[styles.cancelButton, { backgroundColor: `${theme.error}12` }]}
+            <Button
+              label={t('appointment.cancelAppointment')}
+              variant="destructive"
               onPress={handleCancel}
-              disabled={cancelling}>
-              <Text style={[styles.cancelButtonText, { color: theme.error }]}>{t('appointment.cancelAppointment')}</Text>
-            </Pressable>
+              loading={cancelling}
+            />
           ) : null}
         </ScrollView>
       )}
@@ -397,172 +392,81 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  headerTitle: {
-    flex: 1,
-    marginHorizontal: 12,
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  stateContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  flex: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
-    padding: 16,
-    paddingBottom: 20,
-    gap: 16,
+    paddingHorizontal: Design.screenPadding,
+    paddingTop: 8,
+    paddingBottom: 24,
+    gap: 24,
   },
-  summaryHeading: { gap: 4, marginBottom: 4 },
-  serviceSubtitle: { fontSize: 14, lineHeight: 20 },
-  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  detailText: { fontSize: 14, lineHeight: 20, flexShrink: 1 },
-  noteAction: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
-  noteActionIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  section: {
-    gap: 10,
-    paddingBottom: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  sectionLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.7,
-  },
-  errorText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  appointmentRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  colorBar: {
-    width: 4,
-    borderRadius: 2,
-  },
+  summaryHeading: { gap: 4, alignItems: 'flex-start' },
+  serviceSubtitle: { fontSize: 15, lineHeight: 21 },
   appointmentTitle: {
-    fontSize: 20,
-    lineHeight: 25,
+    fontSize: 24,
+    lineHeight: 30,
     letterSpacing: -0.3,
     fontWeight: '700',
   },
-  appointmentSubtitle: {
-    marginTop: 2,
-    fontSize: 13,
+  canceledBadge: {
+    marginTop: 6,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
-  clientRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  canceledBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   clientAvatar: {
-    width: 44,
-    height: 44,
-    flexShrink: 0,
-    aspectRatio: 1,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   clientAvatarText: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  clientName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
   },
-  clientDetail: {
-    fontSize: 13,
-    marginTop: 2,
-  },
-  input: {
+  // The group's rounded border stays fixed while its rows scroll inside it.
+  scrollGroup: {
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 15,
-    marginBottom: 8,
+    borderRadius: Design.cardRadius - 4,
+    overflow: 'hidden',
   },
-  addNoteRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  addNoteButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  addNoteButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  emptyText: {
-    fontSize: 14,
-  },
-  notesList: { maxHeight: 180 },
-  noteRow: {
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-  },
-  noteText: {
-    fontSize: 14,
-  },
-  noteDate: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  historyList: { maxHeight: 180 },
-  paymentBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 4, flexShrink: 0 },
-  paymentBadgeText: { fontSize: 11, fontWeight: '600' },
-  historyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 4,
-    minHeight: 56,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
+  innerGroup: { borderWidth: 0, borderRadius: 0 },
+  historyList: { maxHeight: 280 },
   historyColorBar: {
     width: 4,
     height: 32,
     borderRadius: 2,
   },
-  historyTitle: {
+  paymentBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 4, flexShrink: 0 },
+  paymentBadgeText: { fontSize: 11, fontWeight: '600' },
+  emptyText: {
     fontSize: 14,
-    fontWeight: '600',
+    paddingHorizontal: 4,
   },
-  historySubtitle: {
+  notesList: { maxHeight: 220 },
+  noteRow: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  noteText: {
+    fontSize: 15,
+  },
+  noteDate: {
     fontSize: 13,
     marginTop: 2,
   },
-  canceledBadge: {
-    marginTop: 6,
-    fontSize: 13,
-    fontWeight: '700',
+  addNoteRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 12,
   },
-  cancelButton: {
-    marginTop: 0,
-    borderRadius: 14,
-    paddingVertical: 13,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
+  noteInput: { minHeight: 50 },
+  addNoteButton: { height: 50, paddingHorizontal: 16 },
+  noteAction: { marginTop: 12, alignSelf: 'flex-start' },
 });

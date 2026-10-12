@@ -1,17 +1,26 @@
-import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
-import { HeaderButton } from '@/components/header-button';
+import {
+  Button,
+  ErrorBanner,
+  Field,
+  FormScreen,
+  ListGroup,
+  ListRow,
+  SectionHeader,
+  SwitchRow,
+  TextField,
+} from '@/components/ui';
 import { SwipeableRow } from '@/components/swipeable-row';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { FormSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
-import { Colors, Design } from '@/constants/theme';
+import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   ManagedService,
@@ -129,11 +138,6 @@ export default function TreatmentDetailScreen() {
       options={{
         headerShown: true,
         title: service?.name || t('service.title'),
-        headerRight: () => (
-          <HeaderButton onPress={handleSave} disabled={saving || !name.trim()} hitSlop={8} style={styles.headerTextButton}>
-            <Text style={[styles.saveText, !name.trim() && styles.saveTextDisabled]}>{t('client.save')}</Text>
-          </HeaderButton>
-        ),
       }}
     />
   );
@@ -148,34 +152,29 @@ export default function TreatmentDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+    <>
       {screenOptions}
+      <FormScreen
+        footer={<Button label={t('client.save')} onPress={handleSave} loading={saving} disabled={!name.trim()} />}>
+        <ErrorBanner message={error} />
 
-      {error ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorBannerText}>{error}</Text>
-        </View>
-      ) : null}
+        <TextField label={t('service.name')} value={name} onChangeText={setName} placeholder={t('service.name')} />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('service.name')}</Text>
-          <TextInput style={styles.input} value={name} onChangeText={setName} placeholder={t('service.name')} />
+        <TextField
+          label={t('service.description')}
+          value={description}
+          onChangeText={setDescription}
+          placeholder={t('service.descriptionPlaceholder')}
+          multiline
+        />
 
-          <Text style={styles.sectionLabel}>{t('service.description')}</Text>
-          <TextInput
-            style={[styles.input, styles.multilineInput]}
-            value={description}
-            onChangeText={setDescription}
-            placeholder={t('service.descriptionPlaceholder')}
-            multiline
-          />
-
-          <Text style={styles.sectionLabel}>{t('service.color')}</Text>
+        <Field label={t('service.color')}>
           <View style={styles.colorRow}>
             {TREATMENT_COLORS.map((option) => (
               <Pressable
                 key={option}
+                accessibilityRole="button"
+                accessibilityState={{ selected: color === option }}
                 style={[
                   styles.colorSwatch,
                   { backgroundColor: COLOR_MAP[option as TreatmentColor] },
@@ -186,15 +185,14 @@ export default function TreatmentDetailScreen() {
               </Pressable>
             ))}
           </View>
+        </Field>
 
-          <View style={styles.activeRow}>
-            <Text style={styles.sectionLabel}>{t('service.active')}</Text>
-            <Switch value={isActive} onValueChange={setIsActive} />
-          </View>
-        </View>
+        <ListGroup>
+          <SwitchRow title={t('service.active')} value={isActive} onValueChange={setIsActive} />
+        </ListGroup>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('service.variants')}</Text>
+        <View>
+          <SectionHeader title={t('service.variants')} />
           {variants.length === 0 ? (
             <EmptyState
               compact
@@ -202,23 +200,29 @@ export default function TreatmentDetailScreen() {
               subtitle={t('service.noVariantsHint')}
             />
           ) : (
-            variants.map((option) => (
-              <SwipeableRow key={option.id} onDelete={() => handleDeleteOption(option)} deleteLabel={t('common.delete')}>
-                <Pressable style={styles.optionRow} onPress={() => openEditOption(option)}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.optionName}>{option.name}</Text>
-                    <Text style={styles.optionSubtitle}>{formatVariantSubtitle(option, t)}</Text>
-                  </View>
-                </Pressable>
-              </SwipeableRow>
-            ))
+            <ListGroup inset={14}>
+              {variants.map((option) => (
+                <SwipeableRow key={option.id} onDelete={() => handleDeleteOption(option)} deleteLabel={t('common.delete')}>
+                  <ListRow
+                    title={option.name}
+                    subtitle={formatVariantSubtitle(option, t)}
+                    onPress={() => openEditOption(option)}
+                  />
+                </SwipeableRow>
+              ))}
+            </ListGroup>
           )}
-          <Pressable style={{ marginTop: 8 }} onPress={openAddOption}>
-            <Text style={styles.addLink}>{t('service.addVariant')}</Text>
-          </Pressable>
+          <Button
+            label={t('service.addVariant')}
+            icon="add"
+            variant="secondary"
+            size="medium"
+            onPress={openAddOption}
+            style={styles.addButton}
+          />
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </FormScreen>
+    </>
   );
 }
 
@@ -228,86 +232,10 @@ const createStyles = (theme: typeof Colors.light) =>
       flex: 1,
       backgroundColor: theme.background,
     },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 12,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    headerTitle: {
-      flex: 1,
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.text,
-    },
-    headerTextButton: {
-      width: 'auto',
-      minWidth: 0,
-      paddingHorizontal: 4,
-    },
-    saveText: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: theme.tint,
-    },
-    saveTextDisabled: {
-      color: theme.muted,
-    },
-    errorBanner: {
-      marginHorizontal: 16,
-      marginTop: 12,
-      padding: 12,
-      borderRadius: Design.controlRadius,
-      backgroundColor: theme.errorSurface,
-    },
-    errorBannerText: {
-      color: theme.error,
-      fontSize: 13,
-      fontWeight: '600',
-    },
-    stateContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    scrollContent: {
-      padding: 16,
-      paddingBottom: 48,
-      gap: 24,
-    },
-    section: {
-      gap: 10,
-    },
-    sectionLabel: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: theme.muted,
-      textTransform: 'uppercase',
-    },
-    input: {
-      minHeight: Design.touchTarget,
-      borderWidth: 1,
-      borderColor: theme.border,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      fontSize: 15,
-      color: theme.text,
-      marginBottom: 8,
-    },
-    multilineInput: {
-      minHeight: 70,
-      textAlignVertical: 'top',
-    },
     colorRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 10,
-      marginBottom: 8,
     },
     colorSwatch: {
       width: 44,
@@ -320,36 +248,7 @@ const createStyles = (theme: typeof Colors.light) =>
       borderWidth: 2,
       borderColor: theme.text,
     },
-    activeRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    emptyText: {
-      fontSize: 14,
-      color: theme.muted,
-    },
-    addLink: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.tint,
-    },
-    optionRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      paddingVertical: 10,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    optionName: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.text,
-    },
-    optionSubtitle: {
-      fontSize: 13,
-      color: theme.muted,
-      marginTop: 2,
+    addButton: {
+      marginTop: 12,
     },
   });

@@ -7,7 +7,6 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -117,6 +116,7 @@ export default function TreatmentsScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={[styles.listContent, services.length === 0 && styles.listContentEmpty]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
           ListEmptyComponent={
             <EmptyState
               icon="gridView"
@@ -162,7 +162,7 @@ export default function TreatmentsScreen() {
                         : t('service.optionsCount', { count: optionsCount })}
                     </Text>
                   </View>
-                  <AppIcon name="chevronRight" size={22} color={theme.muted} />
+                  <AppIcon name="chevronRight" size={16} color={theme.muted} />
                 </Pressable>
 
                 <Pressable
@@ -179,9 +179,13 @@ export default function TreatmentsScreen() {
       )}
 
       {!showNoCompanyState ? (
-        <TouchableOpacity style={styles.fab} onPress={() => router.push('/services/new')}>
-          <AppIcon name="add" size={26} color={theme.text} />
-        </TouchableOpacity>
+        <Pressable
+          style={styles.fab}
+          accessibilityRole="button"
+          accessibilityLabel={t('service.addNew')}
+          onPress={() => router.push('/services/new')}>
+          <AppIcon name="add" size={26} color={theme.onTint} />
+        </Pressable>
       ) : null}
     </SafeAreaView>
   );
@@ -193,22 +197,8 @@ const createStyles = (theme: typeof Colors.light) =>
       flex: 1,
       backgroundColor: theme.background,
     },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    headerTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.text,
-    },
     errorBanner: {
-      marginHorizontal: 16,
+      marginHorizontal: Design.screenPadding,
       marginTop: 12,
       padding: 12,
       borderRadius: Design.controlRadius,
@@ -219,36 +209,32 @@ const createStyles = (theme: typeof Colors.light) =>
       fontSize: 13,
       fontWeight: '600',
     },
-    stateContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingTop: 60,
-    },
-    stateText: {
-      fontSize: 15,
-      color: theme.muted,
-    },
     listContent: {
-      paddingHorizontal: 16,
+      paddingHorizontal: Design.screenPadding,
+      paddingTop: 8,
       paddingBottom: 100,
     },
     listContentEmpty: {
       flexGrow: 1,
     },
     row: {
+      minHeight: 56,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 10,
       paddingVertical: 10,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
+    },
+    separator: {
+      height: StyleSheet.hairlineWidth,
+      marginLeft: 38,
+      backgroundColor: theme.border,
     },
     reorderCol: {
       width: 28,
+      gap: 2,
     },
     reorderButton: {
-      height: 20,
+      height: 22,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -256,7 +242,8 @@ const createStyles = (theme: typeof Colors.light) =>
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      justifyContent: 'flex-start',
+      gap: 14,
     },
     colorDot: {
       width: 10,
@@ -264,8 +251,8 @@ const createStyles = (theme: typeof Colors.light) =>
       borderRadius: 5,
     },
     rowName: {
-      fontSize: 15,
-      fontWeight: '600',
+      fontSize: 16,
+      fontWeight: '500',
       color: theme.text,
     },
     rowNameInactive: {
@@ -291,8 +278,8 @@ const createStyles = (theme: typeof Colors.light) =>
       borderColor: theme.border,
     },
     activeBadgeText: {
-      fontSize: 11,
-      fontWeight: '700',
+      fontSize: 12,
+      fontWeight: '600',
     },
     activeBadgeTextOn: {
       color: theme.text,
@@ -302,20 +289,18 @@ const createStyles = (theme: typeof Colors.light) =>
     },
     fab: {
       position: 'absolute',
-      right: 20,
+      right: Design.screenPadding,
       bottom: 24,
-      width: 54,
-      height: 54,
-      borderRadius: 27,
-      backgroundColor: theme.background,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: theme.text,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 6,
+      backgroundColor: theme.tint,
+      shadowColor: theme.text,
+      shadowOpacity: 0.12,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 4 },
       elevation: 4,
     },
   });

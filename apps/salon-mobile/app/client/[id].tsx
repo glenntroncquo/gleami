@@ -1,18 +1,12 @@
 import { useAppointmentPayments } from '@/hooks/use-appointment-payments';
 import { SwipeableRow } from '@/components/swipeable-row';
-import { deleteClientNote } from '@/lib/api/clients';
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
-import { Pressable } from '@/components/pressable-scale';
-import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
+import { Button, DetailRow, FormFooter, ListGroup, ListRow, SectionHeader, TextField } from '@/components/ui';
+import type { AppointmentPaymentInfo } from '@/lib/api/orders';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import {
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -27,6 +21,7 @@ import {
   Client,
   ClientNote,
   addClientNote,
+  deleteClientNote,
   fetchClient,
   fetchClientNotes,
   updateClient,
@@ -157,21 +152,16 @@ export default function ClientDetailScreen() {
           headerShown: true,
           title: name || t('client.title'),
           headerTintColor: theme.text,
-          unstable_headerRightItems: () => [{
+          unstable_headerRightItems: () => isEditing ? [] : [{
             type: 'button',
-            label: t(isEditing ? 'client.save' : 'client.edit'),
+            label: t('client.edit'),
             tintColor: theme.text,
-            disabled: isEditing && saving,
-            onPress: isEditing ? handleSaveProfile : startEditing,
+            onPress: startEditing,
           }],
           headerRight: () =>
-            isEditing ? (
-              <HeaderButton onPress={handleSaveProfile} disabled={saving} hitSlop={8} style={styles.headerTextButton}>
-                <Text style={styles.saveText}>{t('client.save')}</Text>
-              </HeaderButton>
-            ) : (
+            isEditing ? null : (
               <HeaderButton onPress={startEditing} hitSlop={8} style={styles.headerTextButton}>
-                <Text style={styles.saveText}>{t('client.edit')}</Text>
+                <Text style={styles.headerText}>{t('client.edit')}</Text>
               </HeaderButton>
             ),
         }}
@@ -186,56 +176,37 @@ export default function ClientDetailScreen() {
       {loading ? (
         <DetailSkeleton />
       ) : (
+        <>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.profileSection}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{getInitialsFromLabel(name)}</Text>
             </View>
-
-            {isEditing ? (
-              <View style={{ width: '100%' }}>
-                <TextInput
-                  style={styles.input}
-                  placeholder={t('client.firstName')}
-                  placeholderTextColor={theme.muted}
-                  value={firstName}
-                  onChangeText={setFirstName}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder={t('client.lastName')}
-                  placeholderTextColor={theme.muted}
-                  value={lastName}
-                  onChangeText={setLastName}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder={t('client.email')}
-                  placeholderTextColor={theme.muted}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder={t('client.phone')}
-                  placeholderTextColor={theme.muted}
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                />
-              </View>
-            ) : (
-              <>
-                {client?.email ? <Text style={styles.profileLine}>{client.email}</Text> : null}
-                {client?.phone ? <Text style={styles.profileLine}>{client.phone}</Text> : null}
-              </>
-            )}
+            {name ? <Text style={styles.profileName}>{name}</Text> : null}
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>{t('client.history')}</Text>
+          {isEditing ? (
+            <View style={styles.form}>
+              <TextField label={t('client.firstName')} value={firstName} onChangeText={setFirstName} />
+              <TextField label={t('client.lastName')} value={lastName} onChangeText={setLastName} />
+              <TextField
+                label={t('client.email')}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              <TextField label={t('client.phone')} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+            </View>
+          ) : (
+            <ListGroup>
+              <DetailRow label={t('client.email')} value={client?.email} />
+              <DetailRow label={t('client.phone')} value={client?.phone} />
+            </ListGroup>
+          )}
+
+          <View>
+            <SectionHeader title={t('client.history')} />
             {history.length === 0 ? (
               <EmptyState
                 compact
@@ -244,7 +215,9 @@ export default function ClientDetailScreen() {
                 subtitle={t('client.noHistoryHint')}
               />
             ) : (
+              <View style={styles.scrollGroup}>
               <ScrollView style={styles.historyList} nestedScrollEnabled showsVerticalScrollIndicator>
+              <ListGroup style={styles.innerGroup} inset={32}>
               {history.map((event) => {
                 const payment = paymentStatuses[event.appointmentId];
                 const badgeColors: Record<AppointmentPaymentInfo['status'], { background: string; text: string }> = {
@@ -258,47 +231,49 @@ export default function ClientDetailScreen() {
                     ? `€${(payment.amountPaid ?? 0).toFixed(2)}`
                     : t(`order.status.${payment?.status ?? 'unpaid'}`);
                 return (
-                <Pressable
+                <ListRow
                   key={event.appointmentId}
-                  accessibilityRole="button"
+                  title={event.label}
+                  subtitle={`${getListHeaderLabel(toDateKeyFromSalonClock(event.startISO))} · ${event.startTime}–${event.endTime} · ${event.staffName}`}
+                  leading={<View style={[styles.historyColorBar, { backgroundColor: event.color }]} />}
+                  trailing={
+                    <View style={[styles.paymentBadge, { backgroundColor: badge.background }]}>
+                      <Text style={[styles.paymentBadgeText, { color: badge.text }]}>{badgeLabel}</Text>
+                    </View>
+                  }
                   onPress={() => router.push({ pathname: '/appointment/[id]', params: { id: event.appointmentId } })}
-                  style={styles.historyRow}>
-                  <View style={[styles.historyColorBar, { backgroundColor: event.color }]} />
-                  <View style={{ flex: 1 }}>
-                    <Text numberOfLines={2} style={styles.historyTitle}>{event.label}</Text>
-                    <Text style={styles.historySubtitle}>
-                      {`${getListHeaderLabel(toDateKeyFromSalonClock(event.startISO))} · ${event.startTime}–${event.endTime} · ${event.staffName}`}
-                    </Text>
-                  </View>
-                  <View style={[styles.paymentBadge, { backgroundColor: badge.background }]}>
-                    <Text style={[styles.paymentBadgeText, { color: badge.text }]}>{badgeLabel}</Text>
-                  </View>
-                  <AppIcon name="chevronRight" size={16} color={theme.muted} />
-                </Pressable>
+                />
                 );
               })}
+              </ListGroup>
               </ScrollView>
+              </View>
             )}
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>{t('client.notes')}</Text>
+          <View>
+            <SectionHeader title={t('client.notes')} />
             <View style={styles.addNoteRow}>
-              <TextInput
-                style={[styles.input, { flex: 1, marginBottom: 0 }]}
+              <TextField
+                containerStyle={styles.flex}
                 placeholder={t('client.addNotePlaceholder')}
-                placeholderTextColor={theme.muted}
                 value={newNote}
                 onChangeText={setNewNote}
               />
-              <Pressable style={styles.addNoteButton} onPress={handleAddNote} disabled={addingNote}>
-                <Text style={styles.addNoteButtonText}>{t('client.addNote')}</Text>
-              </Pressable>
+              <Button
+                label={t('client.addNote')}
+                variant="secondary"
+                onPress={handleAddNote}
+                disabled={addingNote}
+                style={styles.addNoteButton}
+              />
             </View>
             {notes.length === 0 ? (
               <EmptyState compact title={t('client.noNotes')} subtitle={t('client.noNotesHint')} />
             ) : (
+              <View style={styles.scrollGroup}>
               <ScrollView style={styles.notesList} nestedScrollEnabled showsVerticalScrollIndicator>
+                <ListGroup style={styles.innerGroup} inset={14}>
                 {notes.map((note) => (
                 <SwipeableRow key={note.id} deleteLabel={t('common.delete')} onDelete={() => handleDeleteNote(note.id)}>
                 <View style={styles.noteRow}>
@@ -307,10 +282,18 @@ export default function ClientDetailScreen() {
                 </View>
                 </SwipeableRow>
                 ))}
+                </ListGroup>
               </ScrollView>
+              </View>
             )}
           </View>
         </ScrollView>
+        {isEditing ? (
+          <FormFooter>
+            <Button label={t('client.save')} onPress={handleSaveProfile} loading={saving} />
+          </FormFooter>
+        ) : null}
+        </>
       )}
     </SafeAreaView>
   );
@@ -322,34 +305,19 @@ const createStyles = (theme: typeof Colors.light) =>
       flex: 1,
       backgroundColor: theme.background,
     },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 12,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    headerTitle: {
-      flex: 1,
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.text,
-    },
+    flex: { flex: 1 },
     headerTextButton: {
       width: 'auto',
       minWidth: 0,
       paddingHorizontal: 4,
     },
-    saveText: {
-      fontSize: 15,
-      fontWeight: '700',
+    headerText: {
+      fontSize: 16,
+      fontWeight: '600',
       color: theme.tint,
     },
     errorBanner: {
-      marginHorizontal: 16,
+      marginHorizontal: Design.screenPadding,
       marginTop: 12,
       padding: 12,
       borderRadius: Design.controlRadius,
@@ -360,19 +328,15 @@ const createStyles = (theme: typeof Colors.light) =>
       fontSize: 13,
       fontWeight: '600',
     },
-    stateContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
     scrollContent: {
-      padding: 16,
+      paddingHorizontal: Design.screenPadding,
+      paddingTop: 16,
       paddingBottom: 48,
       gap: 24,
     },
     profileSection: {
       alignItems: 'center',
-      gap: 6,
+      gap: 10,
     },
     avatar: {
       width: 72,
@@ -381,84 +345,49 @@ const createStyles = (theme: typeof Colors.light) =>
       backgroundColor: theme.surface,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 8,
     },
     avatarText: {
       fontSize: 24,
-      fontWeight: '700',
-      color: theme.muted,
-    },
-    profileLine: {
-      fontSize: 14,
-      color: theme.muted,
-    },
-    section: {
-      gap: 10,
-    },
-    sectionLabel: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: theme.muted,
-      textTransform: 'uppercase',
-    },
-    input: {
-      minHeight: Design.touchTarget,
-      borderWidth: 1,
-      borderColor: theme.border,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      fontSize: 15,
+      fontWeight: '600',
       color: theme.text,
-      marginBottom: 8,
     },
+    profileName: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    form: { gap: 16 },
     addNoteRow: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       gap: 8,
+      marginBottom: 12,
     },
-    addNoteButton: {
-      minHeight: Design.touchTarget,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      borderRadius: 12,
+    addNoteButton: { height: 50, paddingHorizontal: 16 },
+    // The group's rounded border stays fixed while its rows scroll inside it.
+    scrollGroup: {
       borderWidth: 1,
-      borderColor: theme.text,
+      borderColor: theme.border,
+      borderRadius: Design.cardRadius - 4,
+      overflow: 'hidden',
     },
-    addNoteButtonText: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: theme.text,
-    },
-    emptyText: {
-      fontSize: 14,
-      color: theme.muted,
-    },
-    notesList: { maxHeight: 180 },
-  noteRow: {
-      paddingVertical: 8,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
+    innerGroup: { borderWidth: 0, borderRadius: 0 },
+    notesList: { maxHeight: 220 },
+    noteRow: {
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      backgroundColor: theme.background,
     },
     noteText: {
-      fontSize: 14,
+      fontSize: 15,
       color: theme.text,
     },
     noteDate: {
-      fontSize: 12,
+      fontSize: 13,
       color: theme.muted,
       marginTop: 2,
     },
-    historyList: { maxHeight: 180 },
-    historyRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      paddingVertical: 4,
-      minHeight: 56,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
+    historyList: { maxHeight: 280 },
     historyColorBar: {
       width: 4,
       height: 32,
@@ -466,14 +395,4 @@ const createStyles = (theme: typeof Colors.light) =>
     },
     paymentBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 4, flexShrink: 0 },
     paymentBadgeText: { fontSize: 11, fontWeight: '600' },
-    historyTitle: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.text,
-    },
-    historySubtitle: {
-      fontSize: 12,
-      color: theme.muted,
-      marginTop: 2,
-    },
   });

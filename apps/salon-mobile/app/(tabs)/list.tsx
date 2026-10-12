@@ -15,7 +15,7 @@ import Animated, { FadeIn, FadeOut, useReducedMotion } from 'react-native-reanim
 import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/empty-state';
-import { LiquidGlass } from '@/components/liquid-glass';
+import { ListRow } from '@/components/ui';
 import { SkeletonBlock } from '@/components/skeleton-block';
 import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
@@ -186,6 +186,7 @@ export default function ClientsScreen() {
           keyExtractor={(item) => item.id}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
           contentContainerStyle={[styles.listContent, filteredClients.length === 0 && styles.listContentEmpty]}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
           ListEmptyComponent={
             searchTerm ? (
               <EmptyState
@@ -208,16 +209,16 @@ export default function ClientsScreen() {
           renderItem={({ item }) => {
             const name = clientName(item, t('calendar.unknownClient'));
             return (
-              <Pressable style={styles.row} onPress={() => router.push({ pathname: '/client/[id]', params: { id: item.id } })}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{getInitialsFromLabel(name)}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.rowName}>{name}</Text>
-                  {item.email ? <Text style={styles.rowSubtitle}>{item.email}</Text> : null}
-                </View>
-                <AppIcon name="chevronRight" size={22} color={theme.muted} />
-              </Pressable>
+              <ListRow
+                title={name}
+                subtitle={item.email}
+                leading={
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{getInitialsFromLabel(name)}</Text>
+                  </View>
+                }
+                onPress={() => router.push({ pathname: '/client/[id]', params: { id: item.id } })}
+              />
             );
           }}
         />
@@ -225,29 +226,27 @@ export default function ClientsScreen() {
       )}
 
       {!showNoCompanyState ? (
-        <LiquidGlass style={styles.fab}>
-          <Pressable
-            style={styles.fabButton}
-            accessibilityLabel={t('client.addNew')}
-            onPress={() => router.push('/client/new')}
-          >
-            <AppIcon name="add" size={26} color={theme.text} />
-          </Pressable>
-        </LiquidGlass>
+        <Pressable
+          style={styles.fab}
+          accessibilityRole="button"
+          accessibilityLabel={t('client.addNew')}
+          onPress={() => router.push('/client/new')}
+        >
+          <AppIcon name="add" size={26} color={theme.onTint} />
+        </Pressable>
       ) : null}
     </>
     </TabScreen>
   );
 }
 
+// ListRow carries 14px horizontal padding, so the list itself pads the remainder to line text up with the screen edge.
+const ROW_INSET = 14;
+
 const createStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({
-    safeArea: {
-      flex: 1,
-      backgroundColor: theme.background,
-    },
     header: {
-      paddingHorizontal: 16,
+      paddingHorizontal: Design.screenPadding,
       paddingTop: 8,
       paddingBottom: 12,
     },
@@ -259,22 +258,24 @@ const createStyles = (theme: typeof Colors.light) =>
     searchRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      marginHorizontal: 16,
+      gap: 10,
+      height: 50,
+      marginHorizontal: Design.screenPadding,
       marginBottom: 12,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      borderRadius: 12,
+      paddingHorizontal: 14,
+      borderRadius: Design.controlRadius,
       borderWidth: 1,
       borderColor: theme.border,
+      backgroundColor: theme.background,
     },
     searchInput: {
       flex: 1,
-      fontSize: 15,
+      height: '100%',
+      fontSize: 16,
       color: theme.text,
     },
     errorBanner: {
-      marginHorizontal: 16,
+      marginHorizontal: Design.screenPadding,
       marginBottom: 12,
       padding: 12,
       borderRadius: Design.controlRadius,
@@ -296,42 +297,38 @@ const createStyles = (theme: typeof Colors.light) =>
       textDecorationLine: 'underline',
     },
     listContent: {
-      paddingHorizontal: 16,
+      paddingHorizontal: Design.screenPadding - ROW_INSET,
       paddingBottom: 100,
     },
     listContentEmpty: {
       flexGrow: 1,
     },
     row: {
+      minHeight: 56,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
+      gap: 14,
+      paddingHorizontal: ROW_INSET,
+      paddingVertical: 10,
+    },
+    separator: {
+      height: StyleSheet.hairlineWidth,
+      marginLeft: ROW_INSET + 40 + 14,
+      marginRight: ROW_INSET,
+      backgroundColor: theme.border,
     },
     avatar: {
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: theme.border,
+      backgroundColor: theme.surface,
       alignItems: 'center',
       justifyContent: 'center',
     },
     avatarText: {
       fontSize: 14,
-      fontWeight: '700',
-      color: theme.text,
-    },
-    rowName: {
-      fontSize: 15,
       fontWeight: '600',
       color: theme.text,
-    },
-    rowSubtitle: {
-      fontSize: 13,
-      color: theme.muted,
-      marginTop: 2,
     },
     skeletonBar: {
       borderRadius: 4,
@@ -346,21 +343,18 @@ const createStyles = (theme: typeof Colors.light) =>
     },
     fab: {
       position: 'absolute',
-      right: 20,
+      right: Design.screenPadding,
       bottom: 24,
-      padding: 4,
-      borderRadius: 31,
-      shadowColor: '#000',
-      shadowOpacity: 0.08,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 6 },
-      elevation: 4,
-    },
-    fabButton: {
-      width: 54,
-      height: 54,
-      borderRadius: 27,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
       alignItems: 'center',
       justifyContent: 'center',
+      backgroundColor: theme.tint,
+      shadowColor: theme.text,
+      shadowOpacity: 0.12,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 4,
     },
   });

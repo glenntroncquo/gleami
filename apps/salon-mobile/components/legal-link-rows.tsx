@@ -1,19 +1,10 @@
-import { Pressable } from '@/components/pressable-scale';
-import { AppIcon } from '@/components/app-icon';
 import React from 'react';
-import { Alert, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import { Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { ThemedText } from '@/components/themed-text';
+import { ListGroup, ListRow, SectionHeader } from '@/components/ui';
 import { getPrivacyUrl, getTermsUrl } from '@/lib/legal';
 import { openExternalUrl } from '@/lib/open-external-url';
-
-type Props = {
-  showIcons?: boolean;
-  rowStyle: StyleProp<ViewStyle>;
-  textStyle: StyleProp<TextStyle>;
-  chevronColor: string;
-};
 
 export function useLegalUrls() {
   return {
@@ -22,9 +13,12 @@ export function useLegalUrls() {
   };
 }
 
-export function LegalLinkRows({ rowStyle, textStyle, chevronColor, showIcons = false }: Props) {
+/** Legal section (header + grouped rows); renders nothing when no legal URLs are configured. */
+export function LegalLinkRows() {
   const { t } = useTranslation();
   const { privacyUrl, termsUrl } = useLegalUrls();
+
+  if (!privacyUrl && !termsUrl) return null;
 
   const open = async (url: string) => {
     try {
@@ -36,20 +30,11 @@ export function LegalLinkRows({ rowStyle, textStyle, chevronColor, showIcons = f
 
   return (
     <>
-      {privacyUrl ? (
-        <Pressable style={rowStyle} onPress={() => void open(privacyUrl)}>
-          {showIcons ? <AppIcon name="privacy" size={21} color={chevronColor} /> : null}
-          <ThemedText style={textStyle}>{t('legal.privacy')}</ThemedText>
-          <AppIcon name="chevronRight" size={showIcons ? 15 : 20} color={chevronColor} />
-        </Pressable>
-      ) : null}
-      {termsUrl ? (
-        <Pressable style={rowStyle} onPress={() => void open(termsUrl)}>
-          {showIcons ? <AppIcon name="terms" size={21} color={chevronColor} /> : null}
-          <ThemedText style={textStyle}>{t('legal.terms')}</ThemedText>
-          <AppIcon name="chevronRight" size={showIcons ? 15 : 20} color={chevronColor} />
-        </Pressable>
-      ) : null}
+      <SectionHeader title={t('legal.section')} />
+      <ListGroup>
+        {privacyUrl ? <ListRow icon="privacy" title={t('legal.privacy')} onPress={() => void open(privacyUrl)} /> : null}
+        {termsUrl ? <ListRow icon="terms" title={t('legal.terms')} onPress={() => void open(termsUrl)} /> : null}
+      </ListGroup>
     </>
   );
 }

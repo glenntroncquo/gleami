@@ -3,10 +3,8 @@
  * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
  */
 
-// Keep the staff app on the same visual foundation as marketplace-mobile.
-// Dark mode preserves the same Gleami brand hierarchy with accessible contrast.
+// Light mode stays on Gleami navy. Dark mode follows Fresha: pure black surfaces and a purple accent.
 const textLight = '#071D43';
-const textDark = '#F4F6FB';
 
 export const Colors = {
   light: {
@@ -32,26 +30,26 @@ export const Colors = {
     tabIconSelected: '#071D43',
   },
   dark: {
-    text: textDark,
-    background: '#07111F',
-    surface: '#111A2B',
-    border: '#27344A',
-    muted: '#A7B0C0',
-    blueTint: '#1A2945',
-    brandBlue: '#8FAAFF',
-    error: '#FF6B6B',
-    errorSurface: '#301719',
-    success: '#4FBE7E',
-    successSurface: '#122A1C',
-    warning: '#E0B23D',
-    warningSurface: '#332A11',
-    destructive: '#E85D58',
+    text: '#FFFFFF',
+    background: '#000000',
+    surface: '#1C1C1E',
+    border: '#2C2C2E',
+    muted: '#8E8E93',
+    blueTint: '#2A2152',
+    brandBlue: '#A78BFA',
+    error: '#FF453A',
+    errorSurface: '#3A1214',
+    success: '#30D158',
+    successSurface: '#0C2818',
+    warning: '#FFD60A',
+    warningSurface: '#2C2608',
+    destructive: '#FF453A',
     onDestructive: '#FFFFFF',
-    tint: '#8FAAFF',
-    onTint: '#071D43',
-    icon: '#A7B0C0',
-    tabIconDefault: '#A7B0C0',
-    tabIconSelected: '#8FAAFF',
+    tint: '#6E56F5',
+    onTint: '#FFFFFF',
+    icon: '#8E8E93',
+    tabIconDefault: '#8E8E93',
+    tabIconSelected: '#6E56F5',
   },
 };
 

@@ -1,5 +1,7 @@
 export interface VariantSource {
   id: string;
+  name?: string;
+  translationNames?: string[];
   displayOrder: number | null;
   isActive: boolean | null;
   isDeleted: boolean | null;
@@ -8,6 +10,7 @@ export interface VariantSource {
 export interface ServiceSource {
   id: string;
   name: string;
+  translationNames?: string[];
   isActive: boolean | null;
   isDeleted: boolean | null;
   isMarketplaceVisible: boolean;
@@ -17,6 +20,8 @@ export interface ServiceSource {
 export interface CategoryName {
   id: string;
   name: string;
+  /** Every stored translation, including Dutch when it is seeded. */
+  translations?: string[];
 }
 
 export interface LocationSource {
@@ -72,6 +77,19 @@ function isLive(isActive: boolean | null, isDeleted: boolean | null): boolean {
   return isActive !== false && isDeleted !== true;
 }
 
+function uniqueNames(names: Array<string | null | undefined>): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const name of names) {
+    const trimmed = name?.trim() ?? "";
+    const key = trimmed.toLowerCase();
+    if (!trimmed || seen.has(key)) continue;
+    seen.add(key);
+    out.push(trimmed);
+  }
+  return out;
+}
+
 /** First active variant: lowest display_order, then lowest id. */
 export function pickDefaultVariant(variants: VariantSource[]): VariantSource | null {
   const active = variants.filter((variant) => isLive(variant.isActive, variant.isDeleted));
@@ -111,9 +129,9 @@ export function buildMarketplaceSearchDocument(source: LocationSource): Projecti
     return null;
   }
 
-  const categoryNamesById = new Map(source.categories.map((category) => [category.id, category.name]));
+  const categoriesById = new Map(source.categories.map((category) => [category.id, category]));
   const categoryIds = new Set(
-    source.categoryIds.filter((categoryId) => categoryNamesById.has(categoryId)),
+    source.categoryIds.filter((categoryId) => categoriesById.has(categoryId)),
   );
   const treatments: TreatmentDocument[] = [];
   const serviceNames: string[] = [];
@@ -128,13 +146,18 @@ export function buildMarketplaceSearchDocument(source: LocationSource): Projecti
       serviceVariantId: variant.id,
       name: service.name,
     });
-    serviceNames.push(service.name);
+    serviceNames.push(service.name, ...(service.translationNames ?? []));
+    for (const option of service.variants) {
+      if (!isLive(option.isActive, option.isDeleted)) continue;
+      serviceNames.push(option.name ?? "", ...(option.translationNames ?? []));
+    }
   }
 
-  const usedCategoryNames = [...categoryIds]
-    .map((id) => categoryNamesById.get(id) ?? "")
-    .filter((name) => name.length > 0)
-    .sort((a, b) => a.localeCompare(b));
+  const usedCategoryNames = [...categoryIds].flatMap((id) => {
+    const category = categoriesById.get(id);
+    if (!category) return [];
+    return [category.name, ...(category.translations ?? [])];
+  });
 
   return {
     locationId: source.id,
@@ -148,8 +171,8 @@ export function buildMarketplaceSearchDocument(source: LocationSource): Projecti
     searchText: buildSearchText({
       name: source.name,
       city: source.city,
-      categoryNames: usedCategoryNames,
-      serviceNames,
+      categoryNames: uniqueNames(usedCategoryNames).sort((a, b) => a.localeCompare(b)),
+      serviceNames: uniqueNames(serviceNames),
     }),
     treatments,
     likeCount: source.likeCount,

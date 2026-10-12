@@ -60,6 +60,7 @@ export type SearchResponse = {
 export type SuggestRequest = {
   q: string;
   limit?: number;
+  locale?: string;
 };
 
 export type SuggestItem = {

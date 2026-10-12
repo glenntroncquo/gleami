@@ -16,7 +16,12 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     if (!supabaseUrl) return new BadResponse("SUPABASE_URL is not set", 500);
 
-    const location = await getMarketplaceLocation(getMarketplaceDb(), validated.slug, supabaseUrl);
+    const location = await getMarketplaceLocation(
+      getMarketplaceDb(),
+      validated.slug,
+      supabaseUrl,
+      validated.locale,
+    );
     if (!location) return new BadResponse("Location not found", 404);
     return new OkResponse(location);
   } catch (err) {

@@ -60,7 +60,7 @@ function metadataTitle(locale: Locale, salon: Awaited<ReturnType<typeof getSalon
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale: value, salon: salonSlug } = await params;
   if (!isLocale(value)) return {};
-  const salon = await getSalonBySlug(salonSlug.toLowerCase());
+  const salon = await getSalonBySlug(salonSlug.toLowerCase(), value);
   if (!salon || !profileMatchesLocale(salon, value)) {
     return { robots: { index: false, follow: false } };
   }
@@ -102,7 +102,7 @@ export default async function SalonPage({ params }: Props) {
   } = await params;
   if (!isLocale(value)) notFound();
   const locale: Locale = value;
-  const salon = await getSalonBySlug(requestedSalon.toLowerCase());
+  const salon = await getSalonBySlug(requestedSalon.toLowerCase(), locale);
   if (!salon || !profileMatchesLocale(salon, locale)) notFound();
 
   const city = salon.cityKey ?? salon.city;

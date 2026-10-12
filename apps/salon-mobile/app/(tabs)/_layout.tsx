@@ -31,7 +31,7 @@ export default function TabLayout() {
     <NativeTabs
       tintColor={theme.tint}
       backgroundColor={theme.background}
-      blurEffect={colorScheme === 'dark' ? 'systemChromeMaterialDark' : 'systemChromeMaterialLight'}
+      blurEffect={colorScheme === 'dark' ? 'none' : 'systemChromeMaterialLight'}
       disableTransparentOnScrollEdge
       labelVisibilityMode="unlabeled"
       disableIndicator>

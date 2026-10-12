@@ -82,6 +82,10 @@ export function getWeekdayLong(date: Date) {
   return weekdaysLong()[date.getDay()];
 }
 
+export function getWeekdayShort(date: Date) {
+  return weekdaysShort()[date.getDay()];
+}
+
 export function formatTime(iso: string) {
   const date = new Date(iso);
   const hours = String(date.getHours()).padStart(2, '0');

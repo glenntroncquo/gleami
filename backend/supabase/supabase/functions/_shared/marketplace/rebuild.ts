@@ -10,6 +10,8 @@ import type { MarketplaceSql } from "./sql.ts";
 
 interface VariantJson {
   id: string;
+  name: string | null;
+  translationNames: string[] | null;
   displayOrder: number | null;
   isActive: boolean | null;
   isDeleted: boolean | null;
@@ -18,6 +20,7 @@ interface VariantJson {
 interface ServiceJson {
   id: string;
   name: string;
+  translationNames: string[] | null;
   isActive: boolean | null;
   isDeleted: boolean | null;
   isMarketplaceVisible: boolean;
@@ -41,7 +44,7 @@ interface LocationJson {
   like_count: number;
   category_ids: string[] | null;
   services: ServiceJson[] | null;
-  categories: Array<{ id: string; name: string }> | null;
+  categories: Array<{ id: string; name: string; translations: string[] | null }> | null;
 }
 
 function asArray<T>(value: T[] | null | undefined): T[] {
@@ -52,11 +55,14 @@ function toSource(row: LocationJson): LocationSource {
   const services: ServiceSource[] = asArray(row.services).map((service) => ({
     id: service.id,
     name: service.name,
+    translationNames: asArray(service.translationNames),
     isActive: service.isActive,
     isDeleted: service.isDeleted,
     isMarketplaceVisible: service.isMarketplaceVisible,
     variants: asArray(service.variants).map((variant): VariantSource => ({
       id: variant.id,
+      name: variant.name ?? "",
+      translationNames: asArray(variant.translationNames),
       displayOrder: variant.displayOrder,
       isActive: variant.isActive,
       isDeleted: variant.isDeleted,
@@ -66,6 +72,7 @@ function toSource(row: LocationJson): LocationSource {
   const categories: CategoryName[] = asArray(row.categories).map((category) => ({
     id: category.id,
     name: category.name,
+    translations: asArray(category.translations),
   }));
 
   return {
@@ -119,12 +126,23 @@ async function readLocation(sql: MarketplaceSql, locationId: string): Promise<Lo
         select json_agg(json_build_object(
           'id', s.id,
           'name', s.name,
+          'translationNames', coalesce((
+            select json_agg(st.name)
+            from public.service_translation st
+            where st.service_id = s.id
+          ), '[]'::json),
           'isActive', s.is_active,
           'isDeleted', s.is_deleted,
           'isMarketplaceVisible', s.is_marketplace_visible,
           'variants', coalesce((
             select json_agg(json_build_object(
               'id', v.id,
+              'name', v.name,
+              'translationNames', coalesce((
+                select json_agg(vt.name)
+                from public.service_variant_translation vt
+                where vt.service_variant_id = v.id
+              ), '[]'::json),
               'displayOrder', v.display_order,
               'isActive', v.is_active,
               'isDeleted', v.is_deleted
@@ -138,7 +156,15 @@ async function readLocation(sql: MarketplaceSql, locationId: string): Promise<Lo
         where ls.location_id = l.id
       ), '[]'::json) as services,
       coalesce((
-        select json_agg(json_build_object('id', c.id, 'name', c.name))
+        select json_agg(json_build_object(
+          'id', c.id,
+          'name', c.name,
+          'translations', coalesce((
+            select json_agg(t.name)
+            from public.marketplace_category_translation t
+            where t.marketplace_category_id = c.id
+          ), '[]'::json)
+        ))
         from public.marketplace_category c
         where c.is_active
       ), '[]'::json) as categories

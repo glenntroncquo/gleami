@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 
 import { fetchPermissionKeys, type PermissionKey } from '@/lib/auth/permissions';
 import { hydrateCompanyIds, jwtCompanyIds, pickPreferredId } from '@/lib/api/memberships';
+import { clearCalendarWarm } from '@/lib/calendar-warm';
 import { clearSessionPreferences, readPreferredCompanyId, writePreferredCompanyId } from '@/lib/preferences';
 import { supabase } from '@/lib/supabase';
 
@@ -110,6 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    clearCalendarWarm();
     await clearSessionPreferences();
     await supabase.auth.signOut();
   };

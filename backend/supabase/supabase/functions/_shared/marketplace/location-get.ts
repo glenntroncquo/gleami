@@ -1,3 +1,4 @@
+import { marketplaceLocale } from "./locale.ts";
 import { publicMarketplaceImageUrl } from "./media-url.ts";
 import type { MarketplaceSql } from "./sql.ts";
 
@@ -73,7 +74,9 @@ export async function getMarketplaceLocation(
   sql: MarketplaceSql,
   slug: string,
   supabaseUrl: string,
+  locale?: string | null,
 ): Promise<LocationProfile | null> {
+  const language = marketplaceLocale(locale);
   const rows = await sql<ProfileRow[]>`
     select
       l.id,
@@ -103,7 +106,13 @@ export async function getMarketplaceLocation(
       coalesce((
         select json_agg(json_build_object(
           'id', c.id,
-          'name', c.name,
+          'name', coalesce((
+            select nullif(btrim(t.name), '')
+            from public.marketplace_category_translation t
+            where t.marketplace_category_id = c.id
+              and t.locale = ${language}
+            limit 1
+          ), c.name),
           'slug', c.slug
         ) order by c.sort_order)
         from public.marketplace_category c
@@ -117,12 +126,30 @@ export async function getMarketplaceLocation(
       coalesce((
         select json_agg(json_build_object(
           'serviceId', s.id,
-          'name', s.name,
-          'description', s.description,
+          'name', coalesce((
+            select nullif(btrim(t.name), '')
+            from public.service_translation t
+            where t.service_id = s.id
+              and t.locale = ${language}
+            limit 1
+          ), s.name),
+          'description', coalesce((
+            select nullif(btrim(t.description), '')
+            from public.service_translation t
+            where t.service_id = s.id
+              and t.locale = ${language}
+            limit 1
+          ), s.description),
           'variants', coalesce((
             select json_agg(json_build_object(
               'serviceVariantId', v.id,
-              'name', v.name,
+              'name', coalesce((
+                select nullif(btrim(t.name), '')
+                from public.service_variant_translation t
+                where t.service_variant_id = v.id
+                  and t.locale = ${language}
+                limit 1
+              ), v.name),
               'price', v.price,
               'durationMinutes', v.client_duration_minutes
             ) order by v.display_order nulls last, v.id)

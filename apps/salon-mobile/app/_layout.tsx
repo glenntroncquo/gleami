@@ -2,9 +2,10 @@ import { CheckoutProvider } from '@/contexts/checkout-context';
 import { CrashRecovery } from '@/components/crash-recovery';
 import { Colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
-import { LocationProvider } from '@/contexts/location-context';
+import { LocationProvider, useLocation } from '@/contexts/location-context';
 import { ThemePreferenceProvider } from '@/contexts/theme-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { clearCalendarWarm, warmCalendar } from '@/lib/calendar-warm';
 import i18n, { initI18n } from '@/lib/i18n';
 import { initSentry, Sentry, setSentryStaffContext } from '@/lib/sentry';
 import { DarkTheme, DefaultTheme, ErrorBoundaryProps, Stack, ThemeProvider as NavThemeProvider } from 'expo-router';
@@ -68,16 +69,54 @@ function SentryStaffContext() {
 }
 
 function RootNavigator() {
-  const { session, loading } = useAuth();
+  const { session, loading: authLoading, companyId } = useAuth();
+  const { locationId, loading: locationLoading } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
+  const [warmReady, setWarmReady] = useState(false);
+  const [hasEntered, setHasEntered] = useState(false);
+  const [splashGone, setSplashGone] = useState(false);
 
   useEffect(() => {
-    if (!loading) {
-      SplashScreen.hideAsync();
+    if (!session) {
+      clearCalendarWarm();
+      setWarmReady(false);
+      setHasEntered(false);
+      return;
     }
-  }, [loading]);
+    if (authLoading || locationLoading) return;
+    if (!companyId || !locationId) {
+      setWarmReady(true);
+      return;
+    }
+    let active = true;
+    setWarmReady(false);
+    warmCalendar(companyId, locationId)
+      .then(() => {
+        if (active) setWarmReady(true);
+      })
+      .catch(() => {
+        if (active) setWarmReady(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [session, authLoading, locationLoading, companyId, locationId]);
 
-  if (loading) {
+  const showApp = !!session && !authLoading && !locationLoading && (warmReady || hasEntered);
+
+  useEffect(() => {
+    if (showApp) setHasEntered(true);
+  }, [showApp]);
+  const bootReady = !authLoading && !locationLoading && (!session || warmReady);
+
+  useEffect(() => {
+    if (!bootReady || splashGone) return;
+    SplashScreen.hideAsync().finally(() => setSplashGone(true));
+  }, [bootReady, splashGone]);
+
+  // Cold start stays under the splash. After that, keep the login screen
+  // mounted while the calendar warms so the window never flashes black.
+  if (!bootReady && !splashGone) {
     return null;
   }
 
@@ -95,8 +134,8 @@ function RootNavigator() {
         // screen has no title of its own — show just the chevron instead.
         headerBackButtonDisplayMode: 'minimal',
       }}>
-      <Stack.Protected guard={!!session}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Protected guard={showApp}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'none' }} />
         <Stack.Screen name="day/[date]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="appointment-new/index" options={{ presentation: 'modal' }} />
         {/*
@@ -167,8 +206,8 @@ function RootNavigator() {
         <Stack.Screen name="products/new" options={{ presentation: 'modal' }} />
         <Stack.Screen name="barcode-scanner" options={{ presentation: 'fullScreenModal', headerShown: false }} />
       </Stack.Protected>
-      <Stack.Protected guard={!session}>
-        <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Protected guard={!showApp}>
+        <Stack.Screen name="login" options={{ headerShown: false, animation: 'none' }} />
       </Stack.Protected>
     </Stack>
   );

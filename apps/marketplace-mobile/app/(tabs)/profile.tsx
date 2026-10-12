@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth, type AuthUser } from '@/src/auth/auth-context';
 import { PrimaryButton } from '@/src/components/auth/auth-ui';
 import { SettingsGroup, SettingsRow } from '@/src/components/settings-list';
-import { t } from '@/src/i18n';
+import { LANGUAGE_LABELS, MARKETPLACE_LOCALES, t, type MarketplaceLocale } from '@/src/i18n';
 import { brandColors } from '@/src/theme/colors';
 
 export default function ProfileScreen() {
@@ -62,6 +62,44 @@ function HelpAndLegal() {
         chevron
         onPress={() => router.push('/legal')}
       />
+    </SettingsGroup>
+  );
+}
+
+function LanguageRow({ current }: { current: MarketplaceLocale }) {
+  const auth = useAuth();
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState<MarketplaceLocale | null>(null);
+
+  return (
+    <SettingsGroup>
+      <SettingsRow
+        icon="language-outline"
+        label={t('profile.language')}
+        detail={LANGUAGE_LABELS[current]}
+        chevron
+        onPress={() => setOpen((value) => !value)}
+      />
+      {open
+        ? MARKETPLACE_LOCALES.map((locale) => (
+            <SettingsRow
+              key={locale}
+              icon={locale === current ? 'checkmark' : 'ellipse-outline'}
+              label={LANGUAGE_LABELS[locale]}
+              busy={saving === locale}
+              onPress={() => {
+                if (locale === current || saving) return;
+                void (async () => {
+                  setSaving(locale);
+                  const result = await auth.setPreferredLanguage(locale);
+                  setSaving(null);
+                  if (result.error) Alert.alert(t('profile.language'), result.error);
+                  else setOpen(false);
+                })();
+              }}
+            />
+          ))
+        : null}
     </SettingsGroup>
   );
 }
@@ -131,6 +169,8 @@ function SignedIn({ user }: { user: AuthUser }) {
           onPress={() => router.push('/favorites')}
         />
       </SettingsGroup>
+
+      <LanguageRow current={user.preferredLanguage} />
 
       <HelpAndLegal />
 

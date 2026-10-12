@@ -741,6 +741,7 @@ export async function getSalons({
 
 export async function getSalonBySlug(
   slug: string,
+  locale: Locale = "nl-be",
 ): Promise<SalonProfile | null> {
   if (!hasLiveMarketplace()) {
     return demoSalons.find((salon) => salon.slug === slug) ?? null;
@@ -749,7 +750,7 @@ export async function getSalonBySlug(
   try {
     const profile = await invokeEdgeFunction<LocationResponse>(
       "marketplace-location-get",
-      { slug },
+      { slug, locale: localeConfig[locale].language },
     );
     const item = profile.location;
     const search = await invokeEdgeFunction<SearchResponse>(

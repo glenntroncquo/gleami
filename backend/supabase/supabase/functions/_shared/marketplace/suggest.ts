@@ -1,3 +1,4 @@
+import { marketplaceLocale } from "./locale.ts";
 import {
   DEFAULT_SUGGEST_LIMIT,
   MAX_SUGGEST_LIMIT,
@@ -8,6 +9,7 @@ import { likeContainsPattern, normalizeQuery } from "./text-query.ts";
 export interface SuggestInput {
   q: string;
   limit?: number;
+  locale?: string;
 }
 
 export type SuggestItem =
@@ -65,15 +67,16 @@ export function suggestItemFromRow(row: {
 }
 
 /**
- * One statement. Categories stay name matches. Locations match the search
- * document (salon name, city, categories, and treatment names), so a query
- * like "keratine" returns the salon that offers it rather than a treatment
- * with no salon attached. `detail` is the treatment name that matched.
- * Locations sort ahead of categories.
+ * One statement. Categories match the Dutch name and every translation, and
+ * the label is the requested language (Dutch when that translation is
+ * missing). Locations match the search document, which stores every name.
+ * `detail` is the treatment name that matched. Locations sort ahead of
+ * categories.
  */
 export async function suggestMarketplace(sql: MarketplaceSql, input: SuggestInput): Promise<{ items: SuggestItem[] }> {
   const q = normalizeQuery(input.q);
   const pattern = likeContainsPattern(q);
+  const locale = marketplaceLocale(input.locale);
   const limit = Math.min(input.limit ?? DEFAULT_SUGGEST_LIMIT, MAX_SUGGEST_LIMIT);
 
   const rows = await sql<{
@@ -90,7 +93,7 @@ export async function suggestMarketplace(sql: MarketplaceSql, input: SuggestInpu
       (
         select
           c.id::text as id,
-          c.name,
+          coalesce(shown.name, c.name) as name,
           'category'::text as type,
           c.slug,
           null::uuid as location_id,
@@ -98,14 +101,39 @@ export async function suggestMarketplace(sql: MarketplaceSql, input: SuggestInpu
           null::text as detail,
           greatest(
             extensions.similarity(lower(c.name), ${q}),
-            extensions.word_similarity(${q}, lower(c.name))
+            extensions.word_similarity(${q}, lower(c.name)),
+            coalesce(best.sim, 0)
           ) as sim,
           1 as kind
         from public.marketplace_category c
+        left join lateral (
+          select t.name
+          from public.marketplace_category_translation t
+          where t.marketplace_category_id = c.id
+            and t.locale = ${locale}
+          limit 1
+        ) shown on true
+        left join lateral (
+          select max(greatest(
+            extensions.similarity(lower(t.name), ${q}),
+            extensions.word_similarity(${q}, lower(t.name))
+          )) as sim
+          from public.marketplace_category_translation t
+          where t.marketplace_category_id = c.id
+        ) best on true
         where c.is_active
           and (
             lower(c.name) operator(extensions.%) ${q}
             or lower(c.name) ilike ${pattern} escape '\\'
+            or exists (
+              select 1
+              from public.marketplace_category_translation t
+              where t.marketplace_category_id = c.id
+                and (
+                  lower(t.name) operator(extensions.%) ${q}
+                  or lower(t.name) ilike ${pattern} escape '\\'
+                )
+            )
           )
         order by sim desc
         limit ${limit}

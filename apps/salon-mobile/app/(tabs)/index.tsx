@@ -1,3 +1,4 @@
+import { peekCalendarWarm } from '@/lib/calendar-warm';
 import { readPreferredCalendarView, writePreferredCalendarView, type CalendarViewMode } from '@/lib/preferences';
 import { TimeGrid } from '@/components/calendar/components/TimeGrid';
 import { calendarPreviewLayout } from '@/lib/calendar-layout';
@@ -51,6 +52,7 @@ import {
   getWeekOffsetFromBase,
   getWeekStartMonday,
   getWeekdayLong,
+  getWeekdayShort,
   parseSalonWallClock,
   toDateKey,
 } from '@/components/calendar/date-utils';
@@ -105,8 +107,8 @@ export default function CalendarScreen() {
   const modeButtonRef = React.useRef<View>(null);
   const staffChipRef = React.useRef<View>(null);
   const monthButtonRef = React.useRef<View>(null);
-  const [viewMode, updateViewMode] = React.useState<CalendarViewMode>('month');
-  const [viewPreferenceLoaded, setViewPreferenceLoaded] = React.useState(false);
+  const [viewMode, updateViewMode] = React.useState<CalendarViewMode>(() => peekCalendarWarm(companyId, locationId)?.view ?? 'month');
+  const [viewPreferenceLoaded, setViewPreferenceLoaded] = React.useState(() => Boolean(peekCalendarWarm(companyId, locationId)));
   React.useEffect(() => {
     let active = true;
     readPreferredCalendarView().then(mode => {
@@ -145,7 +147,7 @@ export default function CalendarScreen() {
   const viewModeRef = React.useRef(viewMode);
   const prevViewModeRef = React.useRef(viewMode);
 
-  const [staffList, setStaffList] = React.useState<StaffMember[]>([]);
+  const [staffList, setStaffList] = React.useState<StaffMember[]>(() => peekCalendarWarm(companyId, locationId)?.staff ?? []);
   const [staffFilterId, setStaffFilterId] = React.useState<string | null>(null);
   const [refreshing, setRefreshing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -156,7 +158,8 @@ export default function CalendarScreen() {
   // something that should itself trigger renders; `loadingMonthKeys` (state)
   // does that instead. `scopeEpochRef` invalidates in-flight writes after a
   // shop switch so a late response cannot paint the previous location.
-  const monthDataRef = React.useRef(new Map<string, AppointmentRow[]>());
+  const monthDataRef = React.useRef(new Map(peekCalendarWarm(companyId, locationId)?.months ?? []));
+  const skipScopeReset = React.useRef(monthDataRef.current.size > 0);
   const inFlightMonthsRef = React.useRef(new Set<string>());
   const scopeEpochRef = React.useRef(0);
   const [loadingMonthKeys, setLoadingMonthKeys] = React.useState<Set<string>>(new Set());
@@ -231,6 +234,10 @@ export default function CalendarScreen() {
   }, [companyId, locationId, t]);
 
   React.useEffect(() => {
+    if (skipScopeReset.current) {
+      skipScopeReset.current = false;
+      return;
+    }
     scopeEpochRef.current += 1;
     monthDataRef.current.clear();
     monthEventsCacheRef.current.clear();
@@ -417,6 +424,19 @@ export default function CalendarScreen() {
           return { activeYear: year, activeMonthIndex: monthIndex };
         })();
   const activeMonthLabel = `${getMonthShortLabel(activeMonthIndex)} ${activeYear}`;
+  const gridAnchor = parseSalonWallClock(gridDate + 'T00:00:00');
+  const gridPeriodLabel =
+    viewMode === 'dayGrid'
+      ? `${getWeekdayShort(gridAnchor)} ${gridAnchor.getDate()} ${getMonthShortLabel(gridAnchor.getMonth())}`
+      : viewMode === 'weekGrid'
+        ? (() => {
+            const start = getWeekStartMonday(gridAnchor);
+            const end = addDays(start, 6);
+            return start.getMonth() === end.getMonth()
+              ? `${start.getDate()}–${end.getDate()} ${getMonthShortLabel(end.getMonth())}`
+              : `${start.getDate()} ${getMonthShortLabel(start.getMonth())} – ${end.getDate()} ${getMonthShortLabel(end.getMonth())}`;
+          })()
+        : null;
 
   React.useEffect(() => {
     const prevMode = prevViewModeRef.current;
@@ -826,19 +846,37 @@ export default function CalendarScreen() {
           <View style={styles.scrollContent}>
             <View style={styles.headerBlock}>
               <View style={styles.headerRow}>
+                {gridPeriodLabel ? (
+                  <Pressable
+                    accessibilityLabel={t('calendar.previousPeriod')}
+                    hitSlop={8}
+                    style={styles.periodStep}
+                    onPress={() => setGridDate(toDateKey(addDays(gridAnchor, viewMode === 'weekGrid' ? -7 : -1)))}>
+                    <AppIcon name="chevronLeft" size={18} color={theme.text} />
+                  </Pressable>
+                ) : null}
                 <Pressable
                   ref={monthButtonRef}
                   collapsable={false}
-                  accessibilityLabel={activeMonthLabel}
+                  accessibilityLabel={gridPeriodLabel ?? activeMonthLabel}
                   accessibilityState={{ expanded: showMonthMenu }}
                   style={styles.monthRow}
                   onPress={openMonthMenu}
                   hitSlop={8}>
                   <Text style={styles.monthText} numberOfLines={1}>
-                    {activeMonthLabel}
+                    {gridPeriodLabel ?? activeMonthLabel}
                   </Text>
                   <AppIcon name="arrowDown" size={18} color={theme.muted} />
                 </Pressable>
+                {gridPeriodLabel ? (
+                  <Pressable
+                    accessibilityLabel={t('calendar.nextPeriod')}
+                    hitSlop={8}
+                    style={styles.periodStep}
+                    onPress={() => setGridDate(toDateKey(addDays(gridAnchor, viewMode === 'weekGrid' ? 7 : 1)))}>
+                    <AppIcon name="chevronRight" size={18} color={theme.text} />
+                  </Pressable>
+                ) : null}
 
                 <CalendarGlass style={styles.headerIcons}>
                   <Pressable ref={staffChipRef} collapsable={false} accessibilityLabel={`${t('calendar.employee')}: ${selectedStaffName}`} accessibilityState={{ expanded: showStaffMenu }} style={styles.iconButton} onPress={openStaffMenu}>

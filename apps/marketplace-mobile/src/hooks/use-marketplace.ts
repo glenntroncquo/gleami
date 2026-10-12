@@ -15,6 +15,7 @@ import {
 } from '@/src/api/client';
 import type { SearchResponse } from '@/src/api/types';
 import { useAuth } from '@/src/auth/auth-context';
+import { useMarketplaceLocale } from '@/src/i18n';
 import { PAGE_SIZE } from '@/src/config';
 import { promoteMatchingTreatment } from '@/src/lib/search-match';
 import { useOnline } from '@/src/lib/online';
@@ -67,9 +68,10 @@ export function useSearchResults() {
 /** Salon hits for the search field. Not limited to the current map area. */
 export function useQuerySuggestions(q: string) {
   const online = useOnline();
+  const locale = useMarketplaceLocale();
   const trimmed = q.trim();
   return useQuery({
-    queryKey: ['query-suggestions', trimmed],
+    queryKey: ['query-suggestions', trimmed, locale],
     queryFn: () =>
       searchMarketplace({ q: trimmed, limit: 8 }).then((response) => withMatchingTreatmentFirst(response, trimmed)),
     enabled: online && trimmed.length > 0,
@@ -78,9 +80,10 @@ export function useQuerySuggestions(q: string) {
 
 export function useCategories() {
   const online = useOnline();
+  const locale = useMarketplaceLocale();
   return useQuery({
-    queryKey: ['categories'],
-    queryFn: listCategories,
+    queryKey: ['categories', locale],
+    queryFn: () => listCategories(locale),
     enabled: online,
     staleTime: 5 * 60_000,
   });
@@ -88,9 +91,10 @@ export function useCategories() {
 
 export function useLocation(slug: string) {
   const online = useOnline();
+  const locale = useMarketplaceLocale();
   return useQuery({
-    queryKey: ['location', slug],
-    queryFn: () => locationBySlug(slug),
+    queryKey: ['location', slug, locale],
+    queryFn: () => locationBySlug(slug, locale),
     enabled: online && slug.length > 0,
   });
 }

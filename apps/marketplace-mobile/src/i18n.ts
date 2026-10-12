@@ -1,8 +1,13 @@
 /**
- * UI copy for Gleami Marketplace. Dutch (nl-BE) is the only shipped locale.
- * To add English, create an `en` object with this same shape and teach
- * `t()` to read it. Keys stay stable so screens do not change.
+ * UI copy for Gleami Marketplace. Dutch is the guest default. Signed-in
+ * visitors follow preferred_language. Keys stay stable so screens do not change.
  */
+import { useSyncExternalStore } from 'react';
+
+import { de } from '@/src/i18n/de';
+import { en } from '@/src/i18n/en';
+import { fr } from '@/src/i18n/fr';
+import { pt } from '@/src/i18n/pt';
 const nl = {
   tabs: {
     discover: 'Ontdekken',
@@ -86,6 +91,7 @@ const nl = {
     finishBody: 'We hebben nog een paar gegevens van je nodig.',
     help: 'Hulp vragen',
     legal: 'Juridisch',
+    language: 'Taal',
     linkedAccounts: 'Gekoppelde accounts',
     signOut: 'Uitloggen',
     deleteAccount: 'Account verwijderen',
@@ -261,21 +267,67 @@ const nl = {
 
 export type Dictionary = typeof nl;
 
-/** Shipped catalogs. Add `en: Dictionary` here when English copy is ready. */
-export const dictionaries: { nl: Dictionary } = { nl };
+export const MARKETPLACE_LOCALES = ['nl', 'fr', 'de', 'en', 'pt'] as const;
+export type MarketplaceLocale = (typeof MARKETPLACE_LOCALES)[number];
 
-type Catalog = Dictionary;
+export const LANGUAGE_LABELS: Record<MarketplaceLocale, string> = {
+  nl: 'Nederlands',
+  fr: 'Français',
+  de: 'Deutsch',
+  en: 'English',
+  pt: 'Português',
+};
 
-function lookup(path: string): string {
+export const dictionaries: Record<MarketplaceLocale, Dictionary> = {
+  nl,
+  fr: fr as Dictionary,
+  de: de as Dictionary,
+  en: en as Dictionary,
+  pt: pt as Dictionary,
+};
+
+let activeLocale: MarketplaceLocale = 'nl';
+const listeners = new Set<() => void>();
+
+export function marketplaceLocale(value: string | null | undefined): MarketplaceLocale {
+  const code = (value ?? '').trim().toLowerCase().slice(0, 2);
+  return (MARKETPLACE_LOCALES as readonly string[]).includes(code) ? (code as MarketplaceLocale) : 'nl';
+}
+
+export function getMarketplaceLocale(): MarketplaceLocale {
+  return activeLocale;
+}
+
+export function setMarketplaceLocale(value: string | null | undefined): void {
+  const next = marketplaceLocale(value);
+  if (next === activeLocale) return;
+  activeLocale = next;
+  for (const listener of listeners) listener();
+}
+
+export function useMarketplaceLocale(): MarketplaceLocale {
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    getMarketplaceLocale,
+    getMarketplaceLocale,
+  );
+}
+
+function walk(catalog: Dictionary, path: string): string | null {
   const parts = path.split('.');
-  let node: unknown = dictionaries.nl as Catalog;
+  let node: unknown = catalog;
   for (const part of parts) {
-    if (typeof node !== 'object' || node === null || !(part in node)) {
-      return path;
-    }
+    if (typeof node !== 'object' || node === null || !(part in node)) return null;
     node = (node as Record<string, unknown>)[part];
   }
-  return typeof node === 'string' ? node : path;
+  return typeof node === 'string' ? node : null;
+}
+
+function lookup(path: string): string {
+  return walk(dictionaries[activeLocale], path) ?? walk(dictionaries.nl, path) ?? path;
 }
 
 export function t(path: string, vars?: Record<string, string | number>): string {

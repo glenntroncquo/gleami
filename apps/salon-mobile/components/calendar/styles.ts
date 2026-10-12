@@ -36,6 +36,12 @@ export const createStyles = (theme: typeof Colors.light) =>
       alignItems: 'center',
       gap: 8,
     },
+    periodStep: {
+      width: 32,
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     monthRow: {
       flexDirection: 'row',
       alignItems: 'center',

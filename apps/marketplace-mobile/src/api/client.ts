@@ -21,6 +21,7 @@ import type {
   SuggestRequest,
   SuggestResponse,
 } from '@/src/api/types';
+import { getMarketplaceLocale, type MarketplaceLocale } from '@/src/i18n';
 import { getSupabase } from '@/src/lib/supabase';
 
 function unwrap<T>(data: T | null, error: { message: string } | null): T {
@@ -40,7 +41,7 @@ export async function searchMarketplace(request: SearchRequest): Promise<SearchR
 export async function suggestMarketplace(request: SuggestRequest): Promise<SuggestResponse> {
   if (useMocks) return mockSuggest(request);
   const { data, error } = await getSupabase().functions.invoke<SuggestResponse>('marketplace-suggest', {
-    body: request,
+    body: { ...request, locale: request.locale ?? getMarketplaceLocale() },
   });
   return unwrap(data, error);
 }
@@ -55,27 +56,44 @@ export async function nextAvailable(request: NextAvailableRequest): Promise<Next
   return unwrap(data, error);
 }
 
-export async function locationBySlug(slug: string): Promise<LocationGetResponse> {
+export async function locationBySlug(
+  slug: string,
+  locale: MarketplaceLocale = getMarketplaceLocale(),
+): Promise<LocationGetResponse> {
   if (useMocks) {
     const location = await mockLocation(slug);
     if (!location) throw new Error('NOT_FOUND');
     return location;
   }
   const { data, error } = await getSupabase().functions.invoke<LocationGetResponse>('marketplace-location-get', {
-    body: { slug },
+    body: { slug, locale },
   });
   return unwrap(data, error);
 }
 
-export async function listCategories(): Promise<MarketplaceCategoryRow[]> {
+type CategoryQueryRow = MarketplaceCategoryRow & {
+  marketplace_category_translation?: Array<{ locale: string; name: string }> | null;
+};
+
+export async function listCategories(
+  locale: MarketplaceLocale = getMarketplaceLocale(),
+): Promise<MarketplaceCategoryRow[]> {
   if (useMocks) return mockCategories();
   const { data, error } = await getSupabase()
     .from('marketplace_category')
-    .select('id,name,slug,sort_order')
+    .select('id,name,slug,sort_order,marketplace_category_translation(locale,name)')
     .eq('is_active', true)
     .order('sort_order');
   if (error) throw new Error(error.message);
-  return (data ?? []) as MarketplaceCategoryRow[];
+  return ((data ?? []) as CategoryQueryRow[]).map((row) => {
+    const translated = row.marketplace_category_translation?.find((item) => item.locale === locale)?.name;
+    return {
+      id: row.id,
+      name: translated?.trim() || row.name,
+      slug: row.slug,
+      sort_order: row.sort_order,
+    };
+  });
 }
 
 export async function listLikedIds(userId: string): Promise<string[]> {

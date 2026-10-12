@@ -118,6 +118,47 @@ describe("buildMarketplaceSearchDocument", () => {
     expect(document?.searchText).not.toContain("hidden");
   });
 
+  it("indexes every category, service, and option name that was stored", () => {
+    const document = buildMarketplaceSearchDocument(source({
+      categories: [
+        { id: categoryKeratin, name: "Keratine", translations: ["Keratine", "Keratin", "Kératine"] },
+      ],
+      services: [
+        service({
+          translationNames: ["Keratin treatment", ""],
+          variants: [
+            {
+              id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+              name: "Kort",
+              translationNames: ["Short", "Court"],
+              displayOrder: 1,
+              isActive: true,
+              isDeleted: false,
+            },
+            {
+              id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+              name: "Lang",
+              translationNames: ["Long"],
+              displayOrder: 2,
+              isActive: false,
+              isDeleted: false,
+            },
+          ],
+        }),
+      ],
+    }));
+    expect(document?.treatments[0]?.name).toBe("Keratine behandeling");
+    expect(document?.searchText).toContain("keratine");
+    expect(document?.searchText).toContain("keratin");
+    expect(document?.searchText).toContain("kératine");
+    expect(document?.searchText).toContain("keratin treatment");
+    expect(document?.searchText).toContain("kort");
+    expect(document?.searchText).toContain("short");
+    expect(document?.searchText).toContain("court");
+    expect(document?.searchText).not.toContain("lang");
+    expect(document?.searchText).not.toContain("long");
+  });
+
   it("keeps the salon's categories when no service is tagged", () => {
     const document = buildMarketplaceSearchDocument(source({
       categoryIds: [categoryNails, categoryKeratin],

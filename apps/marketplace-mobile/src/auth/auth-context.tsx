@@ -17,7 +17,7 @@ import {
   type SocialProvider,
 } from '@/src/auth/social';
 import { supabaseConfigured, useMocks } from '@/src/config';
-import { t } from '@/src/i18n';
+import { marketplaceLocale, setMarketplaceLocale, t, useMarketplaceLocale, type MarketplaceLocale } from '@/src/i18n';
 import { authStorage } from '@/src/lib/secure-store';
 import { getSupabase } from '@/src/lib/supabase';
 
@@ -32,6 +32,7 @@ export type AuthUser = {
   firstName: string;
   lastName: string;
   phone: string;
+  preferredLanguage: MarketplaceLocale;
   /** Set by marketplace-account-complete once the client is linked. */
   profileComplete: boolean;
   /** 'email', 'apple', 'google'. */
@@ -59,6 +60,7 @@ type AuthContextValue = {
   signInWithSocial: (provider: SocialProvider) => Promise<AuthResult<SocialSignIn | null>>;
   completeProfile: (input: CompleteAccountInput) => Promise<AuthResult<CompleteAccountResult>>;
   updatePassword: (password: string) => Promise<AuthResult>;
+  setPreferredLanguage: (locale: MarketplaceLocale) => Promise<AuthResult>;
   listIdentities: () => Promise<UserIdentity[]>;
   /** `data` is false when the user dismissed the native sheet. */
   linkSocial: (provider: SocialProvider) => Promise<AuthResult<boolean>>;
@@ -116,6 +118,9 @@ function userFromSession(session: Session | null): AuthUser | null {
     firstName: String(meta.first_name ?? meta.given_name ?? ''),
     lastName: String(meta.last_name ?? meta.family_name ?? ''),
     phone: String(meta.phone ?? ''),
+    preferredLanguage: marketplaceLocale(
+      typeof meta.preferred_language === 'string' ? meta.preferred_language : null,
+    ),
     profileComplete: Boolean(user.app_metadata?.marketplace_profile_completed_at),
     providers,
   };
@@ -140,6 +145,7 @@ function mockUser(email: string, provider: string): MockAccount {
     firstName: '',
     lastName: '',
     phone: '',
+    preferredLanguage: 'nl',
     profileComplete: false,
     providers: [provider],
     hasPassword: false,
@@ -155,6 +161,11 @@ export function useAuth(): AuthContextValue {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  useMarketplaceLocale();
+
+  useEffect(() => {
+    setMarketplaceLocale(user?.preferredLanguage ?? 'nl');
+  }, [user?.preferredLanguage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -331,6 +342,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const result = await completeAccount(input);
           await refreshSessionUser();
           return { error: null, data: result };
+        } catch (error) {
+          return { error: friendlyError(error) };
+        }
+      },
+
+      setPreferredLanguage: async (locale) => {
+        const next = marketplaceLocale(locale);
+        try {
+          if (useMocks) {
+            const account = await readMock<MockAccount>(MOCK_ACCOUNT_KEY);
+            if (!account) return { error: t('auth.errors.generic') };
+            await saveMock({ ...account, preferredLanguage: next });
+            return { error: null, data: undefined };
+          }
+          const { error } = await getSupabase().auth.updateUser({
+            data: { preferred_language: next },
+          });
+          if (error) return { error: friendlyError(error) };
+          setUser((current) => (current ? { ...current, preferredLanguage: next } : current));
+          return { error: null, data: undefined };
         } catch (error) {
           return { error: friendlyError(error) };
         }

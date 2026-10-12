@@ -38,6 +38,13 @@ Deno.serve(async (req) => {
       }
     }
 
+    const storedLanguage = user.user_metadata?.preferred_language;
+    const preferredLanguage =
+      typeof storedLanguage === "string" &&
+      ["nl", "fr", "de", "en", "pt"].includes(storedLanguage)
+        ? storedLanguage
+        : "nl";
+
     const { error: updateError } = await admin.auth.admin.updateUserById(user.id, {
       ...(validated.password ? { password: validated.password } : {}),
       user_metadata: {
@@ -46,6 +53,7 @@ Deno.serve(async (req) => {
         last_name: validated.lastName,
         full_name: `${validated.firstName} ${validated.lastName}`,
         phone: validated.phone,
+        preferred_language: preferredLanguage,
       },
       app_metadata: {
         ...user.app_metadata,

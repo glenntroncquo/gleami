@@ -1135,6 +1135,32 @@ export type Database = {
           },
         ]
       }
+      marketplace_category_translation: {
+        Row: {
+          locale: string
+          marketplace_category_id: string
+          name: string
+        }
+        Insert: {
+          locale: string
+          marketplace_category_id: string
+          name: string
+        }
+        Update: {
+          locale?: string
+          marketplace_category_id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_category_translation_marketplace_category_id_fkey"
+            columns: ["marketplace_category_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_category"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketplace_location_like: {
         Row: {
           created_at: string
@@ -1980,6 +2006,35 @@ export type Database = {
           },
         ]
       }
+      service_translation: {
+        Row: {
+          description: string | null
+          locale: string
+          name: string
+          service_id: string
+        }
+        Insert: {
+          description?: string | null
+          locale: string
+          name: string
+          service_id: string
+        }
+        Update: {
+          description?: string | null
+          locale?: string
+          name?: string
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_translation_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_variant: {
         Row: {
           client_duration_minutes: number
@@ -2096,6 +2151,32 @@ export type Database = {
           },
           {
             foreignKeyName: "service_variant_phase_service_variant_id_fkey"
+            columns: ["service_variant_id"]
+            isOneToOne: false
+            referencedRelation: "service_variant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_variant_translation: {
+        Row: {
+          locale: string
+          name: string
+          service_variant_id: string
+        }
+        Insert: {
+          locale: string
+          name: string
+          service_variant_id: string
+        }
+        Update: {
+          locale?: string
+          name?: string
+          service_variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_variant_translation_service_variant_id_fkey"
             columns: ["service_variant_id"]
             isOneToOne: false
             referencedRelation: "service_variant"

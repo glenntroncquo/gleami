@@ -41,6 +41,15 @@ import {
 } from "@/lib/api/calendar/layout-segments";
 import { ServicePhaseEditor } from "@/components/service-phase-editor";
 import { SERVICE_COLORS, COLOR_MAP } from "@/lib/service-colors";
+import {
+  TRANSLATION_LABELS,
+  TRANSLATION_LOCALES,
+  emptyServiceTranslations,
+  emptyVariantTranslations,
+  loadServiceTranslations,
+  saveServiceTranslations,
+  saveVariantTranslations,
+} from "@/lib/catalog/service-translations";
 
 import {
   Sheet,
@@ -165,9 +174,26 @@ type FormPhase = {
 };
 
 // Form validation schema
+const serviceTranslationSchema = z.object({
+  nl: z.object({ name: z.string(), description: z.string() }),
+  fr: z.object({ name: z.string(), description: z.string() }),
+  de: z.object({ name: z.string(), description: z.string() }),
+  en: z.object({ name: z.string(), description: z.string() }),
+  pt: z.object({ name: z.string(), description: z.string() }),
+});
+
+const variantTranslationSchema = z.object({
+  nl: z.string(),
+  fr: z.string(),
+  de: z.string(),
+  en: z.string(),
+  pt: z.string(),
+});
+
 const formSchema = z.object({
   name: z.string().min(1, "Treatment name is required"),
   description: z.string().optional(),
+  translations: serviceTranslationSchema,
   color: z.string().min(1),
   is_active: z.boolean(),
   interval: z
@@ -178,6 +204,7 @@ const formSchema = z.object({
       z.object({
         id: z.string().optional(),
         name: z.string().min(1, "Name is required"),
+        translations: variantTranslationSchema,
         price: z.number(),
         max_price: z.number().nullable().optional(),
         phases: z
@@ -245,12 +272,14 @@ export function ServiceSheet({
     defaultValues: {
       name: "",
       description: "",
+      translations: emptyServiceTranslations(),
       color: "emerald",
       is_active: true,
       interval: null,
       serviceVariants: [
         {
           name: "",
+          translations: emptyVariantTranslations(),
           price: 0,
           max_price: null,
           phases: toFormPhases(defaultVariantPhases()),
@@ -285,56 +314,82 @@ export function ServiceSheet({
 
   // Update form values when treatment data changes or dialog opens
   useEffect(() => {
-    if (isOpen && treatment && treatment.service_variants) {
-      const activeVariants = [...treatment.service_variants]
-        .filter((variant) => variant.is_deleted !== true)
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-      const variantData =
-        activeVariants.length > 0
-          ? activeVariants.map((option, index) => ({
-              id: option.id,
-              name: option.name || "",
-              price: option.price,
-              max_price: option.max_price,
-              phases: toFormPhases(
-                phasesFromStored(
-                  option.phases,
-                  option.duration_in_minutes,
-                  option.actual_duration_in_minutes,
-                ),
-              ),
-              image_path: option.image_path || undefined,
-              order: option.order ?? index,
-            }))
-          : [
-              {
-                name: "",
-                price: 0,
-                max_price: null,
-                phases: toFormPhases(defaultVariantPhases()),
-                order: 0,
-              },
-            ];
+    if (!isOpen) return;
+    let cancelled = false;
 
-      form.reset({
-        name: treatment.name || "",
-        description: treatment.description || "",
-        color: treatment.color || "emerald",
-        is_active: treatment.is_active ?? true,
-        interval: treatment.interval || null,
-        serviceVariants: variantData,
-      });
-    } else if (isOpen) {
-      // Reset form for new treatment
+    async function fill() {
+      if (treatment && treatment.service_variants) {
+        const activeVariants = [...treatment.service_variants]
+          .filter((variant) => variant.is_deleted !== true)
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        let loadedService = emptyServiceTranslations();
+        let loadedVariants: Awaited<ReturnType<typeof loadServiceTranslations>>["variants"] = {};
+        if (treatment.id) {
+          try {
+            const loaded = await loadServiceTranslations(
+              createClient(),
+              treatment.id,
+              activeVariants.map((option) => option.id),
+            );
+            loadedService = loaded.service;
+            loadedVariants = loaded.variants;
+          } catch (error) {
+            console.error("Failed to load treatment translations", error);
+          }
+        }
+        if (cancelled) return;
+        const variantData =
+          activeVariants.length > 0
+            ? activeVariants.map((option, index) => ({
+                id: option.id,
+                name: option.name || "",
+                translations: loadedVariants[option.id] ?? emptyVariantTranslations(),
+                price: option.price,
+                max_price: option.max_price,
+                phases: toFormPhases(
+                  phasesFromStored(
+                    option.phases,
+                    option.duration_in_minutes,
+                    option.actual_duration_in_minutes,
+                  ),
+                ),
+                image_path: option.image_path || undefined,
+                order: option.order ?? index,
+              }))
+            : [
+                {
+                  name: "",
+                  translations: emptyVariantTranslations(),
+                  price: 0,
+                  max_price: null,
+                  phases: toFormPhases(defaultVariantPhases()),
+                  order: 0,
+                },
+              ];
+
+        form.reset({
+          name: treatment.name || "",
+          description: treatment.description || "",
+          translations: loadedService,
+          color: treatment.color || "emerald",
+          is_active: treatment.is_active ?? true,
+          interval: treatment.interval || null,
+          serviceVariants: variantData,
+        });
+        return;
+      }
+
       form.reset({
         name: "",
         description: "",
+        translations: emptyServiceTranslations(),
         color: "emerald",
         is_active: true,
         interval: null,
         serviceVariants: [
           {
             name: "Standard",
+            translations: emptyVariantTranslations(),
             price: 0,
             max_price: null,
             phases: toFormPhases(defaultVariantPhases()),
@@ -343,6 +398,11 @@ export function ServiceSheet({
         ],
       });
     }
+
+    void fill();
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, treatment, form]);
 
   // Reset the active price option tab whenever the sheet opens.
@@ -531,8 +591,9 @@ export function ServiceSheet({
         }
       }
 
+      let insertedVariants: { id: string; display_order: number | null }[] = [];
       if (newVariants.length > 0) {
-        const { data: insertedVariants, error: insertError } = await supabase
+        const { data: createdVariants, error: insertError } = await supabase
           .from("service_variant")
           .insert(
             newVariants.map((option) => {
@@ -551,6 +612,7 @@ export function ServiceSheet({
             }),
           )
           .select("id, display_order");
+        insertedVariants = createdVariants ?? [];
 
         if (insertError) {
           console.error("Error creating service variants:", insertError);
@@ -558,8 +620,8 @@ export function ServiceSheet({
           return;
         }
 
-        for (let i = 0; i < (insertedVariants || []).length; i += 1) {
-          const variant = insertedVariants![i];
+        for (let i = 0; i < insertedVariants.length; i += 1) {
+          const variant = insertedVariants[i];
           const source = newVariants[i];
           if (!source) continue;
           const phaseResult = await syncServiceVariantPhases({
@@ -572,6 +634,39 @@ export function ServiceSheet({
             toast.error("Failed to create service phases.");
             return;
           }
+        }
+      }
+
+      const translationSave = await saveServiceTranslations(
+        supabase,
+        treatmentId,
+        data.translations,
+      );
+      if (translationSave.error) {
+        console.error("Error saving treatment translations:", translationSave.error);
+        toast.error("Failed to save translations");
+        return;
+      }
+
+      const variantTranslationTargets = [
+        ...updatedVariants.flatMap((option) =>
+          option.id ? [{ id: option.id, translations: option.translations }] : [],
+        ),
+        ...(insertedVariants ?? []).map((variant, index) => ({
+          id: variant.id,
+          translations: newVariants[index]?.translations ?? emptyVariantTranslations(),
+        })),
+      ];
+      for (const target of variantTranslationTargets) {
+        const variantSave = await saveVariantTranslations(
+          supabase,
+          target.id,
+          target.translations,
+        );
+        if (variantSave.error) {
+          console.error("Error saving option translations:", variantSave.error);
+          toast.error("Failed to save translations");
+          return;
         }
       }
 
@@ -697,6 +792,39 @@ export function ServiceSheet({
                   placeholder={t("treatments.form.descriptionPlaceholder")}
                   className="text-base"
                 />
+              </div>
+
+              <div className="space-y-3 rounded-lg border p-4">
+                <div>
+                  <p className="text-sm font-medium">{t("treatments.form.translations")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("treatments.form.translationsHelp")}
+                  </p>
+                </div>
+                {TRANSLATION_LOCALES.map((locale) => (
+                  <div key={locale} className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`translations.${locale}.name`}>
+                        {TRANSLATION_LABELS[locale]}
+                      </Label>
+                      <Input
+                        id={`translations.${locale}.name`}
+                        {...form.register(`translations.${locale}.name`)}
+                        placeholder={t("treatments.form.namePlaceholder")}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`translations.${locale}.description`}>
+                        {t("treatments.form.translationDescription")}
+                      </Label>
+                      <Input
+                        id={`translations.${locale}.description`}
+                        {...form.register(`translations.${locale}.description`)}
+                        placeholder={t("treatments.form.descriptionPlaceholder")}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div className="flex items-center gap-4">
@@ -834,6 +962,7 @@ export function ServiceSheet({
                       const newOrder = fields.length;
                       append({
                         name: `Option ${fields.length + 1}`,
+                        translations: emptyVariantTranslations(),
                         price: 0,
                         max_price: null,
                         phases: toFormPhases(defaultVariantPhases()),
@@ -914,6 +1043,24 @@ export function ServiceSheet({
                         {optionErrors.name.message}
                       </p>
                     )}
+
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {t("treatments.form.translations")}
+                      </p>
+                      {TRANSLATION_LOCALES.map((locale) => (
+                        <div key={locale} className="space-y-1.5">
+                          <Label htmlFor={`serviceVariants.${index}.translations.${locale}`}>
+                            {TRANSLATION_LABELS[locale]}
+                          </Label>
+                          <Input
+                            id={`serviceVariants.${index}.translations.${locale}`}
+                            {...form.register(`serviceVariants.${index}.translations.${locale}`)}
+                            placeholder={t("treatments.form.translationOptionName")}
+                          />
+                        </div>
+                      ))}
+                    </div>
 
                     {/* Row: price + max price */}
                     <div className="grid grid-cols-2 gap-4">

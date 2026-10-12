@@ -1,29 +1,21 @@
-import { AppIcon } from '@/components/app-icon';
+import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { Pressable } from '@/components/pressable-scale';
+import { AppIcon } from '@/components/app-icon';
+import { Button, FormFooter } from '@/components/ui';
 import { StaffAvatar } from '@/components/staff-avatar';
 import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { DeviceEventEmitter, Platform, StyleSheet, View } from 'react-native';
+import { DeviceEventEmitter, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { RowListSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
-import {
-  Button,
-  ErrorBanner,
-  Field,
-  FieldRow,
-  FormScreen,
-  ListGroup,
-  ListRow,
-  SelectField,
-  TextField,
-  useModalHeader,
-  useTheme,
-} from '@/components/ui';
+import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { createAppointment } from '@/lib/api/appointment-create';
 import { fetchStaff, StaffMember } from '@/lib/api/calendar';
 import { ClientSearchResult } from '@/lib/api/clients';
@@ -73,8 +65,9 @@ export default function NewAppointmentScreen() {
   const params = useLocalSearchParams<{ date?: string; time?: string; staffId?: string }>();
   const { companyId } = useAuth();
   const { locationId } = useLocation();
-  const theme = useTheme();
-  const modalHeader = useModalHeader();
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   const [staffList, setStaffList] = React.useState<StaffMember[]>([]);
   const [staffLoading, setStaffLoading] = React.useState(true);
@@ -295,7 +288,21 @@ export default function NewAppointmentScreen() {
         />
       );
     }
-    return null;
+    return (
+      <Pressable
+        style={styles.dateTimePill}
+        onPress={() =>
+          router.push({
+            pathname: '/date-time-picker',
+            params: { mode: 'date', value: startDate.toISOString(), event: APPOINTMENT_DRAFT_EVENTS.setDateTime, field: 'date', title: t('appointment.dateAndTime') },
+          })
+        }>
+        <AppIcon name="calendar" size={16} color={theme.muted} />
+        <Text style={styles.dateTimePillText}>
+          {`${startDate.getDate()} ${getMonthShortLabel(startDate.getMonth())} ${startDate.getFullYear()}`}
+        </Text>
+      </Pressable>
+    );
   };
 
   const renderTimePill = () => {
@@ -318,147 +325,409 @@ export default function NewAppointmentScreen() {
         />
       );
     }
-    return null;
+    return (
+      <Pressable
+        style={styles.dateTimePill}
+        onPress={() =>
+          router.push({
+            pathname: '/date-time-picker',
+            params: { mode: 'time', value: startDate.toISOString(), event: APPOINTMENT_DRAFT_EVENTS.setDateTime, field: 'time', title: formatTimeForInput(startDate) },
+          })
+        }>
+        <AppIcon name="schedule" size={16} color={theme.muted} />
+        <Text style={styles.dateTimePillText}>{formatTimeForInput(startDate)}</Text>
+      </Pressable>
+    );
   };
-
-  const handleSavePress = () => {
-    if (!canSave) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      setErrorMessage(t('appointment.validationMissingFields'));
-      return;
-    }
-    handleSave();
-  };
-
-  const clientName = selectedClient
-    ? clientDisplayName(selectedClient.first_name, selectedClient.last_name, selectedClient.email)
-    : clientDisplayName(newClientDraft?.firstName, newClientDraft?.lastName, newClientDraft?.email ?? '');
 
   return (
-    <>
-      <Stack.Screen options={modalHeader} />
-      <FormScreen
-        closable
-        title={t('appointment.title')}
-        footer={<Button label={t('appointment.save')} onPress={handleSavePress} loading={submitting} />}>
-        <ErrorBanner message={errorMessage} />
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: t('appointment.title'),
+          unstable_headerLeftItems: ({ tintColor }) => [
+            {
+              type: 'button',
+              label: t('common.close'),
+              icon: { type: 'sfSymbol', name: 'xmark' },
+              tintColor: tintColor ?? theme.text,
+              onPress: () => router.back(),
+            },
+          ],
+        }}
+      />
 
-        <Field
-          label={t('appointment.dateAndTime')}
-          helper={
-            totalMinutes > 0
-              ? `${formatTimeForInput(startDate)}–${formatTimeForInput(endDate)} · ${totalMinutes} ${t('appointment.minutesShort')}`
-              : undefined
-          }>
+      {errorMessage ? (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{errorMessage}</Text>
+        </View>
+      ) : null}
+
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <View style={styles.slotCard}>
           {Platform.OS === 'web' ? (
-            <View style={styles.webRow}>
+            <View style={styles.dateTimeRow}>
               {renderDatePill()}
               {renderTimePill()}
             </View>
           ) : (
-            <FieldRow>
-              <SelectField
-                value={dateLabel}
-                onPress={openDate}
-                leading={<AppIcon name="calendar" size={18} color={theme.muted} />}
-              />
-              <SelectField
-                value={formatTimeForInput(startDate)}
-                onPress={openTime}
-                leading={<AppIcon name="schedule" size={18} color={theme.muted} />}
-              />
-            </FieldRow>
+            <View style={styles.slotWhen}>
+              <Pressable onPress={openDate} hitSlop={8}>
+                <Text style={styles.slotDate}>{dateLabel}</Text>
+              </Pressable>
+              <Pressable onPress={openTime} hitSlop={8}>
+                <Text style={styles.slotTime}>{formatTimeForInput(startDate)}</Text>
+              </Pressable>
+            </View>
           )}
-        </Field>
-
-        <Field label={t('appointment.staffMember')}>
           {staffLoading ? (
-            <RowListSkeleton count={1} style={styles.skeleton} />
+            <RowListSkeleton count={1} style={{ paddingHorizontal: 0, paddingTop: 0 }} />
           ) : staffList.length === 0 ? (
             <EmptyState compact icon="groups" title={t('staff.noStaff')} subtitle={t('staff.noStaffHint')} />
           ) : (
-            <SelectField
-              value={staffName}
-              placeholder={t('appointment.selectStaffFirstHint')}
-              icon="chevronRight"
-              leading={<StaffAvatar imagePath={selectedStaff?.image_path} name={staffName || t('appointment.staffMember')} size={28} fontSize={11} />}
-              onPress={() => router.push({ pathname: '/appointment-new/staff-picker', params: staffId ? { staffId } : {} })}
-            />
+            <Pressable
+              style={styles.staffRow}
+              onPress={() => router.push({ pathname: '/appointment-new/staff-picker', params: staffId ? { staffId } : {} })}>
+              <StaffAvatar imagePath={selectedStaff?.image_path} name={staffName || t('appointment.staffMember')} size={36} fontSize={13} />
+              <Text style={[styles.clientRowName, styles.flexFill]}>{staffName || t('appointment.selectStaffFirstHint')}</Text>
+              <AppIcon name="chevronRight" size={18} color={theme.muted} />
+            </Pressable>
           )}
-        </Field>
+          {totalMinutes > 0 ? (
+            <Text style={styles.endsHint}>{`${formatTimeForInput(startDate)}–${formatTimeForInput(endDate)} · ${totalMinutes} ${t('appointment.minutesShort')}`}</Text>
+          ) : null}
+        </View>
 
-        <Field
-          label={t('appointment.services')}
-          helper={cart.length > 0 ? `${totalMinutes} ${t('appointment.minutesShort')} · €${totalPrice}` : undefined}>
-          <ListGroup>
-            {cart.map((item, index) => (
-              <ListRow
-                key={`${item.serviceId}-${item.serviceVariantId}-${index}`}
-                title={item.serviceName}
-                subtitle={`${item.variantName} · ${item.durationMinutes} ${t('appointment.minutesShort')} · €${item.price}`}
-                leading={<View style={[styles.swatch, { backgroundColor: COLOR_MAP[mapTreatmentColorToEventColor(item.color, item.serviceName)] }]} />}
-                trailing={
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={t('common.close')}
-                    onPress={() => setCart((prev) => prev.filter((_, i) => i !== index))}
-                    hitSlop={8}>
-                    <AppIcon name="close" size={18} color={theme.muted} />
-                  </Pressable>
-                }
-              />
-            ))}
-            <ListRow title={t('appointment.addService')} icon="add" chevron={false} onPress={openServices} />
-          </ListGroup>
-        </Field>
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>{t('appointment.services')}</Text>
+          {cart.map((item, index) => (
+            <View key={`${item.serviceId}-${item.serviceVariantId}-${index}`} style={styles.staffRow}>
+              <View style={[styles.serviceSwatch, { backgroundColor: COLOR_MAP[mapTreatmentColorToEventColor(item.color, item.serviceName)] }]} />
+              <View style={styles.flexFill}>
+                <Text style={styles.clientRowName}>{item.serviceName}</Text>
+                <Text style={styles.clientRowMeta}>
+                  {`${item.variantName} · ${item.durationMinutes} ${t('appointment.minutesShort')} · €${item.price}`}
+                </Text>
+              </View>
+              <Pressable onPress={() => setCart((prev) => prev.filter((_, i) => i !== index))} hitSlop={8}>
+                <AppIcon name="close" size={18} color={theme.muted} />
+              </Pressable>
+            </View>
+          ))}
+          <Pressable style={styles.noteAction} onPress={openServices}>
+            <AppIcon name="add" size={16} color={theme.muted} />
+            <Text style={styles.noteActionText}>{t('appointment.addService')}</Text>
+          </Pressable>
+          {cart.length > 0 ? (
+            <Text style={styles.endsHint}>{`${totalMinutes} ${t('appointment.minutesShort')} · €${totalPrice}`}</Text>
+          ) : null}
+        </View>
 
-        <Field label={t('appointment.client')}>
-          {selectedClient || newClientDraft ? (
-            <ListGroup>
-              <ListRow
-                title={clientName}
-                subtitle={selectedClient ? selectedClient.email : newClientDraft?.email}
-                leading={<StaffAvatar imagePath={null} name={clientName} size={40} fontSize={14} />}
-                chevron={false}
-                onPress={() => router.push('/appointment-new/client-picker')}
-                trailing={
-                  <Pressable accessibilityRole="button" accessibilityLabel={t('common.close')} onPress={handleClearClient} hitSlop={8}>
-                    <AppIcon name="close" size={18} color={theme.muted} />
-                  </Pressable>
+        {selectedClient || newClientDraft ? (
+          <View style={styles.staffRow}>
+            <Pressable style={styles.searchMain} onPress={() => router.push('/appointment-new/client-picker')}>
+              <StaffAvatar
+                imagePath={null}
+                name={
+                  selectedClient
+                    ? clientDisplayName(selectedClient.first_name, selectedClient.last_name, selectedClient.email)
+                    : clientDisplayName(newClientDraft?.firstName, newClientDraft?.lastName, newClientDraft?.email ?? '')
                 }
+                size={36}
+                fontSize={13}
               />
-            </ListGroup>
-          ) : (
-            <SelectField
-              placeholder={t('appointment.chooseClient')}
-              icon="chevronRight"
-              leading={<AppIcon name="person" size={18} color={theme.muted} />}
-              onPress={() => router.push('/appointment-new/client-picker')}
-            />
-          )}
-        </Field>
+              <View style={styles.flexFill}>
+                <Text style={styles.clientRowName}>
+                  {selectedClient
+                    ? clientDisplayName(selectedClient.first_name, selectedClient.last_name, selectedClient.email)
+                    : clientDisplayName(newClientDraft?.firstName, newClientDraft?.lastName, newClientDraft?.email ?? '')}
+                </Text>
+                <Text style={styles.clientRowMeta}>{selectedClient ? selectedClient.email : newClientDraft?.email}</Text>
+              </View>
+            </Pressable>
+            <Pressable onPress={handleClearClient} hitSlop={8}>
+              <AppIcon name="close" size={18} color={theme.muted} />
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable style={styles.staffRow} onPress={() => router.push('/appointment-new/client-picker')}>
+            <View style={styles.clientMark}>
+              <AppIcon name="person" size={18} color={theme.muted} />
+            </View>
+            <Text style={[styles.clientRowName, styles.flexFill, styles.placeholderName]}>{t('appointment.chooseClient')}</Text>
+            <AppIcon name="chevronRight" size={18} color={theme.muted} />
+          </Pressable>
+        )}
 
         {notesOpen || notes.length > 0 ? (
-          <TextField
-            label={t('appointment.notes')}
-            placeholder={t('appointment.notesPlaceholder')}
-            value={notes}
-            onChangeText={(text) => setNotes(text.slice(0, 500))}
-            maxLength={500}
-            multiline
-            autoFocus={notesOpen && notes.length === 0}
-            helper={`${notes.length}/500`}
-          />
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>{t('appointment.notes')}</Text>
+            <TextInput
+              style={[styles.fieldInput, styles.notesInput]}
+              placeholder={t('appointment.notesPlaceholder')}
+              placeholderTextColor={theme.muted}
+              value={notes}
+              onChangeText={(text) => setNotes(text.slice(0, 500))}
+              maxLength={500}
+              multiline
+              autoFocus={notesOpen && notes.length === 0}
+            />
+            <Text style={styles.notesCounter}>{`${notes.length}/500`}</Text>
+          </View>
         ) : (
-          <Button label={t('appointment.addNoteAction')} icon="add" variant="secondary" size="medium" onPress={() => setNotesOpen(true)} />
+          <Pressable style={styles.noteAction} onPress={() => setNotesOpen(true)}>
+            <AppIcon name="add" size={16} color={theme.muted} />
+            <Text style={styles.noteActionText}>{t('appointment.addNoteAction')}</Text>
+          </Pressable>
         )}
-      </FormScreen>
-    </>
+      </ScrollView>
+      <FormFooter>
+        <Button
+          label={t('appointment.save')}
+          loading={submitting}
+          onPress={() => {
+            if (!canSave) {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+              setErrorMessage(t('appointment.validationMissingFields'));
+              return;
+            }
+            handleSave();
+          }}
+        />
+      </FormFooter>
+    </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  webRow: { flexDirection: 'row', gap: 8 },
-  skeleton: { paddingHorizontal: 0, paddingTop: 0 },
-  swatch: { width: 40, height: 40, borderRadius: 12 },
-});
+function createStyles(theme: typeof Colors.light) {
+  return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    flexFill: {
+      flex: 1,
+    },
+    headerTextButton: {
+      width: 'auto',
+      minWidth: 0,
+      paddingHorizontal: 4,
+    },
+    headerSaveText: {
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    errorBanner: {
+      marginHorizontal: 16,
+      marginTop: 12,
+      padding: 12,
+      borderRadius: Design.controlRadius,
+      backgroundColor: `${theme.error}22`,
+    },
+    errorBannerText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.error,
+    },
+    scrollContent: {
+      padding: 16,
+      paddingBottom: 48,
+      gap: 24,
+    },
+    section: {
+      gap: 10,
+    },
+    sectionLabel: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: theme.muted,
+      textTransform: 'uppercase',
+    },
+    slotCard: {
+      gap: 12,
+      paddingBottom: 4,
+    },
+    slotWhen: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'space-between',
+    },
+    slotDate: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    slotTime: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: theme.text,
+      fontVariant: ['tabular-nums'],
+    },
+    staffRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    clientMark: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.surface,
+    },
+    placeholderName: {
+      color: theme.muted,
+      fontWeight: '600',
+    },
+    searchMain: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    noteAction: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      alignSelf: 'stretch',
+      minHeight: Design.touchTarget,
+    },
+    noteActionText: {
+      flex: 1,
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.muted,
+    },
+    sectionHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    sectionHeaderText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    searchInputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.surface,
+      borderRadius: 14,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    searchInputPlaceholder: {
+      fontSize: 15,
+      color: theme.muted,
+    },
+    clientRowName: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    clientRowMeta: {
+      fontSize: 13,
+      color: theme.muted,
+      marginTop: 2,
+    },
+    fieldInput: {
+      minHeight: Design.touchTarget,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      fontSize: 15,
+      color: theme.text,
+    },
+    notesInput: {
+      minHeight: 80,
+      textAlignVertical: 'top',
+    },
+    notesCounter: {
+      alignSelf: 'flex-end',
+      fontSize: 12,
+      color: theme.muted,
+    },
+    selectedCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 14,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    cartRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 14,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    serviceSwatch: {
+      width: 40,
+      height: 40,
+      borderRadius: Design.controlRadius,
+    },
+    serviceRowTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    addTile: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      backgroundColor: theme.surface,
+      borderRadius: 12,
+      paddingVertical: 14,
+    },
+    addTileDisabled: {
+      opacity: 0.4,
+    },
+    addTileText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    emptyHintText: {
+      fontSize: 13,
+      color: theme.muted,
+    },
+    dateTimeRow: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    dateTimePill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.surface,
+    },
+    dateTimePillText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    endsHint: {
+      fontSize: 12,
+      color: theme.muted,
+    },
+  });
+}

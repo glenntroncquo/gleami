@@ -137,7 +137,7 @@ function RootNavigator() {
       <Stack.Protected guard={showApp}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'none' }} />
         <Stack.Screen name="day/[date]" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="appointment-new/index" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="appointment-new/index" options={{ presentation: 'modal' }} />
         {/*
           Single-detent formSheet, not [0.5, 1]: with two detents, dragging
           between them makes RN re-layout the whole subtree every frame,

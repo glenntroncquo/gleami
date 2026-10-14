@@ -523,7 +523,7 @@ function createStyles(theme: typeof Colors.light) {
       marginTop: 12,
       padding: 12,
       borderRadius: Design.controlRadius,
-      backgroundColor: `${theme.error}22`,
+      backgroundColor: theme.errorSurface,
     },
     errorBannerText: {
       fontSize: 13,
@@ -639,6 +639,7 @@ function createStyles(theme: typeof Colors.light) {
       minHeight: Design.touchTarget,
       borderWidth: 1,
       borderColor: theme.border,
+      backgroundColor: theme.card,
       borderRadius: 12,
       paddingHorizontal: 14,
       paddingVertical: 10,

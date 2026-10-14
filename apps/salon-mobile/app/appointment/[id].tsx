@@ -265,7 +265,7 @@ export default function AppointmentDetailScreen() {
                 title={clientDisplayName}
                 subtitle={[client?.email, client?.phone].filter(Boolean).join(' · ')}
                 leading={
-                  <View style={[styles.clientAvatar, { backgroundColor: theme.surface }]}>
+                  <View style={[styles.clientAvatar, { backgroundColor: theme.blueTint }]}>
                     <Text style={[styles.clientAvatarText, { color: theme.text }]}>{getInitialsFromLabel(clientDisplayName)}</Text>
                   </View>
                 }
@@ -284,7 +284,7 @@ export default function AppointmentDetailScreen() {
                 subtitle={t('client.noHistoryHint')}
               />
             ) : (
-              <View style={[styles.scrollGroup, { borderColor: theme.border }]}>
+              <View style={[styles.scrollGroup, { borderColor: theme.border, backgroundColor: theme.card }]}>
               <ScrollView style={styles.historyList} nestedScrollEnabled showsVerticalScrollIndicator>
               <ListGroup style={styles.innerGroup} inset={32}>
               {history.map((historyEvent) => {
@@ -292,7 +292,7 @@ export default function AppointmentDetailScreen() {
                 const badgeColors: Record<AppointmentPaymentInfo['status'], { background: string; text: string }> = {
                   paid: { background: theme.successSurface, text: theme.success },
                   partial: { background: theme.warningSurface, text: theme.warning },
-                  unpaid: { background: theme.surface, text: theme.muted },
+                  unpaid: { background: theme.surfaceRaised, text: theme.muted },
                 };
                 const badge = badgeColors[payment?.status ?? 'unpaid'];
                 const badgeLabel =
@@ -325,12 +325,12 @@ export default function AppointmentDetailScreen() {
             {notes.length === 0 ? (
               <Text style={[styles.emptyText, { color: theme.muted }]}>{t('client.noNotes')}</Text>
             ) : (
-              <View style={[styles.scrollGroup, { borderColor: theme.border }]}>
+              <View style={[styles.scrollGroup, { borderColor: theme.border, backgroundColor: theme.card }]}>
               <ScrollView style={styles.notesList} nestedScrollEnabled showsVerticalScrollIndicator>
                 <ListGroup style={styles.innerGroup} inset={14}>
                 {notes.map((note) => (
                 <SwipeableRow key={note.id} deleteLabel={t('common.delete')} onDelete={() => handleDeleteNote(note.id)}>
-                <View style={[styles.noteRow, { backgroundColor: theme.background }]}>
+                <View style={[styles.noteRow, { backgroundColor: theme.card }]}>
                   <Text style={[styles.noteText, { color: theme.text }]}>{note.note}</Text>
                   <Text style={[styles.noteDate, { color: theme.muted }]}>
                     {getListHeaderLabel(toDateKey(new Date(note.created_at)))}
@@ -429,10 +429,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  // The group's rounded border stays fixed while its rows scroll inside it.
+  // Keep the card's rounded edges fixed while its rows scroll.
   scrollGroup: {
-    borderWidth: 1,
-    borderRadius: Design.cardRadius - 4,
+    borderRadius: Design.cardRadius,
+    borderCurve: 'continuous',
     overflow: 'hidden',
   },
   innerGroup: { borderWidth: 0, borderRadius: 0 },

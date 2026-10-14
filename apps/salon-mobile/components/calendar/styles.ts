@@ -1,7 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-import { Colors } from '@/constants/theme';
-import { Design } from '@/constants/theme';
+import { Colors, Design } from '@/constants/theme';
 
 export const createStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({
@@ -26,9 +25,22 @@ export const createStyles = (theme: typeof Colors.light) =>
     },
     monthPager: {
       flex: 1,
+      overflow: 'hidden',
     },
     monthGrid: {
       flex: 1,
+    },
+    weekdayRow: {
+      flexDirection: 'row',
+      paddingTop: 8,
+      paddingBottom: 6,
+    },
+    weekdayLabel: {
+      flex: 1,
+      fontSize: 12,
+      fontWeight: '500',
+      textAlign: 'center',
+      color: theme.muted,
     },
     headerRow: {
       marginTop: 8,
@@ -85,7 +97,7 @@ export const createStyles = (theme: typeof Colors.light) =>
       paddingTop: 4,
       paddingBottom: 4,
       borderBottomWidth: 1,
-      borderBottomColor: theme.border,
+      borderBottomColor: theme.separator,
     },
     dayCell: {
       flex: 1,
@@ -145,10 +157,10 @@ export const createStyles = (theme: typeof Colors.light) =>
       minHeight: 0,
       minWidth: 0,
       justifyContent: 'flex-start',
-      backgroundColor: theme === Colors.dark ? '#3A3D44' : '#DDE1E8',
+      backgroundColor: theme === Colors.dark ? theme.surfaceRaised : '#DDE1E8',
     },
     absenceText: {
-      color: theme === Colors.dark ? '#E6E8EC' : '#3B4252',
+      color: theme === Colors.dark ? theme.text : '#3B4252',
     },
     morePill: {
       alignSelf: 'flex-start',
@@ -171,7 +183,7 @@ export const createStyles = (theme: typeof Colors.light) =>
     weekAgendaDay: {
       flexDirection: 'row',
       borderBottomWidth: 1,
-      borderBottomColor: theme.border,
+      borderBottomColor: theme.separator,
       paddingVertical: 6,
     },
     weekAgendaDateCol: {
@@ -246,9 +258,9 @@ export const createStyles = (theme: typeof Colors.light) =>
     listStickyHeader: {
       backgroundColor: theme.surface,
       borderTopWidth: 1,
-      borderTopColor: theme.border,
+      borderTopColor: theme.separator,
       borderBottomWidth: 1,
-      borderBottomColor: theme.border,
+      borderBottomColor: theme.separator,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -268,7 +280,7 @@ export const createStyles = (theme: typeof Colors.light) =>
     listEventRow: {
       backgroundColor: theme.background,
       borderBottomWidth: 1,
-      borderBottomColor: theme.border,
+      borderBottomColor: theme.separator,
       minHeight: 54,
       flexDirection: 'row',
       alignItems: 'center',
@@ -449,12 +461,12 @@ export const createStyles = (theme: typeof Colors.light) =>
       paddingHorizontal: 16,
       paddingVertical: 10,
       borderRadius: Design.controlRadius,
-      backgroundColor: theme.tint,
+      backgroundColor: theme.primary,
     },
     retryButtonText: {
       fontSize: 14,
       fontWeight: '600',
-      color: theme.onTint,
+      color: theme.onPrimary,
     },
     errorBanner: {
       marginTop: 8,

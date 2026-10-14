@@ -16,6 +16,7 @@ import { TabScreen } from '@/components/tab-screen';
 import { ThemedView } from '@/components/themed-view';
 import { Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useThemePreference, type ThemePreference } from '@/contexts/theme-context';
 import type { PermissionKey } from '@/lib/auth/permissions';
 import i18n, { SUPPORTED_LANGUAGES, SupportedLanguage, setLanguage } from '@/lib/i18n';
 import { fetchOwnStaffProfile, StaffProfile } from '@/lib/api/profile';
@@ -28,6 +29,7 @@ const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
   en: 'English',
   pt: 'Português',
 };
+const THEME_OPTIONS: ThemePreference[] = ['light', 'dark', 'system'];
 
 const MANAGE_ITEMS: { permission: PermissionKey; href: '/staff' | '/services' | '/orders' | '/products' | '/dashboard' | '/settings'; icon: AppIconName; labelKey: string }[] = [
   { permission: 'staff:manage', href: '/staff', icon: 'groups', labelKey: 'more.staff' },
@@ -42,12 +44,15 @@ export default function MoreScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const theme = useTheme();
+  const { preference, setPreference } = useThemePreference();
   const { user, companyId, signOut, hasPermission } = useAuth();
   const [profile, setProfile] = React.useState<StaffProfile | null>(null);
   const [profileLoading, setProfileLoading] = React.useState(true);
   const photoBusy = React.useRef(false);
   const [uploadingPhoto, setUploadingPhoto] = React.useState(false);
   const [shouldCrash, setShouldCrash] = React.useState(false);
+  const [languageOpen, setLanguageOpen] = React.useState(false);
+  const [appearanceOpen, setAppearanceOpen] = React.useState(false);
 
   if (__DEV__ && shouldCrash) {
     throw new Error('Sentry test render crash (__DEV__)');
@@ -119,7 +124,7 @@ export default function MoreScreen() {
       <ScrollView contentContainerStyle={styles.container}>
       <ScreenTitle title={t('tabs.more')} />
 
-      <View style={[styles.profileCard, { borderColor: theme.border }]}>
+      <View style={styles.profileCard}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('staff.changePhoto')}
@@ -132,13 +137,13 @@ export default function MoreScreen() {
           ) : avatarUrl ? (
             <Image source={{ uri: avatarUrl }} style={styles.avatar} contentFit="cover" />
           ) : (
-            <View style={[styles.avatar, { backgroundColor: theme.surface }]}>
-              <Text style={[styles.avatarInitials, { color: theme.muted }]}>{getInitialsFromLabel(displayName)}</Text>
+            <View style={[styles.avatar, { backgroundColor: theme.blueTint, borderWidth: 1, borderColor: `${theme.brandBlue}40` }]}>
+              <Text style={[styles.avatarInitials, { color: theme.text }]}>{getInitialsFromLabel(displayName)}</Text>
             </View>
           )}
           {profile && !profileLoading ? (
-            <View style={[styles.avatarEditBadge, { backgroundColor: theme.tint, borderColor: theme.background }]}>
-              <AppIcon name="camera" size={12} color={theme.onTint} />
+            <View style={[styles.avatarEditBadge, { backgroundColor: theme.primary, borderColor: theme.background }]}>
+              <AppIcon name="camera" size={12} color={theme.onPrimary} />
             </View>
           ) : null}
         </Pressable>
@@ -161,19 +166,51 @@ export default function MoreScreen() {
         </View>
       ) : null}
 
-      <View style={styles.section}>
-        <SectionHeader title={t('profile.language')} />
-        <ListGroup inset={14}>
-          {SUPPORTED_LANGUAGES.map((language) => (
-            <ListRow
-              key={language}
-              title={LANGUAGE_LABELS[language]}
-              selected={i18n.language === language}
-              onPress={() => setLanguage(language)}
-            />
-          ))}
-        </ListGroup>
-      </View>
+      <ListGroup>
+        <ListRow
+          icon="language"
+          title={t('profile.language')}
+          subtitle={LANGUAGE_LABELS[i18n.language as SupportedLanguage] ?? i18n.language}
+          expanded={languageOpen}
+          onPress={() => setLanguageOpen((open) => !open)}
+          chevron={false}
+          trailing={<AppIcon name={languageOpen ? 'expandMore' : 'chevronRight'} size={17} color={theme.muted} />}
+        />
+        {languageOpen ? SUPPORTED_LANGUAGES.map((language) => (
+          <ListRow
+            key={language}
+            title={LANGUAGE_LABELS[language]}
+            selected={i18n.language === language}
+            onPress={() => {
+              setLanguage(language);
+              setLanguageOpen(false);
+            }}
+          />
+        )) : null}
+      </ListGroup>
+
+      <ListGroup>
+        <ListRow
+          icon="appearance"
+          title={t('settings.appearance')}
+          subtitle={t(`settings.theme.${preference}`)}
+          expanded={appearanceOpen}
+          onPress={() => setAppearanceOpen((open) => !open)}
+          chevron={false}
+          trailing={<AppIcon name={appearanceOpen ? 'expandMore' : 'chevronRight'} size={17} color={theme.muted} />}
+        />
+        {appearanceOpen ? THEME_OPTIONS.map((option) => (
+          <ListRow
+            key={option}
+            title={t(`settings.theme.${option}`)}
+            selected={preference === option}
+            onPress={() => {
+              setPreference(option);
+              setAppearanceOpen(false);
+            }}
+          />
+        )) : null}
+      </ListGroup>
 
       <View style={styles.section}>
         <LegalLinkRows />
@@ -182,13 +219,13 @@ export default function MoreScreen() {
       <View style={styles.section}>
         <SectionHeader title={t('account.section')} />
         <ListGroup>
+          <ListRow icon="signOut" chevron={false} title={t('profile.signOut')} onPress={signOut} />
+        </ListGroup>
+        <ListGroup style={styles.deleteGroup}>
           {__DEV__ ? (
             <ListRow destructive icon="flash" chevron={false} title={t('errorBoundary.testCrash')} onPress={() => setShouldCrash(true)} />
           ) : null}
           <AccountDeletionButton />
-        </ListGroup>
-        <ListGroup style={styles.signOutGroup}>
-          <ListRow destructive chevron={false} title={t('profile.signOut')} onPress={signOut} />
         </ListGroup>
       </View>
       </ScrollView>
@@ -202,17 +239,15 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 40,
     paddingHorizontal: Design.screenPadding,
-    gap: 24,
+    gap: 20,
   },
   section: { gap: 8 },
-  signOutGroup: { marginTop: 8 },
+  deleteGroup: { marginTop: 8 },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderRadius: 16,
+    paddingVertical: 4,
   },
   avatarButton: { position: 'relative' },
   avatarEditBadge: {
@@ -222,14 +257,14 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInitials: { fontSize: 20, fontWeight: '700' },
   profileText: { flex: 1, gap: 2 },
-  name: { fontSize: 17, fontWeight: '700' },
+  name: { fontSize: 18, fontWeight: '700', letterSpacing: -0.2 },
   email: { fontSize: 14 },
 });

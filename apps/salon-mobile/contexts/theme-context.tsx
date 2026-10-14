@@ -3,7 +3,10 @@ import * as SystemUI from 'expo-system-ui';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Appearance, AppState, Platform, type ColorSchemeName } from 'react-native';
 
-export type ThemePreference = 'light' | 'dark' | 'system';
+import { Colors } from '@/constants/theme';
+import { DEFAULT_THEME_PREFERENCE, readThemePreference, type ThemePreference } from '@/lib/theme-preference';
+
+export type { ThemePreference } from '@/lib/theme-preference';
 
 const THEME_STORAGE_KEY = 'app-theme';
 
@@ -43,7 +46,7 @@ export function ThemePreferenceProvider({ children }: { children: React.ReactNod
   const [systemScheme, setSystemScheme] = useState<'light' | 'dark'>(() =>
     Platform.OS === 'web' ? 'light' : resolveScheme(Appearance.getColorScheme())
   );
-  const [preference, setPreferenceState] = useState<ThemePreference>('system');
+  const [preference, setPreferenceState] = useState<ThemePreference>(DEFAULT_THEME_PREFERENCE);
   const [preferenceReady, setPreferenceReady] = useState(false);
 
   useEffect(() => {
@@ -52,8 +55,9 @@ export function ThemePreferenceProvider({ children }: { children: React.ReactNod
     AsyncStorage.getItem(THEME_STORAGE_KEY)
       .then((saved) => {
         if (!active) return;
-        if (saved === 'light' || saved === 'dark' || saved === 'system') setPreferenceState(saved);
+        setPreferenceState(readThemePreference(saved));
       })
+      .catch(() => {})
       .finally(() => {
         if (active) setPreferenceReady(true);
       });
@@ -114,7 +118,7 @@ export function ThemePreferenceProvider({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
-    void SystemUI.setBackgroundColorAsync(colorScheme === 'dark' ? '#000000' : '#FFFFFF');
+    void SystemUI.setBackgroundColorAsync(Colors[colorScheme].background);
   }, [colorScheme]);
 
   return <ThemeContext.Provider value={{ preference, colorScheme, setPreference }}>{children}</ThemeContext.Provider>;

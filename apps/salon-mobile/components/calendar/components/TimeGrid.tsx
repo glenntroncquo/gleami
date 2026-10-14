@@ -115,8 +115,8 @@ function AbsenceItem({ block, firstMinute, left, width, label, scheme, compact, 
   compact?: boolean;
   onPress: (block: AbsenceBlock) => void;
 }) {
-  const bg = scheme === 'dark' ? '#3A3D44' : '#DDE1E8';
-  const ink = scheme === 'dark' ? '#E6E8EC' : '#3B4252';
+  const bg = scheme === 'dark' ? Colors.dark.surfaceRaised : '#DDE1E8';
+  const ink = scheme === 'dark' ? Colors.dark.text : '#3B4252';
   const time = `${timeLabel(block.start)} - ${timeLabel(Math.min(block.end, 24 * 60 - 1))}`;
   return (
     <Pressable
@@ -332,7 +332,7 @@ function DayBoard({
 
   return (
     <View style={{ flex: 1 }}>
-      <View {...daySwipe.panHandlers} style={{ flexDirection: 'row', height: DAY_HEADER, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }}>
+      <View {...daySwipe.panHandlers} style={{ flexDirection: 'row', height: DAY_HEADER, backgroundColor: theme.card, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.separator }}>
         <View style={{ width: GUTTER }} />
         <ScrollView ref={headerScroll} horizontal scrollEnabled={false} showsHorizontalScrollIndicator={false}>
           {columns.map((column) => (
@@ -372,9 +372,9 @@ function DayBoard({
                       : [];
                   const absences = schedule && column.staffId ? absenceBlocks(schedule, column.staffId, column.date) : [];
                   return (
-                    <View key={column.key} style={{ width: columnWidth, borderLeftWidth: StyleSheet.hairlineWidth, borderColor: theme.border }}>
+                    <View key={column.key} style={{ width: columnWidth, borderLeftWidth: StyleSheet.hairlineWidth, borderColor: theme.separator }}>
                       {hours.map((minute) => (
-                        <View key={minute} style={{ height: HOUR_HEIGHT, borderTopWidth: StyleSheet.hairlineWidth, borderColor: theme.border }}>
+                        <View key={minute} style={{ height: HOUR_HEIGHT, borderTopWidth: StyleSheet.hairlineWidth, borderColor: theme.separator }}>
                           {[0, 15, 30, 45].map((offset) => (
                             <Pressable
                               key={offset}
@@ -559,7 +559,7 @@ function WeekBoard({
 
   return (
     <View style={{ flex: 1 }}>
-      <View style={{ flexDirection: 'row', height: headerHeight, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }}>
+      <View style={{ flexDirection: 'row', height: headerHeight, backgroundColor: theme.card, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.separator }}>
         <View style={{ width: GUTTER }} />
         <ScrollView ref={horizontalHeader} horizontal scrollEnabled={false} showsHorizontalScrollIndicator={false}>
           <View style={{ flexDirection: 'row' }}>
@@ -567,7 +567,7 @@ function WeekBoard({
               const date = new Date(day.dateKey + 'T00:00:00');
               const today = day.dateKey === todayKey;
               return (
-                <Pressable key={day.dateKey} onPress={() => onSlot(day.dateKey, '09:00')} style={{ width: columnWidth, alignItems: 'center', justifyContent: 'center', paddingVertical: 5, gap: 1, borderLeftWidth: StyleSheet.hairlineWidth, borderColor: theme.border }}>
+                <Pressable key={day.dateKey} onPress={() => onSlot(day.dateKey, '09:00')} style={{ width: columnWidth, alignItems: 'center', justifyContent: 'center', paddingVertical: 5, gap: 1, borderLeftWidth: StyleSheet.hairlineWidth, borderColor: theme.separator }}>
                     <View style={{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: today ? theme.tint : 'transparent' }}>
                       <Text style={{ color: today ? theme.onTint : theme.text, fontSize: 14, fontWeight: '600' }}>{day.date}</Text>
                     </View>
@@ -591,8 +591,8 @@ function WeekBoard({
                   const isOff = usesSchedule && schedule && unavailableIntervals(schedule, dayRows.map((row) => row.staffId).filter((id): id is string => Boolean(id)), day.dateKey, firstMinute, lastMinute, { keepAbsences: singleStaffSelected });
                   // Only a single-staff week has one person per column, so only then can an absence be drawn as a block.
                   const absences = singleStaffSelected && schedule ? absenceBlocks(schedule, selectedStaffIds[0], day.dateKey) : [];
-                  return <View key={day.dateKey} style={{ width: columnWidth, height, borderLeftWidth: StyleSheet.hairlineWidth, borderColor: theme.border }}>
-                    {hours.map((minute) => <View key={minute} style={{ height: HOUR_HEIGHT, borderTopWidth: StyleSheet.hairlineWidth, borderColor: theme.border }}><Pressable style={{ flex: 1 }} onPress={() => onSlot(day.dateKey, timeLabel(minute), singleStaffSelected ? selectedStaffIds[0] : undefined)} /></View>)}
+                  return <View key={day.dateKey} style={{ width: columnWidth, height, borderLeftWidth: StyleSheet.hairlineWidth, borderColor: theme.separator }}>
+                    {hours.map((minute) => <View key={minute} style={{ height: HOUR_HEIGHT, borderTopWidth: StyleSheet.hairlineWidth, borderColor: theme.separator }}><Pressable style={{ flex: 1 }} onPress={() => onSlot(day.dateKey, timeLabel(minute), singleStaffSelected ? selectedStaffIds[0] : undefined)} /></View>)}
                     {isOff && isOff.length > 0 ? isOff.map((gap, index) => <View key={`gap-${index}`} pointerEvents="none" style={{ position: 'absolute', top: (gap.start - firstMinute) * PPM, height: (gap.end - gap.start) * PPM, left: 0, right: 0, backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.035)' : 'rgba(7,29,67,0.035)' }} />) : null}
                     {absences.map((block) => <AbsenceItem key={block.id} block={block} firstMinute={firstMinute} left={2} width={Math.max(0, columnWidth - 4)} label={absenceLabel} scheme={scheme} compact onPress={onAbsence} />)}
                     {dayLayouts.map(({ event, start, end, lane, lanes }) => <Pressable key={event.id} onPress={() => onEvent(event)} style={{ position: 'absolute', top: (start - firstMinute) * PPM + 1, height: Math.max(36, (end - start) * PPM - 3), left: (lane * columnWidth) / lanes + 2, width: Math.max(0, columnWidth / lanes - 4), backgroundColor: event.bgColor, borderRadius: 5, paddingHorizontal: 4, paddingVertical: 3, overflow: 'hidden' }}>

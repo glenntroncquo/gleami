@@ -29,8 +29,8 @@ export function StaffAvatar({ imagePath, name, size, backgroundColor, textColor,
   }
 
   return (
-    <View style={[styles.circle, circleSize, { backgroundColor: backgroundColor ?? theme.surface }]}>
-      <Text style={{ fontSize: fontSize ?? Math.max(9, Math.round(size * 0.4)), fontWeight: '700', color: textColor ?? theme.muted }}>
+    <View style={[styles.circle, circleSize, { backgroundColor: backgroundColor ?? theme.blueTint }]}>
+      <Text style={{ fontSize: fontSize ?? Math.max(9, Math.round(size * 0.4)), fontWeight: '700', color: textColor ?? theme.text }}>
         {getInitialsFromLabel(name)}
       </Text>
     </View>

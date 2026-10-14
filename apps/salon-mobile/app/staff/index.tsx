@@ -122,7 +122,7 @@ export default function StaffListScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('staff.addNew')}
           onPress={() => router.push('/staff/new')}>
-          <AppIcon name="add" size={26} color={theme.onTint} />
+          <AppIcon name="add" size={26} color={theme.onPrimary} />
         </Pressable>
       ) : null}
     </SafeAreaView>
@@ -130,7 +130,7 @@ export default function StaffListScreen() {
 }
 
 // ListRow carries 14px horizontal padding, so the list pads only the remainder to align with the screen edge.
-const ROW_INSET = 14;
+const ROW_INSET = 16;
 
 const createStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({
@@ -160,9 +160,9 @@ const createStyles = (theme: typeof Colors.light) =>
     },
     separator: {
       height: StyleSheet.hairlineWidth,
-      marginLeft: ROW_INSET + 40 + 14,
+      marginLeft: ROW_INSET + 40 + 12,
       marginRight: ROW_INSET,
-      backgroundColor: theme.border,
+      backgroundColor: theme.separator,
     },
     fab: {
       position: 'absolute',
@@ -173,8 +173,8 @@ const createStyles = (theme: typeof Colors.light) =>
       borderRadius: 28,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.tint,
-      shadowColor: theme.text,
+      backgroundColor: theme.primary,
+      shadowColor: theme.shadow,
       shadowOpacity: 0.12,
       shadowRadius: 12,
       shadowOffset: { width: 0, height: 4 },

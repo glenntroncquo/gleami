@@ -1,14 +1,13 @@
 import { peekCalendarWarm } from '@/lib/calendar-warm';
 import { readPreferredCalendarView, writePreferredCalendarView, type CalendarViewMode } from '@/lib/preferences';
 import { TimeGrid } from '@/components/calendar/components/TimeGrid';
-import { calendarPreviewLayout } from '@/lib/calendar-layout';
+import { calendarPreviewLayout, monthPagerLayout } from '@/lib/calendar-layout';
 import { Pressable } from '@/components/pressable-scale';
 import React from 'react';
 import {
   DeviceEventEmitter,
   FlatList,
   ScrollView,
-  StyleSheet,
   Text,
   View,
   useWindowDimensions,
@@ -32,7 +31,6 @@ import {
   fetchAppointmentById,
   fetchAppointmentsForMonth,
   fetchStaff,
-  AppointmentRow,
   StaffMember,
 } from '@/lib/api/calendar';
 
@@ -70,7 +68,7 @@ import {
 import { ListEventRow } from '@/components/calendar/components/ListEventRow';
 import { ListSectionHeader } from '@/components/calendar/components/ListSectionHeader';
 import { createStyles } from '@/components/calendar/styles';
-import { EventItem, ListFlatItem, MonthData, WeekDayData } from '@/components/calendar/types';
+import { EventItem, ListFlatItem, MonthData } from '@/components/calendar/types';
 
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -83,7 +81,7 @@ function buildPrefetchWindow(centerOffset: number): number[] {
 export default function CalendarScreen() {
   const { t } = useTranslation();
   const { width, fontScale } = useWindowDimensions();
-  const [gridWidth, setGridWidth] = React.useState(width - 32);
+  const [gridWidth, setGridWidth] = React.useState(0);
   const { companyId } = useAuth();
   const { locationId, loading: locationLoading } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
@@ -125,6 +123,8 @@ export default function CalendarScreen() {
     return [todayOffset - 2, todayOffset - 1, todayOffset, todayOffset + 1, todayOffset + 2];
   });
   const [currentOffset, setCurrentOffset] = React.useState(() => getOffsetForDate(new Date()));
+  const monthPager = monthPagerLayout(gridWidth, calendarHeight, offsets, currentOffset);
+  const weekdays = t('calendar.weekdaysShort', { returnObjects: true }) as string[];
   const [listMonthOffsets, setListMonthOffsets] = React.useState(() =>
     buildPrefetchWindow(getOffsetForDate(new Date()))
   );
@@ -876,13 +876,20 @@ export default function CalendarScreen() {
                   </Pressable>
                 </View>
               ) : null}
+              {viewMode === 'month' ? (
+                <View style={styles.weekdayRow}>
+                  {[1, 2, 3, 4, 5, 6, 0].map((day) => (
+                    <Text key={day} style={styles.weekdayLabel}>{weekdays[day]}</Text>
+                  ))}
+                </View>
+              ) : null}
             </View>
 
             <View style={styles.calendarArea} onLayout={({ nativeEvent: { layout } }) => {
               setCalendarAreaHeight(layout.height);
               setGridWidth(layout.width);
             }}>
-              {viewMode === 'dayGrid' || (viewMode === 'weekGrid' && selectedStaffIds.length === 1) ? (() => {
+              {gridWidth > 0 && (viewMode === 'dayGrid' || (viewMode === 'weekGrid' && selectedStaffIds.length === 1)) ? (() => {
                 const start = viewMode === 'weekGrid' ? getWeekStartMonday(parseSalonWallClock(gridDate + 'T00:00:00')) : parseSalonWallClock(gridDate + 'T00:00:00');
                 const days = Array.from({ length: viewMode === 'weekGrid' ? 7 : 1 }, (_, i) => {
                   const date = addDays(start, i);
@@ -899,17 +906,18 @@ export default function CalendarScreen() {
                   onEvent={event => router.push({ pathname: '/appointment/[id]', params: { id: event.appointmentId } })}
                   onSlot={(date, time, staffId) => router.push({ pathname: '/appointment-new', params: { date, time, ...(staffId ? { staffId } : {}) } })} />;
               })() : null}
-              {viewMode === 'month' ? (
+              {viewMode === 'month' && monthPager ? (
                 <FlatList
+                  key={monthPager.key}
                   ref={listRef}
                   data={offsets}
                   keyExtractor={(item) => `month-${item}`}
                   horizontal
                   pagingEnabled
-                  initialScrollIndex={offsets.indexOf(currentOffset)}
+                  initialScrollIndex={monthPager.initialScrollIndex}
                   showsHorizontalScrollIndicator={false}
                   style={[styles.monthPager, { height: calendarHeight }]}
-                  getItemLayout={(_, index) => ({ length: gridWidth, offset: gridWidth * index, index })}
+                  getItemLayout={monthPager.getItemLayout}
                   onMomentumScrollEnd={(event) => {
                     const index = Math.round(event.nativeEvent.contentOffset.x / gridWidth);
                     handleMonthChange(index);
@@ -931,7 +939,7 @@ export default function CalendarScreen() {
                 />
               ) : null}
 
-              {viewMode === 'weekGrid' && selectedStaffIds.length !== 1 ? (() => {
+              {gridWidth > 0 && viewMode === 'weekGrid' && selectedStaffIds.length !== 1 ? (() => {
                 const weekStart = getWeekStartMonday(parseSalonWallClock(gridDate + 'T00:00:00'));
                 const weekDays = Array.from({ length: 7 }, (_, index) => {
                   const date = addDays(weekStart, index);

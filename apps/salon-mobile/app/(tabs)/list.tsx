@@ -232,7 +232,7 @@ export default function ClientsScreen() {
           accessibilityLabel={t('client.addNew')}
           onPress={() => router.push('/client/new')}
         >
-          <AppIcon name="add" size={26} color={theme.onTint} />
+          <AppIcon name="add" size={26} color={theme.onPrimary} />
         </Pressable>
       ) : null}
     </>
@@ -240,8 +240,8 @@ export default function ClientsScreen() {
   );
 }
 
-// ListRow carries 14px horizontal padding, so the list itself pads the remainder to line text up with the screen edge.
-const ROW_INSET = 14;
+// ListRow supplies part of the screen's horizontal padding.
+const ROW_INSET = 16;
 
 const createStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({
@@ -266,7 +266,7 @@ const createStyles = (theme: typeof Colors.light) =>
       borderRadius: Design.controlRadius,
       borderWidth: 1,
       borderColor: theme.border,
-      backgroundColor: theme.background,
+      backgroundColor: theme.card,
     },
     searchInput: {
       flex: 1,
@@ -313,15 +313,15 @@ const createStyles = (theme: typeof Colors.light) =>
     },
     separator: {
       height: StyleSheet.hairlineWidth,
-      marginLeft: ROW_INSET + 40 + 14,
+      marginLeft: ROW_INSET + 40 + 12,
       marginRight: ROW_INSET,
-      backgroundColor: theme.border,
+      backgroundColor: theme.separator,
     },
     avatar: {
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: theme.surface,
+      backgroundColor: theme.blueTint,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -350,8 +350,8 @@ const createStyles = (theme: typeof Colors.light) =>
       borderRadius: 28,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.tint,
-      shadowColor: theme.text,
+      backgroundColor: theme.primary,
+      shadowColor: theme.shadow,
       shadowOpacity: 0.12,
       shadowRadius: 12,
       shadowOffset: { width: 0, height: 4 },

@@ -225,6 +225,7 @@ const createStyles = (theme: typeof Colors.light) =>
       borderRadius: 20,
       borderWidth: 1,
       borderColor: theme.border,
+      backgroundColor: theme.card,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -256,6 +257,7 @@ const createStyles = (theme: typeof Colors.light) =>
     dayCard: {
       borderWidth: 1,
       borderColor: theme.border,
+      backgroundColor: theme.card,
       borderRadius: Design.cardRadius - 4,
       padding: 14,
       gap: 8,
@@ -301,7 +303,7 @@ const createStyles = (theme: typeof Colors.light) =>
       gap: 10,
       paddingVertical: 8,
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.border,
+      borderTopColor: theme.separator,
     },
     appointmentTime: {
       fontSize: 13,

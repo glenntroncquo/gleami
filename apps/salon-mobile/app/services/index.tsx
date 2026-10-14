@@ -184,7 +184,7 @@ export default function TreatmentsScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('service.addNew')}
           onPress={() => router.push('/services/new')}>
-          <AppIcon name="add" size={26} color={theme.onTint} />
+          <AppIcon name="add" size={26} color={theme.onPrimary} />
         </Pressable>
       ) : null}
     </SafeAreaView>
@@ -227,7 +227,7 @@ const createStyles = (theme: typeof Colors.light) =>
     separator: {
       height: StyleSheet.hairlineWidth,
       marginLeft: 38,
-      backgroundColor: theme.border,
+      backgroundColor: theme.separator,
     },
     reorderCol: {
       width: 28,
@@ -296,8 +296,8 @@ const createStyles = (theme: typeof Colors.light) =>
       borderRadius: 28,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.tint,
-      shadowColor: theme.text,
+      backgroundColor: theme.primary,
+      shadowColor: theme.shadow,
       shadowOpacity: 0.12,
       shadowRadius: 12,
       shadowOffset: { width: 0, height: 4 },

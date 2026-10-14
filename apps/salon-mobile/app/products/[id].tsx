@@ -313,6 +313,7 @@ const createStyles = (theme: typeof Colors.light) =>
       borderRadius: Design.controlRadius,
       borderWidth: 1,
       borderColor: theme.border,
+      backgroundColor: theme.card,
       alignItems: 'center',
       justifyContent: 'center',
     },

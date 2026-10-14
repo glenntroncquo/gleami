@@ -132,7 +132,7 @@ export default function OrdersListScreen() {
 }
 
 // ListRow carries 14px horizontal padding, so the list pads only the remainder to align with the screen edge.
-const ROW_INSET = 14;
+const ROW_INSET = 16;
 
 const createStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({

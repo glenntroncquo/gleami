@@ -447,7 +447,7 @@ const createStyles = (theme: typeof Colors.light) =>
     lineItemPrice: { fontSize: 15, fontWeight: '600', color: theme.text, fontVariant: ['tabular-nums'] },
     productStockHint: { fontSize: 13, color: theme.muted, marginTop: 2 },
     qtyStepper: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    qtyButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: theme.surface, alignItems: 'center' },
+    qtyButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: theme.surfaceRaised, alignItems: 'center' },
     qtyButtonText: { fontSize: 18, fontWeight: '600', color: theme.text },
     qtyValue: { minWidth: 22, textAlign: 'center', fontSize: 15, fontWeight: '600', color: theme.text, fontVariant: ['tabular-nums'] },
     productPicker: { gap: 10 },

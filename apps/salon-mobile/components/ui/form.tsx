@@ -62,8 +62,8 @@ export function FormScreen({
             accessibilityLabel={t('common.close')}
             hitSlop={8}
             onPress={onClose ?? (() => router.back())}
-            style={[styles.closeButton, { backgroundColor: theme.surface }]}>
-            <AppIcon name="close" size={18} color={theme.text} />
+            style={styles.closeButton}>
+            <AppIcon name="close" size={26} color={theme.text} />
           </Pressable>
         </View>
       ) : null}
@@ -90,7 +90,7 @@ export function ScreenTitle({ title, subtitle }: { title: string; subtitle?: str
 
 export function FormFooter({ children }: { children: React.ReactNode }) {
   const theme = useTheme();
-  return <View style={[styles.footer, { borderTopColor: theme.border, backgroundColor: theme.background }]}>{children}</View>;
+  return <View style={[styles.footer, { borderTopColor: theme.separator, backgroundColor: theme.background }]}>{children}</View>;
 }
 
 /** Label + control + helper/error text. */
@@ -153,7 +153,7 @@ export const TextField = React.forwardRef<
           styles.control,
           styles.input,
           multiline && styles.multiline,
-          { color: theme.text, backgroundColor: theme.background, borderColor: error ? theme.error : focused ? theme.tint : theme.border },
+          { color: theme.text, backgroundColor: theme.field, borderColor: error ? theme.error : focused ? theme.focus : theme.border },
           style,
         ]}
       />
@@ -195,7 +195,7 @@ export function SelectField({
         accessibilityLabel={label ? `${label}: ${value ?? placeholder ?? ''}` : undefined}
         disabled={disabled}
         onPress={onPress}
-        style={[styles.control, styles.select, { backgroundColor: theme.background, borderColor: error ? theme.error : theme.border, opacity: disabled ? 0.5 : 1 }]}>
+        style={[styles.control, styles.select, { backgroundColor: theme.field, borderColor: error ? theme.error : theme.border, opacity: disabled ? 0.5 : 1 }]}>
         {leading}
         <Text style={[styles.selectText, { color: value ? theme.text : theme.muted }]} numberOfLines={1}>
           {value || placeholder}
@@ -245,10 +245,10 @@ export function OptionCard({
       onPress={onPress}
       style={[
         styles.option,
-        { backgroundColor: theme.background, borderColor: selected ? theme.tint : theme.border, borderWidth: selected ? 2 : 1, padding: selected ? 13 : 14 },
+        { backgroundColor: selected ? theme.blueTint : theme.background, borderColor: selected ? theme.brandBlue : theme.border, borderWidth: 1.5, padding: 14 },
         style,
       ]}>
-      {icon ? <AppIcon name={icon} size={22} color={theme.text} /> : null}
+      {icon ? <AppIcon name={icon} size={24} color={selected ? theme.brandBlue : theme.text} /> : null}
       <Text style={[styles.optionTitle, { color: theme.text }]} numberOfLines={1}>{title}</Text>
       {subtitle ? <Text style={[styles.optionSubtitle, { color: theme.muted }]} numberOfLines={1}>{subtitle}</Text> : null}
     </Pressable>
@@ -259,15 +259,15 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   body: { paddingHorizontal: Design.screenPadding, paddingTop: 4, paddingBottom: 32, gap: 22 },
   topBar: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: Design.screenPadding, paddingTop: 20, paddingBottom: 12 },
-  closeButton: { width: 40, height: 40, minWidth: 40, minHeight: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  closeButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   bodyBelowTopBar: { paddingTop: 8 },
   titleBlock: { gap: 4 },
-  title: { fontSize: 28, lineHeight: 34, fontWeight: '700', letterSpacing: -0.4 },
+  title: { fontSize: 28, lineHeight: 34, fontWeight: '600', letterSpacing: -0.4 },
   subtitle: { fontSize: 15, lineHeight: 21 },
   footer: { paddingHorizontal: Design.screenPadding, paddingTop: 12, paddingBottom: 8, borderTopWidth: StyleSheet.hairlineWidth, gap: 10 },
   field: { gap: 8 },
   labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  label: { fontSize: 15, fontWeight: '600' },
+  label: { fontSize: 14, fontWeight: '600' },
   optional: { fontWeight: '400' },
   helper: { fontSize: 12, lineHeight: 16 },
   control: { minHeight: 50, borderWidth: 1, borderRadius: Design.controlRadius, paddingHorizontal: 14 },
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
   fieldRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   banner: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: Design.controlRadius },
   bannerText: { flex: 1, fontSize: 13, fontWeight: '600' },
-  option: { width: 140, borderRadius: 16, alignItems: 'center', justifyContent: 'center', gap: 6 },
+  option: { width: 140, borderRadius: Design.cardRadius, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', gap: 8 },
   optionTitle: { fontSize: 15, fontWeight: '600', marginTop: 4 },
   optionSubtitle: { fontSize: 12 },
 });

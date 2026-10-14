@@ -181,7 +181,7 @@ export default function TreatmentDetailScreen() {
                   color === option && styles.colorSwatchSelected,
                 ]}
                 onPress={() => setColor(option)}>
-                {color === option ? <AppIcon name="check" size={16} color="#ffffff" /> : null}
+                {color === option ? <AppIcon name="check" size={16} color={theme.onTint} /> : null}
               </Pressable>
             ))}
           </View>

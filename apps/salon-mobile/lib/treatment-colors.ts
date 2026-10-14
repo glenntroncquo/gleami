@@ -79,21 +79,21 @@ export const COLOR_TEXT_MAP: Record<TreatmentColor, string> = {
   purple: '#581C87',
 };
 
-// Dark chips match salon-web `dark:bg-{color}-400/25` blended onto the navy
-// card, with `dark:text-{color}-200`.
+// Muted, hue-specific fills on charcoal, with readable pastel labels.
+// Keep service accents consistent with light mode so categories stay recognizable.
 export const COLOR_BG_DARK_MAP: Record<TreatmentColor, string> = {
-  blue: '#2A466D',
-  orange: '#5C4030',
-  violet: '#413E6D',
-  rose: '#5C3648',
-  emerald: '#1C554E',
-  cyan: '#165569',
-  lime: '#405B2E',
-  pink: '#5A3657',
-  indigo: '#353E6D',
-  amber: '#5C4F29',
-  teal: '#1A565A',
-  purple: '#493C6E',
+  blue: '#1C2B40',
+  orange: '#38281E',
+  violet: '#2B2440',
+  rose: '#382129',
+  emerald: '#1B3028',
+  cyan: '#1B3038',
+  lime: '#29321D',
+  pink: '#352235',
+  indigo: '#252840',
+  amber: '#352D1C',
+  teal: '#1A302F',
+  purple: '#302340',
 };
 
 export const COLOR_TEXT_DARK_MAP: Record<TreatmentColor, string> = {

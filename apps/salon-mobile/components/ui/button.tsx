@@ -22,8 +22,8 @@ type Props = {
 export function Button({ label, onPress, variant = 'primary', icon, loading, disabled, size = 'large', style }: Props) {
   const theme = useTheme();
   const palette = {
-    primary: { bg: theme.tint, fg: theme.onTint, border: theme.tint },
-    secondary: { bg: theme.background, fg: theme.text, border: theme.border },
+    primary: { bg: theme.primary, fg: theme.onPrimary, border: theme.primary },
+    secondary: { bg: theme.secondary, fg: theme.text, border: theme.border },
     destructive: { bg: theme.errorSurface, fg: theme.destructive, border: theme.errorSurface },
     ghost: { bg: 'transparent', fg: theme.tint, border: 'transparent' },
   }[variant];
@@ -56,9 +56,9 @@ export function Button({ label, onPress, variant = 'primary', icon, loading, dis
 
 const styles = StyleSheet.create({
   base: { borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
-  large: { height: 52, borderRadius: 26 },
+  large: { height: 52, borderRadius: 28 },
   medium: { height: 40, borderRadius: 20, paddingHorizontal: 16 },
   content: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  label: { fontSize: 16, fontWeight: '700' },
+  label: { fontSize: 15.5, fontWeight: '600' },
   labelMedium: { fontSize: 14, fontWeight: '600' },
 });

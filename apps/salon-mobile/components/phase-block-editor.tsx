@@ -80,8 +80,11 @@ export function PhaseBlockEditor({ phases, onChange, serviceColor, theme }: Prop
   const [notice, setNotice] = React.useState<string | null>(null);
 
   const eventColor = mapTreatmentColorToEventColor(serviceColor);
-  const chip = eventChipColors(eventColor, theme.background === Colors.dark.background ? 'dark' : 'light');
+  const dark = theme === Colors.dark;
+  const chip = eventChipColors(eventColor, dark ? 'dark' : 'light');
   const busyColor = chip.accent;
+  const busyFill = dark ? chip.bg : busyColor;
+  const busyText = dark ? chip.text : '#ffffff';
   const freeFill = chip.bg;
   const freeText = chip.text;
   const bufferFill = withAlpha(busyColor, 0.16);
@@ -143,8 +146,8 @@ export function PhaseBlockEditor({ phases, onChange, serviceColor, theme }: Prop
           const showLabel = phase.duration_minutes >= 10 || phases.length <= 4;
           const isBusy = phase.phase_type === 'busy';
           const isFree = phase.phase_type === 'free';
-          const backgroundColor = isBusy ? busyColor : isFree ? freeFill : bufferFill;
-          const labelColor = isBusy ? '#ffffff' : isFree ? freeText : theme.muted;
+          const backgroundColor = isBusy ? busyFill : isFree ? freeFill : bufferFill;
+          const labelColor = isBusy ? busyText : isFree ? freeText : theme.muted;
           return (
             <View
               key={phase.key}
@@ -212,7 +215,7 @@ export function PhaseBlockEditor({ phases, onChange, serviceColor, theme }: Prop
 
           <View style={styles.stepperRow}>
             <Pressable
-              style={[styles.stepperButton, { borderColor: theme.border, backgroundColor: theme.background }]}
+              style={[styles.stepperButton, { borderColor: theme.border, backgroundColor: theme.secondary }]}
               onPress={() => handleMinutes(index, phase.duration_minutes - STEP_MINUTES)}>
               <Text style={[styles.stepperButtonText, { color: theme.text }]}>{`−${STEP_MINUTES}`}</Text>
             </Pressable>
@@ -220,7 +223,7 @@ export function PhaseBlockEditor({ phases, onChange, serviceColor, theme }: Prop
               {`${phase.duration_minutes} ${t('appointment.minutesShort')}`}
             </Text>
             <Pressable
-              style={[styles.stepperButton, { borderColor: theme.border, backgroundColor: theme.background }]}
+              style={[styles.stepperButton, { borderColor: theme.border, backgroundColor: theme.secondary }]}
               onPress={() => handleMinutes(index, phase.duration_minutes + STEP_MINUTES)}>
               <Text style={[styles.stepperButtonText, { color: theme.text }]}>{`+${STEP_MINUTES}`}</Text>
             </Pressable>
@@ -261,7 +264,7 @@ function TypeChip({
       onPress={onPress}
       style={[
         styles.typeChip,
-        { borderColor: theme.border, backgroundColor: theme.background },
+        { borderColor: theme.border, backgroundColor: theme.secondary },
         selected && { backgroundColor: theme.blueTint, borderColor: `${theme.brandBlue}55` },
       ]}>
       <Text style={[styles.typeChipText, { color: selected ? theme.tint : theme.text }]}>{label}</Text>

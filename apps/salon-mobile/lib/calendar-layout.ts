@@ -1,3 +1,15 @@
+/** Never page against an estimated window width: native insets arrive after mount. */
+export function monthPagerLayout(width: number, height: number, offsets: number[], currentOffset: number) {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
+  const initialScrollIndex = offsets.indexOf(currentOffset);
+  if (initialScrollIndex < 0) return null;
+  return {
+    key: `month-pager-${width}`,
+    initialScrollIndex,
+    getItemLayout: (_: unknown, index: number) => ({ length: width, offset: width * index, index }),
+  };
+}
+
 /** Preview capacity is derived from the measured cell and scaled text metrics. */
 export function calendarPreviewLayout(rowHeight: number, fontScale: number, count: number) {
   const scale = Math.max(1, fontScale);

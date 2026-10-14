@@ -34,7 +34,7 @@ export function CalendarGlassMenu({ children, style, originX, ...props }: ViewPr
       exiting={reducedMotion ? FadeOut.duration(100) : exiting}
       // Native glass can miss its first composite during the entrance spring.
       // Keep a solid backing mounted with the content so every frame is readable.
-      style={[style, { backgroundColor: theme.background, borderRadius: 20, borderWidth: 1, borderColor: theme.border, transformOrigin: [originX, 0, 0] }]}>
+      style={[style, { backgroundColor: theme.secondary, borderRadius: 20, borderWidth: 1, borderColor: theme.border, transformOrigin: [originX, 0, 0] }]}>
       <CalendarGlass style={{ borderRadius: 20, padding: 8, maxHeight: '100%' }}>{children}</CalendarGlass>
     </Animated.View>
   );

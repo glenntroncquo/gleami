@@ -15,14 +15,17 @@ import { Colors } from '@/constants/theme';
  */
 let reduceTransparencyValue = false;
 const reduceTransparencyListeners = new Set<(value: boolean) => void>();
-AccessibilityInfo.isReduceTransparencyEnabled().then((value) => {
-  reduceTransparencyValue = value;
-  reduceTransparencyListeners.forEach((listener) => listener(value));
-});
-AccessibilityInfo.addEventListener('reduceTransparencyChanged', (value) => {
-  reduceTransparencyValue = value;
-  reduceTransparencyListeners.forEach((listener) => listener(value));
-});
+// Reduce Transparency is an iOS setting; the API is absent on web.
+if (Platform.OS === 'ios') {
+  AccessibilityInfo.isReduceTransparencyEnabled().then((value) => {
+    reduceTransparencyValue = value;
+    reduceTransparencyListeners.forEach((listener) => listener(value));
+  });
+  AccessibilityInfo.addEventListener('reduceTransparencyChanged', (value) => {
+    reduceTransparencyValue = value;
+    reduceTransparencyListeners.forEach((listener) => listener(value));
+  });
+}
 
 function useReduceTransparency() {
   const [value, setValue] = React.useState(reduceTransparencyValue);
@@ -43,7 +46,7 @@ export function LiquidGlass({ children, style, ...props }: ViewProps) {
     return <GlassView {...props} glassEffectStyle="regular" colorScheme={dark ? 'dark' : 'light'} style={style}>{children}</GlassView>;
   }
   return (
-    <View {...props} style={[style, { overflow: 'hidden', backgroundColor: theme.surface, borderColor: theme.border, borderWidth: StyleSheet.hairlineWidth }]}>
+    <View {...props} style={[style, { overflow: 'hidden', backgroundColor: theme.surfaceRaised, borderColor: theme.border, borderWidth: StyleSheet.hairlineWidth }]}>
       {!reduceTransparency && Platform.OS === 'ios' && <BlurView pointerEvents="none" tint={dark ? 'systemMaterialDark' : 'systemMaterialLight'} intensity={80} style={StyleSheet.absoluteFill} />}
       {children}
     </View>

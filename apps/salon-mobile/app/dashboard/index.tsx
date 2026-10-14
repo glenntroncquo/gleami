@@ -183,6 +183,7 @@ const createStyles = (theme: Theme) =>
     card: {
       borderWidth: 1,
       borderColor: theme.border,
+      backgroundColor: theme.card,
       borderRadius: Design.cardRadius,
       padding: 16,
     },

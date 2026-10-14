@@ -303,12 +303,13 @@ export default function LoginScreen() {
 
   const buttonBusy = busy === 'email' || busy === 'password' || busy === 'verify';
   const primaryDisabled = buttonBusy || (step === 'verify' && otp.length !== 6);
-  const ink = dark ? '#FFFFFF' : '#17181B';
-  const muted = dark ? '#A1A1A6' : '#777A82';
-  const line = dark ? '#3A3A3C' : '#D8D8DA';
-  const fieldBorder = focused ? theme.brandBlue : line;
-  const buttonBg = dark ? theme.brandBlue : '#0B1C3F';
-  const buttonText = dark ? theme.onTint : '#FFFFFF';
+  const ink = theme.text;
+  const muted = theme.muted;
+  const line = theme.border;
+  const fieldBorder = focused ? theme.focus : line;
+  const buttonBg = dark ? theme.primary : theme.text;
+  const buttonText = dark ? theme.onPrimary : '#FFFFFF';
+  const linkColor = theme.tint;
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
@@ -367,7 +368,7 @@ export default function LoginScreen() {
               ink={ink}
               muted={muted}
               border={fieldBorder}
-              background={theme.background}
+              background={theme.field}
             />
           ) : null}
 
@@ -397,7 +398,7 @@ export default function LoginScreen() {
                 ink={ink}
                 muted={muted}
                 border={fieldBorder}
-                background={theme.background}
+                background={theme.field}
                 accessory={
                   <Pressable
                     accessibilityRole="button"
@@ -411,7 +412,7 @@ export default function LoginScreen() {
               />
               {creatingAccount ? null : (
                 <Pressable accessibilityRole="link" onPress={() => void forgot()} style={styles.linkWrap}>
-                  <Text style={styles.link}>{t('auth.forgotPassword')}</Text>
+                  <Text style={[styles.link, { color: linkColor }]}>{t('auth.forgotPassword')}</Text>
                 </Pressable>
               )}
             </>
@@ -439,7 +440,7 @@ export default function LoginScreen() {
               ink={ink}
               muted={muted}
               border={fieldBorder}
-              background={theme.background}
+              background={theme.field}
               center
             />
           ) : null}
@@ -476,6 +477,7 @@ export default function LoginScreen() {
                 loading={busy === 'google'}
                 ink={ink}
                 border={line}
+                background={theme.secondary}
                 onPress={() => void social('google')}
                 icon={<Image source={require('@/assets/images/google-g.svg')} style={styles.google} contentFit="contain" />}
               />
@@ -484,6 +486,7 @@ export default function LoginScreen() {
                 loading={busy === 'apple'}
                 ink={ink}
                 border={line}
+                background={theme.secondary}
                 onPress={() => void social('apple')}
                 icon={<Ionicons name="logo-apple" size={22} color={ink} />}
               />
@@ -492,7 +495,7 @@ export default function LoginScreen() {
 
           {step === 'verify' ? (
             <Pressable accessibilityRole="button" disabled={busy === 'resend' || resendSeconds > 0} onPress={() => void resend()} style={styles.linkWrap}>
-              <Text style={[styles.link, (busy === 'resend' || resendSeconds > 0) && { opacity: 0.55 }]}>
+              <Text style={[styles.link, { color: linkColor }, (busy === 'resend' || resendSeconds > 0) && { opacity: 0.55 }]}>
                 {resendSeconds > 0 ? t('auth.resendIn', { seconds: resendSeconds }) : t('auth.resendEmail')}
               </Text>
             </Pressable>
@@ -550,6 +553,7 @@ function SocialButton({
   loading,
   ink,
   border,
+  background,
   onPress,
   icon,
 }: {
@@ -557,11 +561,12 @@ function SocialButton({
   loading: boolean;
   ink: string;
   border: string;
+  background: string;
   onPress: () => void;
   icon: React.ReactNode;
 }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ busy: loading }} onPress={onPress} style={[styles.social, { borderColor: border }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ busy: loading }} onPress={onPress} style={[styles.social, { borderColor: border, backgroundColor: background }]}>
       {loading ? (
         <LoadingDots color={ink} />
       ) : (
@@ -651,6 +656,6 @@ const styles = StyleSheet.create({
   socialLabel: { fontSize: 16, fontWeight: '600' },
   google: { width: 22, height: 22 },
   linkWrap: { alignSelf: 'center', marginTop: 16, minHeight: 32, justifyContent: 'center' },
-  link: { color: '#4361DB', fontSize: 15, fontWeight: '600' },
+  link: { fontSize: 15, fontWeight: '600' },
   quietLink: { fontSize: 15 },
 });

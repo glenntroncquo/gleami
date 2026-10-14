@@ -125,6 +125,7 @@ const createStyles = (theme: typeof Colors.light) =>
       borderRadius: Design.pillRadius,
       borderWidth: 1,
       borderColor: theme.border,
+      backgroundColor: theme.card,
     },
     chipSelected: {
       backgroundColor: theme.blueTint,
@@ -152,6 +153,7 @@ const createStyles = (theme: typeof Colors.light) =>
       minHeight: Design.touchTarget,
       borderWidth: 1,
       borderColor: theme.border,
+      backgroundColor: theme.card,
       borderRadius: 12,
       paddingHorizontal: 12,
       fontSize: 14,

@@ -223,7 +223,7 @@ export default function ClientDetailScreen() {
                 const badgeColors: Record<AppointmentPaymentInfo['status'], { background: string; text: string }> = {
                   paid: { background: theme.successSurface, text: theme.success },
                   partial: { background: theme.warningSurface, text: theme.warning },
-                  unpaid: { background: theme.surface, text: theme.muted },
+                  unpaid: { background: theme.surfaceRaised, text: theme.muted },
                 };
                 const badge = badgeColors[payment?.status ?? 'unpaid'];
                 const badgeLabel =
@@ -342,7 +342,7 @@ const createStyles = (theme: typeof Colors.light) =>
       width: 72,
       height: 72,
       borderRadius: 36,
-      backgroundColor: theme.surface,
+      backgroundColor: theme.blueTint,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -364,11 +364,11 @@ const createStyles = (theme: typeof Colors.light) =>
       marginBottom: 12,
     },
     addNoteButton: { height: 50, paddingHorizontal: 16 },
-    // The group's rounded border stays fixed while its rows scroll inside it.
+    // Keep the card's rounded edges fixed while its rows scroll.
     scrollGroup: {
-      borderWidth: 1,
-      borderColor: theme.border,
-      borderRadius: Design.cardRadius - 4,
+      backgroundColor: theme.card,
+      borderRadius: Design.cardRadius,
+      borderCurve: 'continuous',
       overflow: 'hidden',
     },
     innerGroup: { borderWidth: 0, borderRadius: 0 },
@@ -376,7 +376,7 @@ const createStyles = (theme: typeof Colors.light) =>
     noteRow: {
       paddingHorizontal: 14,
       paddingVertical: 12,
-      backgroundColor: theme.background,
+      backgroundColor: theme.card,
     },
     noteText: {
       fontSize: 15,

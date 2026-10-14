@@ -150,7 +150,7 @@ export default function ServicePickerScreen() {
           keyboardShouldPersistTaps="handled"
           contentInsetAdjustmentBehavior="automatic">
           <ScreenTitle title={t('appointment.selectService')} />
-          <View style={[styles.search, { borderColor: theme.border, backgroundColor: theme.background }]}>
+          <View style={[styles.search, { borderColor: theme.border, backgroundColor: theme.card }]}>
             <AppIcon name="search" size={18} color={theme.muted} />
             <TextInput
               style={[styles.searchInput, { color: theme.text }]}

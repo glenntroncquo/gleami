@@ -18,15 +18,15 @@ export function SectionHeader({ title, action, style }: { title: string; action?
   );
 }
 
-/** Rounded, bordered container that draws hairline separators between its rows. */
-export function ListGroup({ children, style, inset = 68 }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; inset?: number }) {
+/** Marketplace-style soft card with inset hairline separators. */
+export function ListGroup({ children, style, inset = 48 }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; inset?: number }) {
   const theme = useTheme();
   const rows = React.Children.toArray(children).filter(Boolean);
   return (
-    <View style={[styles.group, { borderColor: theme.border, backgroundColor: theme.background }, style]}>
+    <View style={[styles.group, { borderColor: theme.border, backgroundColor: theme.card }, style]}>
       {rows.map((row, index) => (
         <React.Fragment key={index}>
-          {index > 0 ? <View style={[styles.separator, { marginLeft: inset, backgroundColor: theme.border }]} /> : null}
+          {index > 0 ? <View style={[styles.separator, { marginLeft: inset, backgroundColor: theme.separator }]} /> : null}
           {row}
         </React.Fragment>
       ))}
@@ -38,7 +38,7 @@ export function ListGroup({ children, style, inset = 68 }: { children: React.Rea
 export function IconTile({ name, tone = 'neutral', size = 40 }: { name: AppIconName; tone?: 'neutral' | 'brand' | 'destructive'; size?: number }) {
   const theme = useTheme();
   const colors = {
-    neutral: { bg: theme.surface, fg: theme.text },
+    neutral: { bg: theme.surfaceRaised, fg: theme.text },
     brand: { bg: theme.tint, fg: theme.onTint },
     destructive: { bg: theme.errorSurface, fg: theme.destructive },
   }[tone];
@@ -62,6 +62,7 @@ type RowProps = {
   destructive?: boolean;
   selected?: boolean;
   disabled?: boolean;
+  expanded?: boolean;
   accessibilityHint?: string;
 };
 
@@ -78,12 +79,13 @@ export function ListRow({
   destructive,
   selected,
   disabled,
+  expanded,
   accessibilityHint,
 }: RowProps) {
   const theme = useTheme();
   const content = (
     <>
-      {leading ?? (icon ? <IconTile name={icon} tone={destructive ? 'destructive' : iconTone} /> : null)}
+      {leading ?? (icon ? <AppIcon name={icon} size={20} color={destructive || iconTone === 'destructive' ? theme.destructive : iconTone === 'brand' ? theme.brandBlue : theme.text} /> : null)}
       <View style={styles.text}>
         <Text style={[styles.title, { color: destructive ? theme.destructive : theme.text }]} numberOfLines={1}>{title}</Text>
         {subtitle ? <Text style={[styles.subtitle, { color: theme.muted }]} numberOfLines={1}>{subtitle}</Text> : null}
@@ -100,7 +102,7 @@ export function ListRow({
     <Pressable
       accessibilityRole="button"
       accessibilityHint={accessibilityHint}
-      accessibilityState={{ selected: !!selected, disabled: !!disabled }}
+      accessibilityState={{ selected: !!selected, disabled: !!disabled, expanded }}
       disabled={disabled}
       onPress={onPress}
       style={[styles.row, disabled && { opacity: 0.5 }]}>
@@ -138,7 +140,7 @@ export function RadioRow({ title, subtitle, leading, selected, onPress }: {
 }) {
   const theme = useTheme();
   return (
-    <Pressable accessibilityRole="radio" accessibilityState={{ selected }} onPress={onPress} style={styles.row}>
+    <Pressable accessibilityRole="radio" accessibilityState={{ checked: selected }} onPress={onPress} style={styles.row}>
       {leading}
       <View style={styles.text}>
         <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>{title}</Text>
@@ -170,18 +172,18 @@ export function DetailRow({ label, value, onPress }: { label: string; value?: st
 const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4, marginBottom: 8 },
   sectionTitle: { fontSize: 15, fontWeight: '600' },
-  group: { borderWidth: 1, borderRadius: Design.cardRadius - 4, overflow: 'hidden' },
+  group: { borderRadius: Design.cardRadius, borderCurve: 'continuous', overflow: 'hidden' },
   separator: { height: StyleSheet.hairlineWidth },
   tile: { alignItems: 'center', justifyContent: 'center' },
   // The shared Pressable defaults to justifyContent: 'center', which would centre row content.
-  row: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 14, paddingHorizontal: 14, paddingVertical: 10 },
+  row: { minHeight: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 12, paddingHorizontal: 16, paddingVertical: 10 },
   text: { flex: 1, gap: 2 },
-  title: { fontSize: 16, fontWeight: '500' },
+  title: { fontSize: 15.5, lineHeight: 21, fontWeight: '500' },
   subtitle: { fontSize: 13 },
   value: { fontSize: 15, maxWidth: '45%' },
   radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   radioDot: { width: 10, height: 10, borderRadius: 5 },
-  detailRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, paddingHorizontal: 14, minHeight: 50, paddingVertical: 12 },
+  detailRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, paddingHorizontal: 16, minHeight: 54, paddingVertical: 12 },
   detailLabel: { fontSize: 15 },
   detailValue: { flexShrink: 1, fontSize: 15, fontWeight: '500', textAlign: 'right' },
 });

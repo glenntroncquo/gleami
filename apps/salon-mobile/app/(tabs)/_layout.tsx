@@ -1,26 +1,15 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-// Real OS-rendered tab bar (UITabBarController on iOS, Material Tabs on
-// Android) instead of a JS-drawn approximation — on iOS 26 the system draws
-// this with actual Liquid Glass (refraction, specular highlight, the native
-// press bounce) automatically; none of that can be faked with a BlurView.
-// Trade-off: NativeTabs can't intercept a tab press for custom logic, so
-// "tap the active Calendar tab to jump to today" and the long-press
-// month/week/list menu both moved to buttons in the calendar header instead.
-//
-// `<NativeTabs.Trigger.Label hidden />` (no children) is required, not just
-// omitted: expo-router falls back to the raw route name ("index" / "list" /
-// "more") as the title whenever no Label is present, and that literal string
-// then shows up in the tab bar. `hidden` sets title to '', which
-// react-native-screens nils out on the native side — same as no title at all,
-// but without the route-name leak.
+// Keep native navigation and safe areas, with marketplace's icons and labels.
 export default function TabLayout() {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const { hasPermission } = useAuth();
@@ -29,32 +18,34 @@ export default function TabLayout() {
 
   return (
     <NativeTabs
-      tintColor={theme.tint}
+      tintColor={theme.tabIconSelected}
+      iconColor={{ default: theme.tabIconDefault, selected: theme.tabIconSelected }}
+      labelStyle={{
+        default: { fontSize: 11, fontWeight: '600', color: theme.text },
+        selected: { fontSize: 11, fontWeight: '600', color: theme.tabIconSelected },
+      }}
       backgroundColor={theme.background}
       blurEffect={colorScheme === 'dark' ? 'none' : 'systemChromeMaterialLight'}
       disableTransparentOnScrollEdge
-      labelVisibilityMode="unlabeled"
-      disableIndicator>
+      labelVisibilityMode="labeled"
+      indicatorColor={theme.blueTint}>
       {canSeeCalendar ? <NativeTabs.Trigger name="index" disableAutomaticContentInsets>
         <NativeTabs.Trigger.Icon
-          sf="calendar"
-          src={<NativeTabs.Trigger.VectorIcon family={MaterialIcons} name="calendar-today" />}
+          src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="calendar-outline" />}
         />
-        <NativeTabs.Trigger.Label hidden />
+        <NativeTabs.Trigger.Label>{t('tabs.calendar')}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger> : null}
       {canSeeClients ? <NativeTabs.Trigger name="list" disableAutomaticContentInsets>
         <NativeTabs.Trigger.Icon
-          sf="person.2"
-          src={<NativeTabs.Trigger.VectorIcon family={MaterialIcons} name="people-outline" />}
+          src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="people-outline" />}
         />
-        <NativeTabs.Trigger.Label hidden />
+        <NativeTabs.Trigger.Label>{t('tabs.clients')}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger> : null}
       <NativeTabs.Trigger name="more" disableAutomaticContentInsets>
         <NativeTabs.Trigger.Icon
-          sf="square.grid.2x2"
-          src={<NativeTabs.Trigger.VectorIcon family={MaterialIcons} name="grid-view" />}
+          src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="grid-outline" />}
         />
-        <NativeTabs.Trigger.Label hidden />
+        <NativeTabs.Trigger.Label>{t('tabs.more')}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );

@@ -38,7 +38,7 @@ export function SalonSelector() {
             <Text style={[styles.label, isSelected ? styles.labelSelected : styles.labelUnselected]} numberOfLines={1}>
               {location.name}
             </Text>
-            {isSelected ? <AppIcon name="check" size={13} color={theme.onTint} /> : null}
+            {isSelected ? <AppIcon name="check" size={13} color={theme.tint} /> : null}
           </Pressable>
         );
       })}
@@ -69,7 +69,7 @@ const createStyles = (theme: typeof Colors.light) =>
       borderColor: `${theme.brandBlue}55`,
     },
     chipUnselected: {
-      backgroundColor: theme.background,
+      backgroundColor: theme.card,
       borderColor: theme.border,
     },
     label: {

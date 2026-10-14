@@ -136,7 +136,7 @@ export default function NewProductScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t('products.form.barcode')}
-                style={[styles.scanButton, { borderColor: theme.border }]}
+                style={[styles.scanButton, { borderColor: theme.border, backgroundColor: theme.card }]}
                 onPress={() => router.push({ pathname: '/barcode-scanner', params: { event: BARCODE_SCAN_EVENT } })}>
                 <AppIcon name="barcode" size={20} color={theme.text} />
               </Pressable>

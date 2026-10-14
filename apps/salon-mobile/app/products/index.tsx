@@ -154,7 +154,7 @@ export default function ProductsScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('products.addNew')}
           onPress={() => router.push('/products/new')}>
-          <AppIcon name="add" size={26} color={theme.onPrimary} />
+          <AppIcon name="add" size={26} color={theme.background} />
         </Pressable>
       ) : null}
     </SafeAreaView>
@@ -236,7 +236,7 @@ const createStyles = (theme: typeof Colors.light) =>
       borderRadius: 28,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.primary,
+      backgroundColor: theme.text,
       shadowColor: theme.shadow,
       shadowOpacity: 0.12,
       shadowRadius: 12,

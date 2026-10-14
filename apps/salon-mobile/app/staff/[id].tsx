@@ -177,19 +177,14 @@ export default function StaffDetailScreen() {
 
         <ListGroup>
           <ListRow
-            icon="calendar"
-            title={t('staff.availability')}
+            icon="schedule"
+            title={t('staff.workdays')}
             onPress={() => router.push({ pathname: '/staff/[id]/availability', params: { id } })}
           />
           <ListRow
             icon="eventBusy"
             title={t('staff.timeOff')}
             onPress={() => router.push({ pathname: '/staff/[id]/time-off', params: { id } })}
-          />
-          <ListRow
-            icon="schedule"
-            title={t('staff.schedule')}
-            onPress={() => router.push({ pathname: '/staff/[id]/schedule', params: { id } })}
           />
         </ListGroup>
       </FormScreen>

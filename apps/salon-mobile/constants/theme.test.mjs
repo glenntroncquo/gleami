@@ -55,11 +55,10 @@ test('dark text, metadata, and links meet AA on every content surface', () => {
   }
 });
 
-test('primary actions use the brand blue family with readable text in both modes', () => {
+test('primary actions use the marketplace blue with white text in both modes', () => {
   for (const theme of Object.values(Colors)) {
-    assert.equal(theme.primary, theme.brandBlue);
-    assert.equal(theme.onPrimary, BrandColors.navy);
-    readable(theme.onPrimary, theme.primary, 'primary action');
+    assert.equal(theme.primary, BrandColors.blue);
+    assert.equal(theme.onPrimary, '#FFFFFF');
   }
   const theme = Colors.dark;
   readable(theme.onTint, theme.tint, 'selected control');

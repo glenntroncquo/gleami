@@ -146,7 +146,7 @@ export default function StaffScheduleScreen() {
             } else if (slots.length === 1) {
               availabilityLabel = formatSlotRange(slots[0]);
             } else {
-              availabilityLabel = t('staff.multipleSlots');
+              availabilityLabel = slots.map((slot) => formatSlotRange(slot)).join(', ');
             }
 
             return (

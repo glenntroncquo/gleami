@@ -1,8 +1,9 @@
-import { useAppointmentPayments } from '@/hooks/use-appointment-payments';
 import { SwipeableRow } from '@/components/swipeable-row';
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
+import { Pressable } from '@/components/pressable-scale';
+import { AppointmentPaymentPanel } from '@/components/appointment-payment-panel';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import { Alert, DeviceEventEmitter, StyleSheet, Text, View } from 'react-native';
@@ -11,10 +12,8 @@ import { useTranslation } from 'react-i18next';
 
 import { DetailSkeleton } from '@/components/content-skeletons';
 import { EmptyState } from '@/components/empty-state';
-import { Button, ErrorBanner, ListGroup, ListRow, SectionHeader, TextField } from '@/components/ui';
+import { Button, DetailRow, ErrorBanner, ListGroup, ListRow, SectionHeader, TextField } from '@/components/ui';
 import { Colors, Design } from '@/constants/theme';
-import type { AppointmentPaymentInfo } from '@/lib/api/orders';
-import { useCheckout } from '@/contexts/checkout-context';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -31,13 +30,10 @@ import { EventItem } from '@/components/calendar/types';
 export default function AppointmentDetailScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { prepareCheckout } = useCheckout();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { companyId, hasPermission } = useAuth();
   const canCheckout = hasPermission('pos:manage');
   const { locationId, loading: locationLoading } = useLocation();
-  const currentPayment = useAppointmentPayments(companyId, id ? [id] : []);
-  const paid = currentPayment[id]?.status === 'paid';
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
 
@@ -49,7 +45,7 @@ export default function AppointmentDetailScreen() {
   const [noteComposerOpen, setNoteComposerOpen] = React.useState(false);
   const [addingNote, setAddingNote] = React.useState(false);
   const [history, setHistory] = React.useState<EventItem[]>([]);
-  const paymentStatuses = useAppointmentPayments(companyId, history.map(event => event.appointmentId));
+  const [activeTab, setActiveTab] = React.useState<DetailTab>('overview');
   const [loading, setLoading] = React.useState(true);
   const [cancelling, setCancelling] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -163,7 +159,6 @@ export default function AppointmentDetailScreen() {
     ]);
   };
 
-  const serviceNames = appointment?.appointment_segment.flatMap((segment) => segment.service?.name ? [segment.service.name] : []) ?? [];
   const duration = event ? visitDurationMinutes(event) : 0;
 
   const canceled = event?.canceled || (appointment ? isAppointmentCanceled(appointment) : false);
@@ -171,13 +166,81 @@ export default function AppointmentDetailScreen() {
     client && (client.first_name || client.last_name)
       ? `${client.first_name ?? ''} ${client.last_name ?? ''}`.trim()
       : (event?.clientName ?? '');
+  const serviceLines = appointment?.appointment_segment.map((segment) => ({
+    id: segment.id,
+    name: [segment.service?.name, segment.service_variant?.name].filter(Boolean).join(' · ') || event?.label || t('appointment.detailTitle'),
+    price: segment.price ?? segment.service_variant?.price ?? 0,
+  })) ?? [];
+  const serviceTotal = serviceLines.reduce((sum, line) => sum + line.price, 0);
+  const tabs: Array<{ key: DetailTab; label: string }> = [
+    { key: 'overview', label: t('appointment.tabs.overview') },
+    { key: 'client', label: t('appointment.tabs.client') },
+    { key: 'notes', label: t('appointment.tabs.notes') },
+    { key: 'payment', label: t('appointment.tabs.payment') },
+  ];
+
+  const renderNotes = () => (
+    <View style={styles.section}>
+      <SectionHeader title={t('client.notes')} />
+      {notes.length === 0 ? (
+        <EmptyState compact title={t('client.noNotes')} subtitle={t('client.noNotesHint')} />
+      ) : (
+        <View style={[styles.scrollGroup, { backgroundColor: theme.card }]}>
+          <ScrollView style={styles.notesList} nestedScrollEnabled showsVerticalScrollIndicator>
+            <ListGroup style={styles.innerGroup} inset={14}>
+              {notes.map((note) => (
+                <SwipeableRow key={note.id} deleteLabel={t('common.delete')} onDelete={() => handleDeleteNote(note.id)}>
+                  <View style={[styles.noteRow, { backgroundColor: theme.card }]}>
+                    <Text style={[styles.noteText, { color: theme.text }]}>{note.note}</Text>
+                    <Text style={[styles.noteDate, { color: theme.muted }]}>
+                      {getListHeaderLabel(toDateKey(new Date(note.created_at)))}
+                    </Text>
+                  </View>
+                </SwipeableRow>
+              ))}
+            </ListGroup>
+          </ScrollView>
+        </View>
+      )}
+      {event?.clientId ? (noteComposerOpen ? (
+        <View style={styles.addNoteRow}>
+          <TextField
+            autoFocus
+            multiline
+            containerStyle={styles.flex}
+            accessibilityLabel={t('client.addNotePlaceholder')}
+            style={styles.noteInput}
+            placeholder={t('client.addNotePlaceholder')}
+            value={newNote}
+            onChangeText={setNewNote}
+          />
+          <Button
+            label={t('client.addNote')}
+            variant="secondary"
+            onPress={handleAddNote}
+            disabled={addingNote || !newNote.trim()}
+            style={styles.addNoteButton}
+          />
+        </View>
+      ) : (
+        <Button
+          label={t('appointment.addNoteAction')}
+          icon="add"
+          variant="secondary"
+          size="medium"
+          onPress={() => setNoteComposerOpen(true)}
+          style={styles.noteAction}
+        />
+      )) : null}
+    </View>
+  );
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['left', 'right', 'bottom']}>
       <Stack.Screen
         options={{
           headerShown: true,
-          title: t('appointment.detailTitle'),
+          title: '',
           headerShadowVisible: false,
           unstable_headerLeftItems: () => [
             {
@@ -194,35 +257,34 @@ export default function AppointmentDetailScreen() {
             </HeaderButton>
           ),
           unstable_headerRightItems: () =>
-            canCheckout && event && appointment && !canceled ? paid ? [{
-              type: 'custom',
-              hidesSharedBackground: true,
-              element: <HeaderButton disabled accessibilityLabel={t('order.status.paid')} style={{ backgroundColor: theme.successSurface }}><AppIcon name="pointOfSale" size={22} color={theme.success} /></HeaderButton>,
-            }] : [
-              {
-                type: 'button',
-                label: t('checkout.title'),
-                icon: { type: 'sfSymbol', name: 'creditcard' },
-                tintColor: theme.tint,
-                onPress: () => {
-                  prepareCheckout(appointment);
-                  router.push({ pathname: '/checkout/[appointmentId]', params: { appointmentId: event.appointmentId } });
-                },
-              },
-            ] : [],
+            canCheckout && event && appointment && !canceled
+              ? [
+                  {
+                    type: 'button',
+                    label: t('checkout.title'),
+                    icon: { type: 'sfSymbol', name: 'creditcard' },
+                    tintColor: theme.tint,
+                    onPress: () => {
+                      router.push({
+                        pathname: '/checkout/[appointmentId]',
+                        params: { appointmentId: event.appointmentId },
+                      });
+                    },
+                  },
+                ]
+              : [],
           headerRight: () =>
             canCheckout && event && appointment && !canceled ? (
               <HeaderButton
-                disabled={paid}
-                accessibilityLabel={paid ? t('order.status.paid') : t('checkout.title')}
-                style={paid ? { backgroundColor: theme.successSurface } : undefined}
-                onPress={() => {
-                  if (paid) return;
-                  prepareCheckout(appointment);
-                  router.push({ pathname: '/checkout/[appointmentId]', params: { appointmentId: event.appointmentId } });
-                }}
+                accessibilityLabel={t('checkout.title')}
+                onPress={() =>
+                  router.push({
+                    pathname: '/checkout/[appointmentId]',
+                    params: { appointmentId: event.appointmentId },
+                  })
+                }
                 hitSlop={8}>
-                <AppIcon name="pointOfSale" size={22} color={paid ? theme.success : theme.tint} />
+                <AppIcon name="pointOfSale" size={22} color={theme.tint} />
               </HeaderButton>
             ) : null,
         }}
@@ -233,166 +295,213 @@ export default function AppointmentDetailScreen() {
       ) : !event ? (
         <EmptyState icon="eventBusy" title={error ?? t('client.failedToLoad')} />
       ) : (
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <View style={styles.summaryHeading}>
-            <Text style={[styles.appointmentTitle, { color: theme.text }]}>{serviceNames[0] ?? event.label}</Text>
-            {serviceNames.length > 1 ? (
-              <Text style={[styles.serviceSubtitle, { color: theme.muted }]}>{serviceNames.slice(1).join(' · ')}</Text>
-            ) : null}
-            {canceled ? (
-              <View style={[styles.canceledBadge, { backgroundColor: theme.errorSurface }]}>
-                <Text style={[styles.canceledBadgeText, { color: theme.error }]}>{t('appointment.canceled')}</Text>
-              </View>
-            ) : null}
-          </View>
-
-          <ListGroup>
-            <ListRow icon="calendar" title={getListHeaderLabel(toDateKeyFromSalonClock(event.startISO))} />
-            <ListRow
-              icon="schedule"
-              title={`${event.startTime}–${event.endTime}`}
-              value={duration > 0 ? `${duration} ${t('appointment.minutesShort')}` : null}
-            />
-            <ListRow icon="person" title={event.staffName} />
-          </ListGroup>
-
-          <ErrorBanner message={error} />
-
-          <View>
-            <SectionHeader title={t('appointment.client')} />
-            <ListGroup>
-              <ListRow
-                title={clientDisplayName}
-                subtitle={[client?.email, client?.phone].filter(Boolean).join(' · ')}
-                leading={
-                  <View style={[styles.clientAvatar, { backgroundColor: theme.blueTint }]}>
-                    <Text style={[styles.clientAvatarText, { color: theme.text }]}>{getInitialsFromLabel(clientDisplayName)}</Text>
-                  </View>
-                }
-                onPress={event.clientId ? () => router.push({ pathname: '/client/[id]', params: { id: event.clientId! } }) : undefined}
-              />
-            </ListGroup>
-          </View>
-
-          <View>
-            <SectionHeader title={t('client.history')} />
-            {history.length === 0 ? (
-              <EmptyState
-                compact
-                icon="eventBusy"
-                title={t('client.noHistory')}
-                subtitle={t('client.noHistoryHint')}
-              />
-            ) : (
-              <View style={[styles.scrollGroup, { borderColor: theme.border, backgroundColor: theme.card }]}>
-              <ScrollView style={styles.historyList} nestedScrollEnabled showsVerticalScrollIndicator>
-              <ListGroup style={styles.innerGroup} inset={32}>
-              {history.map((historyEvent) => {
-                const payment = paymentStatuses[historyEvent.appointmentId];
-                const badgeColors: Record<AppointmentPaymentInfo['status'], { background: string; text: string }> = {
-                  paid: { background: theme.successSurface, text: theme.success },
-                  partial: { background: theme.warningSurface, text: theme.warning },
-                  unpaid: { background: theme.surfaceRaised, text: theme.muted },
-                };
-                const badge = badgeColors[payment?.status ?? 'unpaid'];
-                const badgeLabel =
-                  payment?.status === 'paid' || payment?.status === 'partial'
-                    ? `€${(payment.amountPaid ?? 0).toFixed(2)}`
-                    : t(`order.status.${payment?.status ?? 'unpaid'}`);
-                return (
-                <ListRow
-                  key={historyEvent.id}
-                  title={historyEvent.label}
-                  subtitle={`${getListHeaderLabel(toDateKeyFromSalonClock(historyEvent.startISO))} · ${historyEvent.startTime}–${historyEvent.endTime}`}
-                  leading={<View style={[styles.historyColorBar, { backgroundColor: historyEvent.color }]} />}
-                  trailing={
-                    <View style={[styles.paymentBadge, { backgroundColor: badge.background }]}>
-                      <Text style={[styles.paymentBadgeText, { color: badge.text }]}>{badgeLabel}</Text>
-                    </View>
-                  }
-                  onPress={() => router.replace({ pathname: '/appointment/[id]', params: { id: historyEvent.appointmentId } })}
-                />
-                );
-              })}
-              </ListGroup>
-              </ScrollView>
-              </View>
-            )}
-          </View>
-
-          <View>
-            <SectionHeader title={t('client.notes')} />
-            {notes.length === 0 ? (
-              <Text style={[styles.emptyText, { color: theme.muted }]}>{t('client.noNotes')}</Text>
-            ) : (
-              <View style={[styles.scrollGroup, { borderColor: theme.border, backgroundColor: theme.card }]}>
-              <ScrollView style={styles.notesList} nestedScrollEnabled showsVerticalScrollIndicator>
-                <ListGroup style={styles.innerGroup} inset={14}>
-                {notes.map((note) => (
-                <SwipeableRow key={note.id} deleteLabel={t('common.delete')} onDelete={() => handleDeleteNote(note.id)}>
-                <View style={[styles.noteRow, { backgroundColor: theme.card }]}>
-                  <Text style={[styles.noteText, { color: theme.text }]}>{note.note}</Text>
-                  <Text style={[styles.noteDate, { color: theme.muted }]}>
-                    {getListHeaderLabel(toDateKey(new Date(note.created_at)))}
-                  </Text>
-                </View>
-                </SwipeableRow>
-                ))}
-                </ListGroup>
-              </ScrollView>
-              </View>
-            )}
-            {event.clientId ? (noteComposerOpen ? (
-            <View style={styles.addNoteRow}>
-              <TextField
-                autoFocus
-                multiline
-                containerStyle={styles.flex}
-                accessibilityLabel={t('client.addNotePlaceholder')}
-                style={styles.noteInput}
-                placeholder={t('client.addNotePlaceholder')}
-                value={newNote}
-                onChangeText={setNewNote}
-              />
-              <Button
-                label={t('client.addNote')}
-                variant="secondary"
-                onPress={handleAddNote}
-                disabled={addingNote || !newNote.trim()}
-                style={styles.addNoteButton}
-              />
+        <View style={styles.tabbedContent}>
+          <View style={styles.clientHeader}>
+            <View style={[styles.clientAvatarLarge, { backgroundColor: theme.text }]}>
+              <Text style={[styles.clientAvatarLargeText, { color: theme.background }]}>
+                {getInitialsFromLabel(clientDisplayName)}
+              </Text>
             </View>
-            ) : (
-              <Button
-                label={t('appointment.addNoteAction')}
-                icon="add"
-                variant="secondary"
-                size="medium"
-                onPress={() => setNoteComposerOpen(true)}
-                style={styles.noteAction}
-              />
-            )) : null}
+            <View style={styles.clientHeaderText}>
+              <Text style={[styles.clientHeaderName, { color: theme.text }]}>
+                {clientDisplayName || t('calendar.unknownClient')}
+              </Text>
+              <Text style={[styles.clientHeaderMeta, { color: theme.muted }]}>
+                {canceled ? t('appointment.canceled') : t('appointment.confirmed')}
+              </Text>
+            </View>
           </View>
 
-          {!canceled ? (
-            <Button
-              label={t('appointment.cancelAppointment')}
-              variant="destructive"
-              onPress={handleCancel}
-              loading={cancelling}
-            />
-          ) : null}
-        </ScrollView>
+          <View style={[styles.tabBar, { borderBottomColor: theme.border }]}>
+            {tabs.map((tab) => {
+              const selected = activeTab === tab.key;
+              return (
+                <Pressable
+                  key={tab.key}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected }}
+                  onPress={() => setActiveTab(tab.key)}
+                  style={[styles.tab, selected && { borderBottomColor: theme.text }]}>
+                  <View style={styles.tabLabelRow}>
+                    <Text style={[styles.tabLabel, { color: selected ? theme.text : theme.muted }]}>{tab.label}</Text>
+                    {tab.key === 'notes' && notes.length > 0 ? (
+                      <View style={[styles.tabBadge, { backgroundColor: theme.text }]}>
+                        <Text style={[styles.tabBadgeText, { color: theme.background }]}>{notes.length}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {activeTab === 'payment' ? (
+            appointment ? (
+              <AppointmentPaymentPanel
+                key={appointment.id}
+                appointment={appointment}
+                companyId={companyId}
+                canCheckout={canCheckout && !canceled}
+              />
+            ) : (
+              <EmptyState icon="eventBusy" title={t('client.failedToLoad')} />
+            )
+          ) : (
+          <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+            <ErrorBanner message={error} />
+
+            {activeTab === 'overview' ? (
+              <>
+                <View style={[styles.summaryCard, { borderColor: theme.border }]}>
+                  <View style={styles.summaryCardRow}>
+                    <AppIcon name="calendar" size={20} color={theme.muted} />
+                    <View style={styles.summaryCardText}>
+                      <Text style={[styles.summaryCardTitle, { color: theme.text }]}>
+                        {`${event.startTime}–${event.endTime}`}
+                      </Text>
+                      <Text style={[styles.summaryCardSubtitle, { color: theme.muted }]}>
+                        {getListHeaderLabel(toDateKeyFromSalonClock(event.startISO))} · {duration} {t('appointment.minutesShort')}
+                      </Text>
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: canceled ? theme.errorSurface : theme.successSurface }]}>
+                      <Text style={[styles.statusBadgeText, { color: canceled ? theme.error : theme.success }]}>
+                        {canceled ? t('appointment.canceled') : t('appointment.confirmed')}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.section}>
+                  <SectionHeader title={t('appointment.services')} />
+                  {serviceLines.length === 0 ? (
+                    <EmptyState compact title={t('checkout.noLineItems')} subtitle={t('checkout.noLineItemsHint')} />
+                  ) : (
+                    <ListGroup inset={14}>
+                      {serviceLines.map((line) => (
+                        <ListRow key={line.id} title={line.name} value={`€${line.price.toFixed(2)}`} />
+                      ))}
+                      <View style={[styles.totalRow, { backgroundColor: theme.card }]}>
+                        <Text style={[styles.totalLabel, { color: theme.text }]}>{t('checkout.total')}</Text>
+                        <Text style={[styles.totalValue, { color: theme.text }]}>{`€${serviceTotal.toFixed(2)}`}</Text>
+                      </View>
+                    </ListGroup>
+                  )}
+                </View>
+
+                <View style={styles.section}>
+                  <SectionHeader title={t('appointment.staffMember')} />
+                  <ListGroup>
+                    <ListRow icon="person" title={event.staffName} />
+                  </ListGroup>
+                </View>
+
+                {!canceled ? (
+                  <Button
+                    label={t('appointment.cancelAppointment')}
+                    variant="destructive"
+                    onPress={handleCancel}
+                    loading={cancelling}
+                  />
+                ) : null}
+              </>
+            ) : activeTab === 'client' ? (
+              <>
+                <ListGroup>
+                  <DetailRow label={t('client.email')} value={client?.email} />
+                  <DetailRow label={t('client.phone')} value={client?.phone} />
+                </ListGroup>
+                <View style={styles.section}>
+                  <SectionHeader title={t('client.history')} />
+                  {history.length === 0 ? (
+                    <EmptyState compact icon="eventBusy" title={t('client.noHistory')} subtitle={t('client.noHistoryHint')} />
+                  ) : (
+                    <View style={[styles.scrollGroup, { backgroundColor: theme.card }]}>
+                      <ScrollView style={styles.historyList} nestedScrollEnabled showsVerticalScrollIndicator>
+                        <ListGroup style={styles.innerGroup} inset={32}>
+                          {history.map((historyEvent) => (
+                            <ListRow
+                              key={historyEvent.id}
+                              title={historyEvent.label}
+                              subtitle={`${getListHeaderLabel(toDateKeyFromSalonClock(historyEvent.startISO))} · ${historyEvent.startTime}–${historyEvent.endTime}`}
+                              leading={<View style={[styles.historyColorBar, { backgroundColor: historyEvent.color }]} />}
+                              onPress={() => router.replace({ pathname: '/appointment/[id]', params: { id: historyEvent.appointmentId } })}
+                            />
+                          ))}
+                        </ListGroup>
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+              </>
+            ) : activeTab === 'notes' ? (
+              renderNotes()
+            ) : (
+              null
+            )}
+          </ScrollView>
+          )}
+        </View>
       )}
     </SafeAreaView>
   );
 }
+
+type DetailTab = 'overview' | 'client' | 'notes' | 'payment';
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
   flex: { flex: 1 },
+  tabbedContent: { flex: 1 },
+  tabBar: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    justifyContent: 'space-between',
+    paddingHorizontal: Design.screenPadding - 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.light.border,
+  },
+  tab: {
+    flex: 1,
+    minHeight: 48,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  tabLabel: { fontSize: 12.5, fontWeight: '600' },
+  tabBadge: {
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabBadgeText: { fontSize: 11, fontWeight: '700' },
+  clientHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: Design.screenPadding,
+    paddingTop: 12,
+    paddingBottom: 10,
+  },
+  clientAvatarLarge: {
+    width: 44,
+    height: 44,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clientAvatarLargeText: { fontSize: 15, fontWeight: '700' },
+  clientHeaderText: { flex: 1, gap: 2 },
+  clientHeaderName: { fontSize: 17, fontWeight: '700' },
+  clientHeaderMeta: { fontSize: 13 },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: Design.screenPadding,
@@ -400,35 +509,29 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     gap: 24,
   },
-  summaryHeading: { gap: 4, alignItems: 'flex-start' },
-  serviceSubtitle: { fontSize: 15, lineHeight: 21 },
-  appointmentTitle: {
-    fontSize: 24,
-    lineHeight: 30,
-    letterSpacing: -0.3,
-    fontWeight: '700',
+  section: { gap: 8 },
+  summaryCard: {
+    borderRadius: Design.cardRadius,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    padding: 16,
   },
-  canceledBadge: {
-    marginTop: 6,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  canceledBadgeText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  clientAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  summaryCardRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  summaryCardText: { flex: 1, gap: 3 },
+  summaryCardTitle: { fontSize: 17, fontWeight: '700' },
+  summaryCardSubtitle: { fontSize: 13 },
+  statusBadge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  statusBadgeText: { fontSize: 12, fontWeight: '600' },
+  totalRow: {
+    minHeight: 56,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.light.card,
   },
-  clientAvatarText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  totalLabel: { fontSize: 16, fontWeight: '600' },
+  totalValue: { fontSize: 18, fontWeight: '700' },
   // Keep the card's rounded edges fixed while its rows scroll.
   scrollGroup: {
     borderRadius: Design.cardRadius,
@@ -441,12 +544,6 @@ const styles = StyleSheet.create({
     width: 4,
     height: 32,
     borderRadius: 2,
-  },
-  paymentBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 4, flexShrink: 0 },
-  paymentBadgeText: { fontSize: 11, fontWeight: '600' },
-  emptyText: {
-    fontSize: 14,
-    paddingHorizontal: 4,
   },
   notesList: { maxHeight: 220 },
   noteRow: {

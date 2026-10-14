@@ -155,6 +155,16 @@ export default function MoreScreen() {
         </View>
       </View>
 
+      {profile ? (
+        <ListGroup>
+          <ListRow
+            icon="schedule"
+            title={t('more.mySchedule')}
+            onPress={() => router.push({ pathname: '/staff/[id]/availability', params: { id: profile.id } })}
+          />
+        </ListGroup>
+      ) : null}
+
       {canManage ? (
         <View style={styles.section}>
           <SectionHeader title={t('more.manage')} />

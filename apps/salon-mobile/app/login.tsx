@@ -307,8 +307,8 @@ export default function LoginScreen() {
   const muted = theme.muted;
   const line = theme.border;
   const fieldBorder = focused ? theme.focus : line;
-  const buttonBg = dark ? theme.primary : theme.text;
-  const buttonText = dark ? theme.onPrimary : '#FFFFFF';
+  const buttonBg = theme.text;
+  const buttonText = theme.background;
   const linkColor = theme.tint;
 
   return (

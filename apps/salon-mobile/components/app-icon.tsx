@@ -24,6 +24,7 @@ const ICONS = {
   cut: 'cut-outline',
   eventBusy: 'calendar-clear-outline',
   expandMore: 'chevron-down',
+  filter: 'options-outline',
   flash: 'flash-outline',
   gridView: 'grid-outline',
   groups: 'people-outline',

@@ -2,21 +2,6 @@ import { FunctionsHttpError } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase';
 
-export type CheckoutAppointment = {
-  id: string;
-  client_id: string | null;
-  client: { id: string; first_name: string | null; last_name: string | null } | null;
-  appointment_segment: Array<{
-    id: string;
-    sequence: number;
-    price: number | null;
-    service_id: string;
-    service_variant_id: string;
-    service: { id: string; name: string } | null;
-    service_variant: { id: string; name: string; price: number; vat_rate: number | null } | null;
-  }>;
-};
-
 export type CheckoutLineItem = {
   appointmentSegmentId: string;
   serviceId: string;
@@ -24,43 +9,11 @@ export type CheckoutLineItem = {
   name: string;
   price: number;
   vatRate: number;
+  quantity?: number;
+  discountType?: 'percentage' | 'fixed';
+  discountPercentage?: number;
+  discountAmount?: number;
 };
-
-const CHECKOUT_APPOINTMENT_SELECT = `
-  id,
-  client_id,
-  client:client_id ( id, first_name, last_name ),
-  appointment_segment (
-    id, sequence, price, service_id, service_variant_id,
-    service:service_id ( id, name ),
-    service_variant:service_variant_id ( id, name, price, vat_rate )
-  )
-`;
-
-export async function fetchAppointmentForCheckout(appointmentId: string): Promise<CheckoutAppointment | null> {
-  const { data, error } = await supabase
-    .from('appointment')
-    .select(CHECKOUT_APPOINTMENT_SELECT)
-    .eq('id', appointmentId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data as unknown as CheckoutAppointment | null;
-}
-
-export function checkoutLineItems(appointment: CheckoutAppointment): CheckoutLineItem[] {
-  return [...(appointment.appointment_segment ?? [])]
-    .sort((a, b) => a.sequence - b.sequence)
-    .filter((segment) => segment.service && segment.service_variant)
-    .map((segment) => ({
-      appointmentSegmentId: segment.id,
-      serviceId: segment.service_id,
-      serviceVariantId: segment.service_variant_id,
-      name: `${segment.service!.name} - ${segment.service_variant!.name}`,
-      price: Math.round(Number(segment.price ?? segment.service_variant!.price ?? 0) * 100) / 100,
-      vatRate: segment.service_variant!.vat_rate ?? 0,
-    }));
-}
 
 export type CheckoutPaymentType = 'cash' | 'card' | 'invoice' | 'bank_transfer';
 
@@ -71,6 +24,9 @@ export type CheckoutProductLine = {
   quantity: number;
   vatRate: number;
   stockQty?: number | null;
+  discountType?: 'percentage' | 'fixed';
+  discountPercentage?: number;
+  discountAmount?: number;
 };
 
 export type CreateOrderPayload = {
@@ -85,6 +41,25 @@ export type CreateOrderPayload = {
 };
 
 export type CreatedCheckout = { order_number?: string; amountPaid: number };
+
+/** Matches the web POS: discounts are sent as a gross amount for each line. */
+export function checkoutItemDiscountAmount(item: {
+  price: number;
+  quantity: number;
+  discountType?: 'percentage' | 'fixed';
+  discountPercentage?: number;
+  discountAmount?: number;
+}): number {
+  const lineBase = Math.max(0, item.price) * Math.max(0, item.quantity);
+  if (lineBase <= 0) return 0;
+  const discount =
+    item.discountType === 'percentage'
+      ? lineBase * ((item.discountPercentage ?? 0) / 100)
+      : item.discountType === 'fixed'
+        ? item.discountAmount ?? 0
+        : 0;
+  return Math.round(Math.min(Math.max(discount, 0), lineBase) * 100) / 100;
+}
 
 function settledPaymentAmount(payment: { status?: string; payment_status?: string; amount?: number; amount_gross?: number }): number {
   const status = String(payment.status ?? '').toLowerCase();
@@ -113,17 +88,23 @@ export async function createOrderWithPayment(payload: CreateOrderPayload): Promi
         appointment_segment_id: item.appointmentSegmentId,
         service_id: item.serviceId,
         service_variant_id: item.serviceVariantId,
-        quantity: 1,
+        quantity: item.quantity ?? 1,
         unit_price: item.price,
         vat_rate: item.vatRate,
-        discount_amount: 0,
+        discount_amount: checkoutItemDiscountAmount({
+          price: item.price,
+          quantity: item.quantity ?? 1,
+          discountType: item.discountType,
+          discountPercentage: item.discountPercentage,
+          discountAmount: item.discountAmount,
+        }),
       })),
       products: (payload.productLines ?? []).map((item) => ({
         product_id: item.productId,
         quantity: item.quantity,
         unit_price: item.price,
         vat_rate: item.vatRate,
-        discount_amount: 0,
+        discount_amount: checkoutItemDiscountAmount(item),
       })),
       payments: [{ payment_type: payload.paymentType, amount: payload.amount, paid: true }],
       date: new Date().toISOString(),

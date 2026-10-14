@@ -4,6 +4,7 @@ import { TabScreen } from '@/components/tab-screen';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React from 'react';
 import {
+  Alert,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -15,14 +16,12 @@ import Animated, { FadeIn, FadeOut, useReducedMotion } from 'react-native-reanim
 import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/empty-state';
-import { ListRow } from '@/components/ui';
 import { SkeletonBlock } from '@/components/skeleton-block';
 import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Client, fetchClients } from '@/lib/api/clients';
-import { getInitialsFromLabel } from '@/lib/text';
 
 /** How long a load can take before we bother showing a skeleton at all — avoids a flash on fast responses. */
 const SKELETON_DELAY_MS = 300;
@@ -32,12 +31,17 @@ function clientName(client: Client, fallback: string) {
   return `${client.first_name ?? ''} ${client.last_name ?? ''}`.trim() || fallback;
 }
 
+function clientInitial(name: string) {
+  const letter = name.trim().charAt(0).toUpperCase();
+  return letter || '?';
+}
+
 function ClientRowSkeleton({ styles, index }: { styles: ReturnType<typeof createStyles>; index: number }) {
   const nameWidth = 46 - (index % 3) * 8;
   const subtitleWidth = 34 - (index % 4) * 6;
   return (
     <View style={styles.row}>
-      <SkeletonBlock style={styles.avatar} />
+      <SkeletonBlock style={[styles.avatar, styles.skeletonFill]} />
       <View style={{ flex: 1 }}>
         <SkeletonBlock style={[styles.skeletonBar, styles.skeletonName, { width: `${nameWidth}%` }]} />
         <SkeletonBlock style={[styles.skeletonBar, styles.skeletonSubtitle, { width: `${subtitleWidth}%` }]} />
@@ -70,6 +74,7 @@ export default function ClientsScreen() {
   const [refreshing, setRefreshing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [sortDescending, setSortDescending] = React.useState(false);
   const reduceMotion = useReducedMotion();
 
   // Tracks which location we last successfully loaded, so refocusing the tab (e.g.
@@ -116,13 +121,27 @@ export default function ClientsScreen() {
 
   const filteredClients = React.useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return clients;
-    return clients.filter((client) => {
-      const name = clientName(client, '').toLowerCase();
-      const email = (client.email ?? '').toLowerCase();
-      return name.includes(term) || email.includes(term);
+    const matched = !term
+      ? clients
+      : clients.filter((client) => {
+          const name = clientName(client, '').toLowerCase();
+          const email = (client.email ?? '').toLowerCase();
+          const phone = (client.phone ?? '').toLowerCase();
+          return name.includes(term) || email.includes(term) || phone.includes(term);
+        });
+    return [...matched].sort((a, b) => {
+      const order = clientName(a, '').localeCompare(clientName(b, ''), undefined, { sensitivity: 'base' });
+      return sortDescending ? -order : order;
     });
-  }, [clients, searchTerm]);
+  }, [clients, searchTerm, sortDescending]);
+
+  const openSort = () => {
+    Alert.alert(t('client.sortByName'), undefined, [
+      { text: t('client.sortNameAsc'), onPress: () => setSortDescending(false) },
+      { text: t('client.sortNameDesc'), onPress: () => setSortDescending(true) },
+      { text: t('client.cancel'), style: 'cancel' },
+    ]);
+  };
 
   const showInitialLoading = (loading || locationLoading) && !error;
   const showNoCompanyState = !loading && !locationLoading && !companyId;
@@ -144,19 +163,42 @@ export default function ClientsScreen() {
     <TabScreen>
     <>
       <View style={styles.header}>
-        <Text style={styles.title}>{t('client.title')}</Text>
+        <Text accessibilityRole="header" style={styles.title}>{t('client.listTitle')}</Text>
+        {!showNoCompanyState ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('client.addNew')}
+            onPress={() => router.push('/client/new')}
+            style={styles.addButton}>
+            <AppIcon name="add" size={18} color={theme.text} />
+            <Text style={styles.addButtonText}>{t('client.add')}</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       {!showNoCompanyState ? (
         <View style={styles.searchRow}>
-          <AppIcon name="search" size={20} color={theme.muted} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder={t('client.searchPlaceholder')}
-            placeholderTextColor={theme.muted}
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-          />
+          <View style={styles.searchField}>
+            <AppIcon name="search" size={18} color={theme.muted} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder={t('client.searchPlaceholder')}
+              placeholderTextColor={theme.muted}
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+              autoCapitalize="none"
+              autoCorrect={false}
+              clearButtonMode="while-editing"
+            />
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('client.sortByName')}
+            accessibilityState={{ selected: sortDescending }}
+            onPress={openSort}
+            style={[styles.filterButton, sortDescending && styles.filterButtonActive]}>
+            <AppIcon name="filter" size={18} color={sortDescending ? theme.tint : theme.text} />
+          </Pressable>
         </View>
       ) : null}
 
@@ -186,7 +228,6 @@ export default function ClientsScreen() {
           keyExtractor={(item) => item.id}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
           contentContainerStyle={[styles.listContent, filteredClients.length === 0 && styles.listContentEmpty]}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
           ListEmptyComponent={
             searchTerm ? (
               <EmptyState
@@ -208,71 +249,102 @@ export default function ClientsScreen() {
           }
           renderItem={({ item }) => {
             const name = clientName(item, t('calendar.unknownClient'));
+            const detail = item.email || item.phone;
             return (
-              <ListRow
-                title={name}
-                subtitle={item.email}
-                leading={
-                  <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{getInitialsFromLabel(name)}</Text>
-                  </View>
-                }
+              <Pressable
+                accessibilityRole="button"
                 onPress={() => router.push({ pathname: '/client/[id]', params: { id: item.id } })}
-              />
+                style={styles.row}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{clientInitial(name)}</Text>
+                </View>
+                <View style={styles.rowText}>
+                  <Text style={styles.rowTitle} numberOfLines={1}>{name}</Text>
+                  {detail ? <Text style={styles.rowSubtitle} numberOfLines={1}>{detail}</Text> : null}
+                </View>
+              </Pressable>
             );
           }}
         />
         </Animated.View>
       )}
 
-      {!showNoCompanyState ? (
-        <Pressable
-          style={styles.fab}
-          accessibilityRole="button"
-          accessibilityLabel={t('client.addNew')}
-          onPress={() => router.push('/client/new')}
-        >
-          <AppIcon name="add" size={26} color={theme.onPrimary} />
-        </Pressable>
-      ) : null}
     </>
     </TabScreen>
   );
 }
 
-// ListRow supplies part of the screen's horizontal padding.
-const ROW_INSET = 16;
-
 const createStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({
     header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
       paddingHorizontal: Design.screenPadding,
-      paddingTop: 8,
-      paddingBottom: 12,
+      paddingTop: 4,
+      paddingBottom: 16,
+    },
+    addButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      height: 40,
+      paddingHorizontal: 14,
+      borderRadius: Design.pillRadius,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.background,
+    },
+    addButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.text,
     },
     title: {
-      fontSize: 20,
-      fontWeight: '600',
+      flexShrink: 1,
+      fontSize: 32,
+      lineHeight: 38,
+      fontWeight: '700',
+      letterSpacing: -0.4,
       color: theme.text,
     },
     searchRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
-      height: 50,
       marginHorizontal: Design.screenPadding,
-      marginBottom: 12,
+      marginBottom: 8,
+    },
+    searchField: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      height: 48,
       paddingHorizontal: 14,
-      borderRadius: Design.controlRadius,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
+      borderRadius: Design.pillRadius,
+      backgroundColor: theme.field,
     },
     searchInput: {
       flex: 1,
       height: '100%',
       fontSize: 16,
       color: theme.text,
+    },
+    filterButton: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.background,
+    },
+    filterButtonActive: {
+      borderColor: theme.tint,
+      backgroundColor: theme.blueTint,
     },
     errorBanner: {
       marginHorizontal: Design.screenPadding,
@@ -297,38 +369,50 @@ const createStyles = (theme: typeof Colors.light) =>
       textDecorationLine: 'underline',
     },
     listContent: {
-      paddingHorizontal: Design.screenPadding - ROW_INSET,
-      paddingBottom: 100,
+      paddingHorizontal: Design.screenPadding,
+      paddingBottom: 24,
     },
     listContentEmpty: {
       flexGrow: 1,
     },
     row: {
-      minHeight: 56,
+      minHeight: 68,
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'flex-start',
       gap: 14,
-      paddingHorizontal: ROW_INSET,
       paddingVertical: 10,
     },
-    separator: {
-      height: StyleSheet.hairlineWidth,
-      marginLeft: ROW_INSET + 40 + 12,
-      marginRight: ROW_INSET,
-      backgroundColor: theme.separator,
+    rowText: {
+      flex: 1,
+      gap: 2,
+    },
+    rowTitle: {
+      fontSize: 16,
+      lineHeight: 21,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    rowSubtitle: {
+      fontSize: 14,
+      lineHeight: 18,
+      color: theme.muted,
     },
     avatar: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
       backgroundColor: theme.blueTint,
       alignItems: 'center',
       justifyContent: 'center',
     },
     avatarText: {
-      fontSize: 14,
+      fontSize: 18,
       fontWeight: '600',
       color: theme.text,
+    },
+    skeletonFill: {
+      backgroundColor: theme.border,
     },
     skeletonBar: {
       borderRadius: 4,
@@ -340,21 +424,5 @@ const createStyles = (theme: typeof Colors.light) =>
     skeletonSubtitle: {
       height: 11,
       marginTop: 6,
-    },
-    fab: {
-      position: 'absolute',
-      right: Design.screenPadding,
-      bottom: 24,
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.primary,
-      shadowColor: theme.shadow,
-      shadowOpacity: 0.12,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 4,
     },
   });

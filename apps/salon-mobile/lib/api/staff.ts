@@ -242,6 +242,36 @@ export async function deleteScheduleRule(id: string): Promise<void> {
   if (error) throw error;
 }
 
+/** Writes one weekday as an ordered list of shifts. Extra existing rows are removed after the new ones succeed. */
+export async function replaceDayScheduleRules(
+  staffId: string,
+  companyId: string,
+  locationId: string,
+  dayOfWeek: number,
+  existingIds: string[],
+  slots: { id: string | null; startHours: number; startMinutes: number; endHours: number; endMinutes: number }[]
+): Promise<void> {
+  const kept = new Set<string>();
+  for (const slot of slots) {
+    if (slot.id && existingIds.includes(slot.id) && !kept.has(slot.id)) {
+      kept.add(slot.id);
+      await updateScheduleRule(slot.id, slot.startHours, slot.startMinutes, slot.endHours, slot.endMinutes);
+    } else {
+      await createScheduleRule(
+        staffId,
+        companyId,
+        dayOfWeek,
+        slot.startHours,
+        slot.startMinutes,
+        slot.endHours,
+        slot.endMinutes,
+        locationId
+      );
+    }
+  }
+  await Promise.all(existingIds.filter((id) => !kept.has(id)).map((id) => deleteScheduleRule(id)));
+}
+
 export type ScheduleException = {
   id: string;
   starts_at: string;

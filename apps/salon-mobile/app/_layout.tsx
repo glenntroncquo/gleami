@@ -1,4 +1,3 @@
-import { CheckoutProvider } from '@/contexts/checkout-context';
 import { CrashRecovery } from '@/components/crash-recovery';
 import { Colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
@@ -247,9 +246,7 @@ function RootLayout() {
             <LocationProvider>
               <SentryStaffContext />
               <Sentry.ErrorBoundary fallback={({ resetError }) => <CrashRecovery onRetry={resetError} />}>
-                <CheckoutProvider>
-                  <RootLayoutInner />
-                </CheckoutProvider>
+                <RootLayoutInner />
               </Sentry.ErrorBoundary>
             </LocationProvider>
           </AuthProvider>

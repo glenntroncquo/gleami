@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View, type ColorValue, type StyleProp, type ViewStyle } from 'react-native';
 
 import { AppIcon, type AppIconName } from '@/components/app-icon';
 import { Pressable } from '@/components/pressable-scale';
@@ -16,17 +16,21 @@ type Props = {
   loading?: boolean;
   disabled?: boolean;
   size?: 'large' | 'medium';
+  backgroundColor?: ColorValue;
+  textColor?: ColorValue;
   style?: StyleProp<ViewStyle>;
 };
 
-export function Button({ label, onPress, variant = 'primary', icon, loading, disabled, size = 'large', style }: Props) {
+export function Button({ label, onPress, variant = 'primary', icon, loading, disabled, size = 'large', backgroundColor, textColor, style }: Props) {
   const theme = useTheme();
   const palette = {
-    primary: { bg: theme.primary, fg: theme.onPrimary, border: theme.primary },
+    primary: { bg: theme.text, fg: theme.background, border: theme.text },
     secondary: { bg: theme.secondary, fg: theme.text, border: theme.border },
     destructive: { bg: theme.errorSurface, fg: theme.destructive, border: theme.errorSurface },
     ghost: { bg: 'transparent', fg: theme.tint, border: 'transparent' },
   }[variant];
+  const background = backgroundColor ?? palette.bg;
+  const foreground = textColor ?? palette.fg;
   const inactive = disabled || loading;
 
   return (
@@ -39,15 +43,15 @@ export function Button({ label, onPress, variant = 'primary', icon, loading, dis
       style={[
         styles.base,
         size === 'large' ? styles.large : styles.medium,
-        { backgroundColor: palette.bg, borderColor: palette.border, opacity: disabled ? 0.4 : 1 },
+        { backgroundColor: background, borderColor: backgroundColor ?? palette.border, opacity: disabled ? 0.4 : 1 },
         style,
       ]}>
       {loading ? (
-        <ActivityIndicator color={palette.fg} />
+        <ActivityIndicator color={foreground} />
       ) : (
         <View style={styles.content}>
-          {icon ? <AppIcon name={icon} size={18} color={palette.fg} /> : null}
-          <Text style={[styles.label, size === 'medium' && styles.labelMedium, { color: palette.fg }]}>{label}</Text>
+          {icon ? <AppIcon name={icon} size={18} color={foreground} /> : null}
+          <Text style={[styles.label, size === 'medium' && styles.labelMedium, { color: foreground }]}>{label}</Text>
         </View>
       )}
     </Pressable>

@@ -3,10 +3,11 @@ import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view'
 import { AppIcon } from '@/components/app-icon';
 import { SwipeActionRow } from '@/components/swipeable-row';
 import { HeaderButton } from '@/components/header-button';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import {
   DeviceEventEmitter,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -19,27 +20,37 @@ import { EmptyState } from '@/components/empty-state';
 import { ListGroup, ScreenTitle } from '@/components/ui';
 import { StaffAvatar } from '@/components/staff-avatar';
 import { Colors } from '@/constants/theme';
-import { useCheckout } from '@/contexts/checkout-context';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { isAppointmentCanceled } from '@/lib/api/appointment-status';
-import { fetchAppointmentById, fetchAppointmentsForMonth, fetchStaff, type AppointmentRow } from '@/lib/api/calendar';
+import { fetchAppointmentById, fetchAppointmentsForMonth, fetchStaff, type StaffMember } from '@/lib/api/calendar';
+import { fetchAbsences, type TimeOffEntry } from '@/lib/api/staff';
 
 import {
   appointmentToEvent,
   groupAppointmentsByDateKey,
 } from '@/components/calendar/calendar-data';
 import { DaySheetSkeleton } from '@/components/calendar/components/CalendarSkeletons';
-import { getFullDateLabel, getISOWeekNumber, getListHeaderLabel, toDateKeyFromSalonClock } from '@/components/calendar/date-utils';
+import { formatTime, getFullDateLabel, getISOWeekNumber, parseSalonWallClock, toDateKeyFromSalonClock } from '@/components/calendar/date-utils';
 import { EventItem } from '@/components/calendar/types';
+
+function localDayBounds(dateKey: string) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  return {
+    start: new Date(year, month - 1, day, 0, 0, 0, 0),
+    end: new Date(year, month - 1, day + 1, 0, 0, 0, 0),
+  };
+}
+
+function staffLabel(member: StaffMember | undefined, fallback: string) {
+  return `${member?.first_name ?? ''} ${member?.last_name ?? ''}`.trim() || fallback;
+}
 
 export default function DayScreen() {
   const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
   const router = useRouter();
-  const { prepareCheckout } = useCheckout();
-  const appointmentsById = React.useRef(new Map<string, AppointmentRow>());
   const { date, staffId: staffIdParam } = useLocalSearchParams<{ date: string; staffId?: string }>();
   const { companyId, hasPermission } = useAuth();
   const canCheckout = hasPermission('pos:manage');
@@ -48,8 +59,9 @@ export default function DayScreen() {
   const theme = Colors[colorScheme];
 
   const [events, setEvents] = React.useState<EventItem[]>([]);
+  const [absences, setAbsences] = React.useState<TimeOffEntry[]>([]);
   const payments = useAppointmentPayments(companyId, events.map(event => event.appointmentId));
-  const [staffImageById, setStaffImageById] = React.useState<Map<string, string | null>>(new Map());
+  const [staffById, setStaffById] = React.useState<Map<string, StaffMember>>(new Map());
   const [loading, setLoading] = React.useState(true);
 
   const load = React.useCallback(async () => {
@@ -58,14 +70,16 @@ export default function DayScreen() {
       return;
     }
     const target = new Date(date);
-    const [appointments, staff] = await Promise.all([
+    const { start, end } = localDayBounds(date);
+    const [appointments, staff, absenceRows] = await Promise.all([
       fetchAppointmentsForMonth(companyId, locationId, target.getFullYear(), target.getMonth()),
       fetchStaff(companyId, locationId),
+      fetchAbsences(companyId, locationId, start, end),
     ]);
-    appointmentsById.current = new Map(appointments.map((appointment) => [appointment.id, appointment]));
     const byDateKey = groupAppointmentsByDateKey(appointments, staffIdParam || null, colorScheme);
     setEvents(byDateKey[date] ?? []);
-    setStaffImageById(new Map(staff.map((member) => [member.id, member.image_path])));
+    setAbsences(staffIdParam ? absenceRows.filter((entry) => entry.staff_id === staffIdParam) : absenceRows);
+    setStaffById(new Map(staff.map((member) => [member.id, member])));
     setLoading(false);
   }, [date, companyId, locationId, staffIdParam, colorScheme]);
 
@@ -86,9 +100,6 @@ export default function DayScreen() {
           row.appointment_segment.some((segment) => segment.staff_id === staffIdParam) ||
           row.staff?.id === staffIdParam);
 
-      if (stillOnThisDay && row) appointmentsById.current.set(appointmentId, row);
-      else appointmentsById.current.delete(appointmentId);
-
       setEvents((prev) => {
         const without = prev.filter((event) => event.appointmentId !== appointmentId);
         if (!stillOnThisDay || !row) return without;
@@ -98,9 +109,11 @@ export default function DayScreen() {
     [companyId, date, load, locationId, staffIdParam, colorScheme]
   );
 
-  React.useEffect(() => {
-    load();
-  }, [load]);
+  useFocusEffect(
+    React.useCallback(() => {
+      load();
+    }, [load])
+  );
 
   React.useEffect(() => {
     const subscription = DeviceEventEmitter.addListener(
@@ -113,13 +126,32 @@ export default function DayScreen() {
   }, [applyAppointmentChange]);
 
   const weekNumber = date ? getISOWeekNumber(new Date(date)) : 0;
+  const absenceBar = colorScheme === 'dark' ? theme.surfaceRaised : '#DDE1E8';
+  const dayItems = React.useMemo(() => {
+    if (!date) return [];
+    const { start } = localDayBounds(date);
+    const dayEnd = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 23, 59, 0, 0);
+    const absenceItems = absences.map((entry) => {
+      const starts = new Date(entry.starts_at);
+      const ends = new Date(entry.ends_at);
+      const visibleStart = starts < start ? start : starts;
+      const visibleEnd = ends > dayEnd ? dayEnd : ends;
+      return { kind: 'absence' as const, at: visibleStart.getTime(), entry, startTime: formatTime(visibleStart.toISOString()), endTime: formatTime(visibleEnd.toISOString()) };
+    });
+    const eventItems = events.map((event) => ({
+      kind: 'event' as const,
+      at: parseSalonWallClock(event.startISO).getTime(),
+      event,
+    }));
+    return [...absenceItems, ...eventItems].sort((a, b) => a.at - b.at);
+  }, [absences, date, events]);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['left', 'right', 'bottom']}>
       <Stack.Screen
         options={{
           headerShown: true,
-          title: date ? getListHeaderLabel(date) : '',
+          title: '',
           unstable_headerLeftItems: () => [
             {
               type: 'button',
@@ -153,7 +185,7 @@ export default function DayScreen() {
 
       {loading ? (
         <DaySheetSkeleton backgroundColor={theme.background} surfaceColor={theme.surface} />
-      ) : events.length === 0 ? (
+      ) : dayItems.length === 0 ? (
         <EmptyState
           icon="eventBusy"
           title={t('calendar.noAppointmentsToday')}
@@ -165,7 +197,42 @@ export default function DayScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <ScreenTitle title={date ? getFullDateLabel(date) : ''} subtitle={t('calendar.weekLabel', { number: weekNumber })} />
           <ListGroup inset={14}>
-          {events.map((event) => {
+          {dayItems.map((item) => {
+            if (item.kind === 'absence') {
+              const member = staffById.get(item.entry.staff_id);
+              const name = staffLabel(member, t('calendar.employee'));
+              return (
+                <Pressable
+                  key={`absence-${item.entry.id}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('calendar.unavailability.editTitle')}
+                  onPress={() => router.push({ pathname: '/staff/time-off-new', params: { id: item.entry.id } })}
+                  style={styles.row}>
+                  <View style={[styles.colorBar, { backgroundColor: absenceBar }]} />
+                  <View style={[styles.rowTimeCol, { width: 48 * fontScale }]}>
+                    <Text style={[styles.time, { color: theme.text }]}>{item.startTime}</Text>
+                    <Text style={[styles.timeMuted, { color: theme.muted }]}>{item.endTime}</Text>
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={[styles.eventText, { color: theme.text }]} numberOfLines={1}>
+                      {t('calendar.addUnavailability')}
+                    </Text>
+                    <Text style={[styles.eventSubtitle, { color: theme.muted }]} numberOfLines={1}>
+                      {name}
+                    </Text>
+                  </View>
+                  <StaffAvatar
+                    imagePath={member?.image_path}
+                    name={name}
+                    size={32}
+                    backgroundColor={theme.surface}
+                    fontSize={11}
+                  />
+                </Pressable>
+              );
+            }
+
+            const event = item.event;
             const payment = payments[event.appointmentId];
             const paid = payment?.status === 'paid';
             const partial = payment?.status === 'partial';
@@ -178,8 +245,6 @@ export default function DayScreen() {
               onPress={() => router.push({ pathname: '/appointment/[id]', params: { id: event.appointmentId } })}
               onAction={() => {
                 if (paid || !canCheckout) return;
-                const appointment = appointmentsById.current.get(event.appointmentId);
-                if (appointment) prepareCheckout(appointment);
                 router.push({ pathname: '/checkout/[appointmentId]', params: { appointmentId: event.appointmentId } });
               }}>
             <View style={styles.row}>
@@ -206,7 +271,7 @@ export default function DayScreen() {
                 </View>
               ) : null}
               <StaffAvatar
-                imagePath={staffImageById.get(event.staffId ?? '')}
+                imagePath={staffById.get(event.staffId ?? '')?.image_path}
                 name={event.staffName}
                 size={32}
                 backgroundColor={theme.surface}

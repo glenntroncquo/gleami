@@ -27,9 +27,9 @@ export function CrashRecovery({ onRetry }: CrashRecoveryProps) {
         })}
       </ThemedText>
       <Pressable
-        style={[styles.retry, { backgroundColor: theme.primary }]}
+        style={[styles.retry, { backgroundColor: theme.text }]}
         onPress={onRetry}>
-        <ThemedText style={styles.retryText} lightColor={theme.onPrimary} darkColor={theme.onPrimary}>
+        <ThemedText style={styles.retryText} lightColor={theme.background} darkColor={theme.background}>
           {t('errorBoundary.retry', { defaultValue: 'Try again' })}
         </ThemedText>
       </Pressable>

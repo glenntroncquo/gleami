@@ -17,18 +17,19 @@ const empty = {
   categoryCount: 0,
   visibleServiceCount: 0,
   photoCount: 0,
+  description: "",
 };
 
 function run() {
   const missing = buildPublishChecklist(empty);
   assertEqual(
     missing.map((item) => item.id),
-    ["slug", "address", "coordinates", "category", "service", "photo"],
+    ["slug", "address", "coordinates", "category", "service", "photo", "description"],
     "checklist order",
   );
   assertEqual(
     missing.map((item) => item.blocking),
-    [true, false, false, false, false, false],
+    [true, false, false, false, false, false, false],
     "only the slug blocks publishing",
   );
   assertEqual(
@@ -78,6 +79,7 @@ function run() {
     categoryCount: 2,
     visibleServiceCount: 2,
     photoCount: 3,
+    description: "Een salon in Gent met kleur en knippen.",
   });
   assertEqual(
     ready.every((item) => item.done),

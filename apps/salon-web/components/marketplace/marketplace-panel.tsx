@@ -43,6 +43,7 @@ import type { PublishChecklistItem } from "@/lib/marketplace/checklist";
 import { DESCRIPTION_LIMIT, MARKETPLACE_MIME_TYPES } from "@/lib/marketplace/media";
 import { normalizeSlug } from "@/lib/marketplace/slug";
 import type { MarketplaceCategory, MarketplacePhoto, MarketplaceService } from "@/lib/marketplace/api";
+import type { HourDraft } from "@/lib/marketplace/public-facts";
 
 export type MarketplacePanelProps = {
   locationName: string;
@@ -53,6 +54,10 @@ export type MarketplacePanelProps = {
   slugSuggestion: string | null;
   companyId: string;
   description: string;
+  phone: string;
+  website: string;
+  instagram: string;
+  hours: HourDraft[];
   street: string;
   postalCode: string;
   city: string;
@@ -78,6 +83,10 @@ export type MarketplacePanelProps = {
   onApplySuggestion: () => void;
   onCopyPath: (path: string) => void;
   onDescriptionChange: (value: string) => void;
+  onPhoneChange: (value: string) => void;
+  onWebsiteChange: (value: string) => void;
+  onInstagramChange: (value: string) => void;
+  onHoursChange: (day: number, field: "opens" | "closes", value: string) => void;
   onStreetChange: (value: string) => void;
   onPostalCodeChange: (value: string) => void;
   onCityChange: (value: string) => void;
@@ -251,6 +260,66 @@ export function MarketplacePanel(props: MarketplacePanelProps) {
           <p className="text-muted-foreground text-xs">
             {t("profile.counter", { count: props.description.length, limit: DESCRIPTION_LIMIT })}
           </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="marketplace-phone">{t("profile.phone")}</Label>
+          <Input
+            id="marketplace-phone"
+            value={props.phone}
+            inputMode="tel"
+            placeholder="+32 9 000 00 00"
+            onChange={(event) => props.onPhoneChange(event.target.value)}
+          />
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="marketplace-website">{t("profile.website")}</Label>
+            <Input
+              id="marketplace-website"
+              value={props.website}
+              inputMode="url"
+              placeholder="https://"
+              onChange={(event) => props.onWebsiteChange(event.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="marketplace-instagram">{t("profile.instagram")}</Label>
+            <Input
+              id="marketplace-instagram"
+              value={props.instagram}
+              inputMode="url"
+              placeholder="https://instagram.com/"
+              onChange={(event) => props.onInstagramChange(event.target.value)}
+            />
+          </div>
+        </div>
+        <p className="text-muted-foreground text-xs">{t("profile.linkHint")}</p>
+
+        <div className="space-y-3">
+          <div>
+            <p className="text-sm font-medium">{t("profile.hours")}</p>
+            <p className="text-muted-foreground text-xs">{t("profile.hoursHint")}</p>
+          </div>
+          <div className="space-y-2">
+            {props.hours.map((day) => (
+              <div key={day.day} className="grid grid-cols-[7rem_1fr_1fr] items-center gap-3">
+                <span className="text-sm">{t(`profile.days.${day.day}`)}</span>
+                <Input
+                  aria-label={t("profile.opens")}
+                  type="time"
+                  value={day.opens}
+                  onChange={(event) => props.onHoursChange(day.day, "opens", event.target.value)}
+                />
+                <Input
+                  aria-label={t("profile.closes")}
+                  type="time"
+                  value={day.closes}
+                  onChange={(event) => props.onHoursChange(day.day, "closes", event.target.value)}
+                />
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="space-y-2">

@@ -247,7 +247,8 @@
           "coordinates": "Coördinaten",
           "category": "Minstens één categorie",
           "service": "Minstens één zichtbare dienst",
-          "photo": "Minstens één foto"
+          "photo": "Minstens één foto",
+          "description": "Een omschrijving van deze locatie"
         }
       },
       "profile": {
@@ -255,6 +256,26 @@
         "description": "Omschrijving",
         "descriptionPlaceholder": "Wat mogen bezoekers over deze locatie weten?",
         "counter": "{count}/{limit} tekens",
+        "phone": "Telefoon",
+        "website": "Website",
+        "instagram": "Instagram",
+        "linkHint": "Website en Instagram hebben een volledig https://-adres nodig.",
+        "hours": "Openingsuren",
+        "hoursHint": "Laat een dag leeg als de salon gesloten is. De uren verschijnen op de publieke pagina zodra minstens één dag is ingevuld.",
+        "opens": "Open",
+        "closes": "Sluit",
+        "days": {
+          "1": "Maandag",
+          "2": "Dinsdag",
+          "3": "Woensdag",
+          "4": "Donderdag",
+          "5": "Vrijdag",
+          "6": "Zaterdag",
+          "7": "Zondag"
+        },
+        "invalidPhone": "Vul een telefoonnummer in, of laat het leeg.",
+        "invalidUrl": "Vul een volledig https://-adres in, of laat het leeg.",
+        "invalidHours": "Elke open dag heeft een openings- en sluitingstijd nodig, en sluiten moet later zijn.",
         "street": "Straat",
         "postalCode": "Postcode",
         "city": "Plaats",

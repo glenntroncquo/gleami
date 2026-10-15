@@ -103,7 +103,7 @@ function MarketplaceHeader() {
             Inloggen
           </a>
           <Link
-            href="/for-businesses"
+            href={routeFor(locale, { kind: "business" })}
             className="rounded-full bg-white/80 px-4 py-2.5 text-[13px] font-medium text-ink shadow-sm ring-1 ring-ink/10 backdrop-blur transition hover:bg-white"
           >
             Voor bedrijven
@@ -127,7 +127,7 @@ function MarketplaceHeader() {
                 Behandelingen
               </Link>
               <Link
-                href="/for-businesses"
+                href={routeFor(locale, { kind: "business" })}
                 className="block rounded-xl px-4 py-3 text-[14px] font-medium hover:bg-shell"
               >
                 Voor bedrijven

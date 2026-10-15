@@ -70,6 +70,9 @@ export type SalonProfile = {
   rating: number | null;
   reviewCount: number;
   likeCount: number;
+  phone: string | null;
+  website: string | null;
+  instagram: string | null;
   updatedAt: string;
   source: "live" | "demo";
 };
@@ -152,6 +155,10 @@ type LocationResponse = {
     lng: number | null;
     timezone: string;
     likeCount: number;
+    phone?: string | null;
+    website?: string | null;
+    instagram?: string | null;
+    openingHours?: OpeningHours[];
   };
   categories: Array<{ id: string; name: string; slug: string }>;
   services: Array<{
@@ -296,6 +303,9 @@ const demoSalons: SalonProfile[] = [
     rating: 4.9,
     reviewCount: 128,
     likeCount: 34,
+    phone: null,
+    website: null,
+    instagram: null,
     updatedAt: "2026-09-29T09:00:00.000Z",
     source: "demo",
   },
@@ -349,6 +359,9 @@ const demoSalons: SalonProfile[] = [
     rating: 4.8,
     reviewCount: 86,
     likeCount: 22,
+    phone: null,
+    website: null,
+    instagram: null,
     updatedAt: "2026-09-27T09:00:00.000Z",
     source: "demo",
   },
@@ -399,6 +412,9 @@ const demoSalons: SalonProfile[] = [
     rating: 4.7,
     reviewCount: 204,
     likeCount: 41,
+    phone: null,
+    website: null,
+    instagram: null,
     updatedAt: "2026-09-25T09:00:00.000Z",
     source: "demo",
   },
@@ -455,6 +471,9 @@ const demoSalons: SalonProfile[] = [
     rating: 4.9,
     reviewCount: 54,
     likeCount: 18,
+    phone: null,
+    website: null,
+    instagram: null,
     updatedAt: "2026-09-24T09:00:00.000Z",
     source: "demo",
   },
@@ -800,11 +819,14 @@ export async function getSalonBySlug(
         })),
       })),
       team: profile.team ?? [],
-      openingHours: [],
+      openingHours: item.openingHours ?? [],
       reviews: [],
       rating: searchItem?.rating ?? null,
       reviewCount: searchItem?.reviewCount ?? 0,
       likeCount: item.likeCount,
+      phone: item.phone ?? null,
+      website: item.website ?? null,
+      instagram: item.instagram ?? null,
       updatedAt: new Date().toISOString(),
       source: "live",
     };

@@ -34,7 +34,7 @@ export const localeConfig: Record<Locale, LocaleConfig> = {
     paths: {
       salons: "salons",
       treatments: "behandelingen",
-      business: "voor-bedrijven",
+      business: "voor-salons",
       blog: "inspiratie",
     },
   },
@@ -50,7 +50,7 @@ export const localeConfig: Record<Locale, LocaleConfig> = {
     paths: {
       salons: "salons",
       treatments: "traitements",
-      business: "pour-les-pros",
+      business: "pour-salons",
       blog: "inspiration",
     },
   },
@@ -66,7 +66,7 @@ export const localeConfig: Record<Locale, LocaleConfig> = {
     paths: {
       salons: "salons",
       treatments: "behandelingen",
-      business: "voor-bedrijven",
+      business: "voor-salons",
       blog: "inspiratie",
     },
   },
@@ -82,7 +82,7 @@ export const localeConfig: Record<Locale, LocaleConfig> = {
     paths: {
       salons: "salons",
       treatments: "traitements",
-      business: "pour-les-pros",
+      business: "pour-salons",
       blog: "inspiration",
     },
   },
@@ -98,7 +98,7 @@ export const localeConfig: Record<Locale, LocaleConfig> = {
     paths: {
       salons: "salons",
       treatments: "behandlungen",
-      business: "fuer-betriebe",
+      business: "fuer-salons",
       blog: "inspiration",
     },
   },
@@ -286,6 +286,15 @@ export function treatmentKeyFromSlug(
   return (match?.[0] as TreatmentKey | undefined) ?? null;
 }
 
+/** Match a category or service slug against every locale's treatment slug. */
+export function treatmentKeyFromAnySlug(slug: string): TreatmentKey | null {
+  const normalized = slug.toLowerCase();
+  const match = Object.entries(treatmentSlugs).find(([, localized]) =>
+    Object.values(localized).some((value) => value === normalized),
+  );
+  return (match?.[0] as TreatmentKey | undefined) ?? null;
+}
+
 export function slugify(value: string): string {
   return value
     .normalize("NFD")
@@ -360,9 +369,7 @@ export function routeFor(locale: Locale, route: RouteDescriptor): string {
     case "home":
       return locale === defaultLocale ? "/" : prefix;
     case "business":
-      return locale === defaultLocale
-        ? "/for-businesses"
-        : `${prefix}/${paths.business}`;
+      return `${prefix}/${paths.business}`;
     case "salons":
       return `${prefix}/${paths.salons}`;
     case "city":
@@ -380,6 +387,23 @@ export function routeFor(locale: Locale, route: RouteDescriptor): string {
     case "blog-post":
       return `${prefix}/${paths.blog}/${blogPostSlugs[route.post][locale]}`;
   }
+}
+
+const legacyBusinessSlugs: Record<Locale, readonly string[]> = {
+  "nl-be": ["voor-bedrijven"],
+  "fr-be": ["pour-les-pros"],
+  "nl-nl": ["voor-bedrijven"],
+  "fr-fr": ["pour-les-pros"],
+  "de-de": ["fuer-betriebe"],
+};
+
+/** Previous business paths. Returns the current canonical path, or null. */
+export function legacyBusinessRedirect(
+  locale: Locale,
+  section: string,
+): string | null {
+  if (!legacyBusinessSlugs[locale].includes(section)) return null;
+  return routeFor(locale, { kind: "business" });
 }
 
 export function localeFromPathname(pathname: string): Locale {

@@ -5,6 +5,69 @@ import type { MarketplaceSql } from "./sql.ts";
 /** service_variant has no currency column. Marketplace prices are euros. */
 export const MARKETPLACE_CURRENCY = "EUR" as const;
 
+export type PublicOpeningHours = {
+  day: number;
+  opens: string | null;
+  closes: string | null;
+};
+
+const CLOCK_TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** Drop malformed hours. Closed days keep null opens and closes. */
+export function parseOpeningHours(value: unknown): PublicOpeningHours[] {
+  let parsed = value;
+  if (typeof parsed === "string") {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(parsed)) return [];
+
+  const days = new Map<number, PublicOpeningHours>();
+  for (const item of parsed) {
+    if (!item || typeof item !== "object") continue;
+    const record = item as Record<string, unknown>;
+    const day = typeof record.day === "number" ? record.day : Number(record.day);
+    if (!Number.isInteger(day) || day < 1 || day > 7) continue;
+    const opens = typeof record.opens === "string" ? record.opens : null;
+    const closes = typeof record.closes === "string" ? record.closes : null;
+    if (opens === null && closes === null) {
+      days.set(day, { day, opens: null, closes: null });
+      continue;
+    }
+    if (
+      opens &&
+      closes &&
+      CLOCK_TIME.test(opens) &&
+      CLOCK_TIME.test(closes) &&
+      opens < closes
+    ) {
+      days.set(day, { day, opens, closes });
+    }
+  }
+  return [...days.values()].sort((a, b) => a.day - b.day);
+}
+
+function publicHttpUrl(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function publicPhone(value: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 40) return null;
+  return trimmed;
+}
+
 export interface LocationProfile {
   location: {
     locationId: string;
@@ -22,6 +85,10 @@ export interface LocationProfile {
     lng: number | null;
     timezone: string;
     likeCount: number;
+    phone: string | null;
+    website: string | null;
+    instagram: string | null;
+    openingHours: PublicOpeningHours[];
   };
   categories: Array<{ id: string; name: string; slug: string }>;
   services: Array<{
@@ -54,6 +121,10 @@ interface ProfileRow {
   lng: number | null;
   timezone: string;
   like_count: number;
+  phone: string | null;
+  website: string | null;
+  instagram: string | null;
+  opening_hours: unknown;
   categories: LocationProfile["categories"] | null;
   services: LocationProfile["services"] | null;
 }
@@ -98,6 +169,10 @@ export async function getMarketplaceLocation(
       case when l.geo_location is null then null else st_y(l.geo_location::geometry)::float8 end as lat,
       case when l.geo_location is null then null else st_x(l.geo_location::geometry)::float8 end as lng,
       l.timezone,
+      l.marketplace_phone as phone,
+      l.marketplace_website as website,
+      l.marketplace_instagram as instagram,
+      l.marketplace_opening_hours as opening_hours,
       (
         select count(*)::int
         from public.marketplace_location_like k
@@ -206,6 +281,10 @@ export async function getMarketplaceLocation(
       lng: asNumber(row.lng),
       timezone: row.timezone,
       likeCount: row.like_count,
+      phone: publicPhone(row.phone),
+      website: publicHttpUrl(row.website),
+      instagram: publicHttpUrl(row.instagram),
+      openingHours: parseOpeningHours(row.opening_hours),
     },
     categories: row.categories ?? [],
     services,

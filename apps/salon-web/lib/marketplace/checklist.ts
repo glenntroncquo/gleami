@@ -7,6 +7,7 @@ export const PUBLISH_CHECKLIST_IDS = [
   "category",
   "service",
   "photo",
+  "description",
 ] as const;
 
 export type PublishChecklistId = (typeof PUBLISH_CHECKLIST_IDS)[number];
@@ -29,6 +30,7 @@ export type PublishChecklistInput = {
   /** Active services that are visible on the marketplace. */
   visibleServiceCount: number;
   photoCount: number;
+  description: string | null;
 };
 
 function filled(value: string | null | undefined): boolean {
@@ -49,6 +51,7 @@ export function buildPublishChecklist(input: PublishChecklistInput): PublishChec
     { id: "category", done: categoryDone, blocking: false },
     { id: "service", done: serviceDone, blocking: false },
     { id: "photo", done: photoDone, blocking: false },
+    { id: "description", done: filled(input.description), blocking: false },
   ];
 }
 

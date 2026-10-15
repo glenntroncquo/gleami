@@ -80,6 +80,9 @@ type Copy = {
     reviews: string;
     photos: string;
     location: string;
+    phone: string;
+    website: string;
+    instagram: string;
     nearby: string;
     categories: string;
     from: string;
@@ -263,6 +266,9 @@ const nl: Copy = {
     reviews: "Reviews",
     photos: "Foto’s",
     location: "Locatie",
+    phone: "Telefoon",
+    website: "Website",
+    instagram: "Instagram",
     nearby: "In de buurt",
     categories: "Categorieën",
     from: "vanaf",
@@ -458,6 +464,9 @@ const fr: Copy = {
     reviews: "Avis",
     photos: "Photos",
     location: "Adresse",
+    phone: "Téléphone",
+    website: "Site web",
+    instagram: "Instagram",
     nearby: "À proximité",
     categories: "Catégories",
     from: "à partir de",
@@ -590,6 +599,9 @@ const de: Copy = {
     reviews: "Bewertungen",
     photos: "Fotos",
     location: "Standort",
+    phone: "Telefon",
+    website: "Website",
+    instagram: "Instagram",
     nearby: "In der Nähe",
     categories: "Kategorien",
     from: "ab",

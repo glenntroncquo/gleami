@@ -247,7 +247,8 @@
           "coordinates": "Coordenadas",
           "category": "Pelo menos uma categoria",
           "service": "Pelo menos um serviço visível",
-          "photo": "Pelo menos uma foto"
+          "photo": "Pelo menos uma foto",
+          "description": "Uma descrição deste local"
         }
       },
       "profile": {
@@ -255,6 +256,26 @@
         "description": "Descrição",
         "descriptionPlaceholder": "O que devem saber os visitantes sobre este local?",
         "counter": "{count}/{limit} caracteres",
+        "phone": "Telefone",
+        "website": "Website",
+        "instagram": "Instagram",
+        "linkHint": "O website e o Instagram precisam de um endereço https:// completo.",
+        "hours": "Horário",
+        "hoursHint": "Deixe um dia vazio se o salão estiver fechado. O horário aparece na página pública quando pelo menos um dia estiver preenchido.",
+        "opens": "Abre",
+        "closes": "Fecha",
+        "days": {
+          "1": "Segunda",
+          "2": "Terça",
+          "3": "Quarta",
+          "4": "Quinta",
+          "5": "Sexta",
+          "6": "Sábado",
+          "7": "Domingo"
+        },
+        "invalidPhone": "Introduza um número, ou deixe vazio.",
+        "invalidUrl": "Introduza um endereço https:// completo, ou deixe vazio.",
+        "invalidHours": "Cada dia aberto precisa de hora de abertura e de fecho, e o fecho tem de ser mais tarde.",
         "street": "Rua",
         "postalCode": "Código postal",
         "city": "Localidade",

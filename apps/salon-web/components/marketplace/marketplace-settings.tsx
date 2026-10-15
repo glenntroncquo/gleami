@@ -38,6 +38,14 @@ import { buildPublishChecklist } from "@/lib/marketplace/checklist";
 import { geocodeMarketplaceAddress } from "@/lib/marketplace/geocode-action";
 import { formatCoord, parseGeoPoint, parseLatLngInput, toEwkt } from "@/lib/marketplace/geo";
 import { DESCRIPTION_LIMIT } from "@/lib/marketplace/media";
+import {
+  emptyWeek,
+  normalizePhone,
+  normalizePublicUrl,
+  openingHoursForSave,
+  weekFromHours,
+  type HourDraft,
+} from "@/lib/marketplace/public-facts";
 import { normalizeSlug, slugFromName, suggestAlternativeSlug } from "@/lib/marketplace/slug";
 import { MarketplacePanel } from "@/components/marketplace/marketplace-panel";
 
@@ -65,6 +73,10 @@ export function MarketplaceSettings() {
   const [slug, setSlug] = useState("");
   const [slugSuggestion, setSlugSuggestion] = useState<string | null>(null);
   const [description, setDescription] = useState("");
+  const [phone, setPhone] = useState("");
+  const [website, setWebsite] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [hours, setHours] = useState<HourDraft[]>(emptyWeek);
   const [street, setStreet] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [city, setCity] = useState("");
@@ -127,6 +139,10 @@ export function MarketplaceSettings() {
     setListed(location.isListed);
     setSlug(location.slug ?? slugFromName(location.name));
     setDescription(location.description.slice(0, DESCRIPTION_LIMIT));
+    setPhone(location.phone ?? "");
+    setWebsite(location.website ?? "");
+    setInstagram(location.instagram ?? "");
+    setHours(weekFromHours(location.openingHours));
     setStreet(location.street ?? "");
     setPostalCode(location.postalCode ?? "");
     setCity(location.city ?? "");
@@ -144,6 +160,7 @@ export function MarketplaceSettings() {
     categoryCount: categoryIds.length,
     visibleServiceCount: services.filter((service) => service.visible && service.active).length,
     photoCount: photos.length,
+    description,
   });
 
   const reportError = (error: { code?: string; message?: string } | null, fallback: string) => {
@@ -218,9 +235,33 @@ export function MarketplaceSettings() {
       toast.error(t("profile.invalidCoordinates"));
       return;
     }
+    const nextPhone = normalizePhone(phone);
+    if (!nextPhone.ok) {
+      toast.error(t("profile.invalidPhone"));
+      return;
+    }
+    const nextWebsite = normalizePublicUrl(website);
+    if (!nextWebsite.ok) {
+      toast.error(t("profile.invalidUrl"));
+      return;
+    }
+    const nextInstagram = normalizePublicUrl(instagram);
+    if (!nextInstagram.ok) {
+      toast.error(t("profile.invalidUrl"));
+      return;
+    }
+    const nextHours = openingHoursForSave(hours);
+    if (!nextHours.ok) {
+      toast.error(t("profile.invalidHours"));
+      return;
+    }
     setSavingProfile(true);
     const result = await updateMarketplaceProfile(supabase, locationId, {
       description: description.trim() ? description.trim() : null,
+      phone: nextPhone.value,
+      website: nextWebsite.value,
+      instagram: nextInstagram.value,
+      openingHours: nextHours.value,
       street: street.trim() || null,
       postalCode: postalCode.trim() || null,
       city: city.trim() || null,
@@ -361,6 +402,10 @@ export function MarketplaceSettings() {
       slugSuggestion={slugSuggestion}
       companyId={ownerCompanyId || companyId || ""}
       description={description}
+      phone={phone}
+      website={website}
+      instagram={instagram}
+      hours={hours}
       street={street}
       postalCode={postalCode}
       city={city}
@@ -396,6 +441,14 @@ export function MarketplaceSettings() {
         toast.success(t("publish.copied"));
       }}
       onDescriptionChange={(value) => setDescription(value.slice(0, DESCRIPTION_LIMIT))}
+      onPhoneChange={setPhone}
+      onWebsiteChange={setWebsite}
+      onInstagramChange={setInstagram}
+      onHoursChange={(day, field, value) =>
+        setHours((current) =>
+          current.map((item) => (item.day === day ? { ...item, [field]: value } : item)),
+        )
+      }
       onStreetChange={setStreet}
       onPostalCodeChange={setPostalCode}
       onCityChange={setCity}

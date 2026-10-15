@@ -22,7 +22,9 @@ import {
   formatMoney,
   localeConfig,
   routeFor,
+  treatmentKeyFromAnySlug,
   type Locale,
+  type TreatmentKey,
 } from "@/lib/i18n";
 
 type SalonProfileViewProps = {
@@ -30,6 +32,10 @@ type SalonProfileViewProps = {
   salon: SalonProfile;
   nearby: SalonCard[];
 };
+
+function treatmentHref(locale: Locale, treatment: TreatmentKey): string {
+  return routeFor(locale, { kind: "treatment", treatment });
+}
 
 const dayNames = {
   nl: ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"],
@@ -125,14 +131,27 @@ export function SalonProfileView({
             <div className="flex items-start justify-between gap-6">
               <div>
                 <div className="flex flex-wrap gap-2">
-                  {salon.categories.map((category) => (
-                    <span
-                      key={category.id}
-                      className="rounded-full bg-white px-3 py-1 text-[12px] text-muted ring-1 ring-line"
-                    >
-                      {category.name}
-                    </span>
-                  ))}
+                  {salon.categories.map((category) => {
+                    const treatment = treatmentKeyFromAnySlug(category.slug);
+                    const className =
+                      "rounded-full bg-white px-3 py-1 text-[12px] text-muted ring-1 ring-line";
+                    if (!treatment) {
+                      return (
+                        <span key={category.id} className={className}>
+                          {category.name}
+                        </span>
+                      );
+                    }
+                    return (
+                      <Link
+                        key={category.id}
+                        href={treatmentHref(locale, treatment)}
+                        className={`${className} transition hover:text-ink`}
+                      >
+                        {category.name}
+                      </Link>
+                    );
+                  })}
                 </div>
                 <h1 className="mt-4 text-balance text-[42px] font-semibold leading-[1.02] tracking-tightest md:text-[64px]">
                   {salon.name}
@@ -182,9 +201,22 @@ export function SalonProfileView({
                 {copy.salon.services}
               </h2>
               <div className="mt-6 divide-y divide-line rounded-[24px] bg-white px-5 ring-1 ring-line md:px-7">
-                {salon.services.map((service) => (
+                {salon.services.map((service) => {
+                  const treatment = service.treatmentKeys[0];
+                  return (
                   <article key={service.id} className="py-6">
-                    <h3 className="text-[18px] font-semibold">{service.name}</h3>
+                    <h3 className="text-[18px] font-semibold">
+                      {treatment ? (
+                        <Link
+                          href={treatmentHref(locale, treatment)}
+                          className="hover:underline"
+                        >
+                          {service.name}
+                        </Link>
+                      ) : (
+                        service.name
+                      )}
+                    </h3>
                     {service.description ? (
                       <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-muted">
                         {service.description}
@@ -207,7 +239,8 @@ export function SalonProfileView({
                       ))}
                     </ul>
                   </article>
-                ))}
+                  );
+                })}
               </div>
             </section>
 
@@ -243,12 +276,16 @@ export function SalonProfileView({
               </section>
             ) : null}
 
-            <section className="mt-12 grid gap-8 border-t border-line pt-10 md:grid-cols-2">
-              <div>
-                <h2 className="text-[26px] font-semibold tracking-tight">
-                  {copy.salon.hours}
-                </h2>
-                {salon.openingHours.length > 0 ? (
+            <section
+              className={`mt-12 grid gap-8 border-t border-line pt-10 ${
+                salon.openingHours.length > 0 ? "md:grid-cols-2" : ""
+              }`}
+            >
+              {salon.openingHours.length > 0 ? (
+                <div>
+                  <h2 className="text-[26px] font-semibold tracking-tight">
+                    {copy.salon.hours}
+                  </h2>
                   <dl className="mt-5 divide-y divide-line">
                     {salon.openingHours.map((hours) => (
                       <div
@@ -264,12 +301,8 @@ export function SalonProfileView({
                       </div>
                     ))}
                   </dl>
-                ) : (
-                  <p className="mt-4 text-[14px] text-muted">
-                    {copy.salon.unavailable}
-                  </p>
-                )}
-              </div>
+                </div>
+              ) : null}
               <div>
                 <h2 className="text-[26px] font-semibold tracking-tight">
                   {copy.salon.location}
@@ -284,6 +317,36 @@ export function SalonProfileView({
                     .filter(Boolean)
                     .join(", ")}
                 </p>
+                {salon.phone ? (
+                  <p className="mt-2 text-[14px]">
+                    <span className="text-muted">{copy.salon.phone}</span>{" "}
+                    <a href={`tel:${salon.phone}`} className="font-medium">
+                      {salon.phone}
+                    </a>
+                  </p>
+                ) : null}
+                {salon.website ? (
+                  <p className="mt-2 text-[14px]">
+                    <a
+                      href={salon.website}
+                      className="font-medium underline-offset-2 hover:underline"
+                      rel="noopener noreferrer"
+                    >
+                      {copy.salon.website}
+                    </a>
+                  </p>
+                ) : null}
+                {salon.instagram ? (
+                  <p className="mt-2 text-[14px]">
+                    <a
+                      href={salon.instagram}
+                      className="font-medium underline-offset-2 hover:underline"
+                      rel="noopener noreferrer"
+                    >
+                      {copy.salon.instagram}
+                    </a>
+                  </p>
+                ) : null}
               </div>
             </section>
 

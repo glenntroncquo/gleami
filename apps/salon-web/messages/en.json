@@ -247,7 +247,8 @@
           "coordinates": "Coordinates",
           "category": "At least one category",
           "service": "At least one visible service",
-          "photo": "At least one photo"
+          "photo": "At least one photo",
+          "description": "A description of this location"
         }
       },
       "profile": {
@@ -255,6 +256,26 @@
         "description": "Description",
         "descriptionPlaceholder": "What should visitors know about this location?",
         "counter": "{count}/{limit} characters",
+        "phone": "Phone",
+        "website": "Website",
+        "instagram": "Instagram",
+        "linkHint": "Website and Instagram need a full https:// address.",
+        "hours": "Opening hours",
+        "hoursHint": "Leave a day empty when the salon is closed. Hours appear on the public page once at least one day is filled in.",
+        "opens": "Opens",
+        "closes": "Closes",
+        "days": {
+          "1": "Monday",
+          "2": "Tuesday",
+          "3": "Wednesday",
+          "4": "Thursday",
+          "5": "Friday",
+          "6": "Saturday",
+          "7": "Sunday"
+        },
+        "invalidPhone": "Enter a phone number, or leave it empty.",
+        "invalidUrl": "Enter a full https:// address, or leave it empty.",
+        "invalidHours": "Each open day needs an opening and closing time, and closing must be later.",
         "street": "Street",
         "postalCode": "Postal code",
         "city": "City",

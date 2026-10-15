@@ -11,6 +11,7 @@ import { VenueDrawer } from "./VenueDrawer";
 import { venues } from "./data";
 import { filterVenues } from "./slots";
 import type { Category, Venue } from "./types";
+import { routeFor } from "@/lib/i18n";
 
 const figtree = Figtree({
   subsets: ["latin"],
@@ -22,7 +23,10 @@ type ConsumerHomeProps = {
   businessHref?: string;
 };
 
-export function ConsumerHome({ homeHref = "/", businessHref = "/for-businesses" }: ConsumerHomeProps) {
+export function ConsumerHome({
+  homeHref = "/",
+  businessHref = routeFor("nl-be", { kind: "business" }),
+}: ConsumerHomeProps) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<"All" | Category>("All");
   const [selected, setSelected] = useState<Venue | null>(null);

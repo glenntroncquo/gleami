@@ -116,6 +116,10 @@ export function salonJsonLd(
         ? `${formatMoney(Math.min(...prices), locale)}–${formatMoney(Math.max(...prices), locale)}`
         : undefined,
     currenciesAccepted: "EUR",
+    telephone: salon.phone || undefined,
+    sameAs: [salon.website, salon.instagram].filter(
+      (item): item is string => Boolean(item),
+    ),
     openingHoursSpecification: salon.openingHours
       .filter((item) => item.opens && item.closes)
       .map((item) => ({
@@ -173,6 +177,16 @@ export function salonJsonLd(
       })),
     ),
   };
+
+  if (!Array.isArray(data.sameAs) || data.sameAs.length === 0) {
+    delete data.sameAs;
+  }
+  if (
+    !Array.isArray(data.openingHoursSpecification) ||
+    data.openingHoursSpecification.length === 0
+  ) {
+    delete data.openingHoursSpecification;
+  }
 
   return stripUndefined(data);
 }

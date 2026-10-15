@@ -247,7 +247,8 @@
           "coordinates": "Coordonnées",
           "category": "Au moins une catégorie",
           "service": "Au moins un service visible",
-          "photo": "Au moins une photo"
+          "photo": "Au moins une photo",
+          "description": "Une description de cet établissement"
         }
       },
       "profile": {
@@ -255,6 +256,26 @@
         "description": "Description",
         "descriptionPlaceholder": "Que doivent savoir les visiteurs sur cet établissement ?",
         "counter": "{count}/{limit} caractères",
+        "phone": "Téléphone",
+        "website": "Site web",
+        "instagram": "Instagram",
+        "linkHint": "Le site et Instagram ont besoin d'une adresse https:// complète.",
+        "hours": "Horaires",
+        "hoursHint": "Laissez un jour vide si le salon est fermé. Les horaires apparaissent sur la page publique dès qu'au moins un jour est rempli.",
+        "opens": "Ouvre",
+        "closes": "Ferme",
+        "days": {
+          "1": "Lundi",
+          "2": "Mardi",
+          "3": "Mercredi",
+          "4": "Jeudi",
+          "5": "Vendredi",
+          "6": "Samedi",
+          "7": "Dimanche"
+        },
+        "invalidPhone": "Indiquez un numéro, ou laissez le champ vide.",
+        "invalidUrl": "Indiquez une adresse https:// complète, ou laissez le champ vide.",
+        "invalidHours": "Chaque jour ouvert a besoin d'une heure d'ouverture et de fermeture, et la fermeture doit être plus tard.",
         "street": "Rue",
         "postalCode": "Code postal",
         "city": "Ville",

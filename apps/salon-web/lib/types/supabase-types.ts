@@ -641,7 +641,11 @@ export type Database = {
           is_listed: boolean
           is_primary: boolean
           marketplace_description: string | null
+          marketplace_instagram: string | null
+          marketplace_opening_hours: unknown
+          marketplace_phone: string | null
           marketplace_published_at: string | null
+          marketplace_website: string | null
           name: string
           postal_code: string | null
           slug: string | null
@@ -663,7 +667,11 @@ export type Database = {
           is_listed?: boolean
           is_primary?: boolean
           marketplace_description?: string | null
+          marketplace_instagram?: string | null
+          marketplace_opening_hours?: unknown
+          marketplace_phone?: string | null
           marketplace_published_at?: string | null
+          marketplace_website?: string | null
           name: string
           postal_code?: string | null
           slug?: string | null
@@ -685,7 +693,11 @@ export type Database = {
           is_listed?: boolean
           is_primary?: boolean
           marketplace_description?: string | null
+          marketplace_instagram?: string | null
+          marketplace_opening_hours?: unknown
+          marketplace_phone?: string | null
           marketplace_published_at?: string | null
+          marketplace_website?: string | null
           name?: string
           postal_code?: string | null
           slug?: string | null

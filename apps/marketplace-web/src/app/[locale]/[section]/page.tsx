@@ -9,7 +9,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { getCopy } from "@/lib/copy";
 import {
   isLocale,
-  defaultLocale,
+  legacyBusinessRedirect,
   localeConfig,
   locales,
   type Locale,
@@ -89,11 +89,10 @@ export default async function LocalizedSectionPage({ params }: Props) {
   const { locale: value, section } = await params;
   if (!isLocale(value)) notFound();
   const locale: Locale = value;
+  const legacy = legacyBusinessRedirect(locale, section);
+  if (legacy) permanentRedirect(legacy);
   const kind = sectionKind(locale, section);
   if (!kind) notFound();
-  if (kind === "business" && locale === defaultLocale) {
-    permanentRedirect("/for-businesses");
-  }
   const route = routeForSection(kind);
   const copy = getCopy(locale);
   const title =

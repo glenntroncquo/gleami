@@ -55,15 +55,48 @@ export type MarketplaceLocationRow = {
   isListed: boolean;
   isActive: boolean;
   description: string;
+  phone: string | null;
+  website: string | null;
+  instagram: string | null;
+  openingHours: MarketplaceOpeningHour[];
   geo: unknown;
 };
 
+export type MarketplaceOpeningHour = {
+  day: number;
+  opens: string | null;
+  closes: string | null;
+};
+
 const LOCATION_FIELDS =
-  "id, company_id, name, slug, street, postal_code, city, country, is_listed, is_active, marketplace_description, geo_location";
+  "id, company_id, name, slug, street, postal_code, city, country, is_listed, is_active, marketplace_description, marketplace_phone, marketplace_website, marketplace_instagram, marketplace_opening_hours, geo_location";
 
 function asRows(data: unknown): Record<string, unknown>[] {
   if (!Array.isArray(data)) return [];
   return data.filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object");
+}
+
+function openingHours(value: unknown): MarketplaceOpeningHour[] {
+  let parsed = value;
+  if (typeof parsed === "string") {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(parsed)) return [];
+  const days = new Map<number, MarketplaceOpeningHour>();
+  for (const item of parsed) {
+    if (!item || typeof item !== "object") continue;
+    const record = item as Record<string, unknown>;
+    const day = typeof record.day === "number" ? record.day : Number(record.day);
+    if (!Number.isInteger(day) || day < 1 || day > 7) continue;
+    const opens = typeof record.opens === "string" ? record.opens : null;
+    const closes = typeof record.closes === "string" ? record.closes : null;
+    days.set(day, { day, opens, closes });
+  }
+  return [...days.values()].sort((a, b) => a.day - b.day);
 }
 
 function text(value: unknown): string | null {
@@ -100,6 +133,10 @@ export async function loadMarketplaceLocation(
       isListed: row.is_listed === true,
       isActive: row.is_active !== false,
       description: typeof row.marketplace_description === "string" ? row.marketplace_description : "",
+      phone: text(row.marketplace_phone),
+      website: text(row.marketplace_website),
+      instagram: text(row.marketplace_instagram),
+      openingHours: openingHours(row.marketplace_opening_hours),
       geo: row.geo_location,
     },
     error: null,
@@ -232,11 +269,19 @@ export async function updateMarketplaceProfile(
     street: string | null;
     postalCode: string | null;
     city: string | null;
+    phone: string | null;
+    website: string | null;
+    instagram: string | null;
+    openingHours: MarketplaceOpeningHour[];
     geoEwkt: string | null;
   },
 ): Promise<{ error: DbError }> {
   const patch: Record<string, unknown> = {
     marketplace_description: input.description,
+    marketplace_phone: input.phone,
+    marketplace_website: input.website,
+    marketplace_instagram: input.instagram,
+    marketplace_opening_hours: input.openingHours,
     street: input.street,
     postal_code: input.postalCode,
     city: input.city,

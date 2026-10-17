@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -12,10 +13,8 @@ import {
 } from "lucide-react";
 import {
   minimumServicePrice,
-  type SalonCard,
   type SalonProfile,
 } from "@/data/marketplace";
-import { SalonCard as SalonCardComponent } from "@/components/marketplace/SalonCard";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { getCopy } from "@/lib/copy";
 import {
@@ -30,7 +29,7 @@ import {
 type SalonProfileViewProps = {
   locale: Locale;
   salon: SalonProfile;
-  nearby: SalonCard[];
+  nearby?: ReactNode;
 };
 
 function treatmentHref(locale: Locale, treatment: TreatmentKey): string {
@@ -422,18 +421,7 @@ export function SalonProfileView({
           </aside>
         </div>
 
-        {nearby.length > 0 ? (
-          <section className="mt-24 border-t border-line pt-16 md:mt-32">
-            <h2 className="text-[32px] font-semibold tracking-tight">
-              {copy.salon.nearby}
-            </h2>
-            <div className="mt-8 grid gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
-              {nearby.slice(0, 3).map((item) => (
-                <SalonCardComponent key={item.id} locale={locale} salon={item} />
-              ))}
-            </div>
-          </section>
-        ) : null}
+        {nearby}
       </div>
     </>
   );

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import {
   cityKeyFromName,
   cityNames,
@@ -158,7 +159,9 @@ type LocationResponse = {
     phone?: string | null;
     website?: string | null;
     instagram?: string | null;
-    openingHours?: OpeningHours[];
+    openingHours?: unknown;
+    rating?: number | string | null;
+    reviewCount?: number | null;
   };
   categories: Array<{ id: string; name: string; slug: string }>;
   services: Array<{
@@ -561,6 +564,64 @@ function countryCodeFromValue(
   return "BE";
 }
 
+const CLOCK_TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function parseOpeningHours(value: unknown): OpeningHours[] {
+  let parsed = value;
+  if (typeof parsed === "string") {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(parsed)) return [];
+  const days = new Map<number, OpeningHours>();
+  for (const item of parsed) {
+    if (!item || typeof item !== "object") continue;
+    const record = item as Record<string, unknown>;
+    const day = typeof record.day === "number" ? record.day : Number(record.day);
+    if (!Number.isInteger(day) || day < 1 || day > 7) continue;
+    const opens = typeof record.opens === "string" ? record.opens : null;
+    const closes = typeof record.closes === "string" ? record.closes : null;
+    if (opens === null && closes === null) {
+      days.set(day, { day, opens: null, closes: null });
+      continue;
+    }
+    if (opens && closes && CLOCK_TIME.test(opens) && CLOCK_TIME.test(closes) && opens < closes) {
+      days.set(day, { day, opens, closes });
+    }
+  }
+  return [...days.values()].sort((left, right) => left.day - right.day);
+}
+
+function publicPhone(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed || trimmed.length > 40) return null;
+  return trimmed;
+}
+
+function publicHttpUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function marketplaceImage(value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (value.startsWith("/") || value.startsWith("http://") || value.startsWith("https://")) {
+    return safeImageUrl(value);
+  }
+  if (!SUPABASE_URL || value.includes("..")) return null;
+  const encoded = value.split("/").map((part) => encodeURIComponent(part)).join("/");
+  return `${SUPABASE_URL}/storage/v1/object/public/marketplace/${encoded}`;
+}
+
 function safeImageUrl(value: string | null | undefined): string | null {
   if (!value) return null;
   if (value.startsWith("/")) return value;
@@ -758,7 +819,90 @@ export async function getSalons({
   }
 }
 
-export async function getSalonBySlug(
+async function readMarketplaceLocation(
+  slug: string,
+  locale: Locale,
+): Promise<LocationResponse | null> {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/marketplace_location`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      p_slug: slug,
+      p_locale: localeConfig[locale].language,
+    }),
+    next: { revalidate: 300 },
+  });
+  if (!response.ok) {
+    throw new MarketplaceApiError(
+      `Marketplace location returned ${response.status}.`,
+      response.status,
+    );
+  }
+  return (await response.json()) as LocationResponse | null;
+}
+
+function profileFromLocation(profile: LocationResponse): SalonProfile {
+  const item = profile.location;
+  const images = [
+    ...new Set(
+      [...(item.images ?? []), item.imageUrl]
+        .map((image) => marketplaceImage(image))
+        .filter((image): image is string => Boolean(image)),
+    ),
+  ];
+  const city = item.city?.trim() || "";
+  const rating = item.rating == null ? null : Number(item.rating);
+
+  return {
+    id: item.locationId,
+    companyId: item.companyId,
+    name: item.name,
+    slug: item.slug,
+    description: item.description?.trim() ?? "",
+    imageUrl: images[0] ?? null,
+    images,
+    street: item.street,
+    postalCode: item.postalCode,
+    city,
+    cityKey: cityKeyFromName(city),
+    countryCode: countryCodeFromValue(item.country),
+    latitude: item.lat,
+    longitude: item.lng,
+    timezone: item.timezone,
+    categories: profile.categories,
+    services: profile.services.map((serviceItem) => ({
+      id: serviceItem.serviceId,
+      name: serviceItem.name,
+      description: serviceItem.description,
+      treatmentKeys: treatmentKeysForName(serviceItem.name),
+      variants: serviceItem.variants.map((variant) => ({
+        id: variant.serviceVariantId,
+        name: variant.name,
+        price: Number(variant.price),
+        durationMinutes: Number(variant.durationMinutes),
+        currency: variant.currency ?? "EUR",
+      })),
+    })),
+    team: profile.team ?? [],
+    openingHours: parseOpeningHours(item.openingHours),
+    reviews: [],
+    rating: rating != null && Number.isFinite(rating) ? rating : null,
+    reviewCount: item.reviewCount ?? 0,
+    likeCount: item.likeCount,
+    phone: publicPhone(item.phone),
+    website: publicHttpUrl(item.website),
+    instagram: publicHttpUrl(item.instagram),
+    updatedAt: new Date().toISOString(),
+    source: "live",
+  };
+}
+
+export const getSalonBySlug = cache(async function getSalonBySlug(
   slug: string,
   locale: Locale = "nl-be",
 ): Promise<SalonProfile | null> {
@@ -767,76 +911,16 @@ export async function getSalonBySlug(
   }
 
   try {
-    const profile = await invokeEdgeFunction<LocationResponse>(
-      "marketplace-location-get",
-      { slug, locale: localeConfig[locale].language },
-    );
-    const item = profile.location;
-    const search = await invokeEdgeFunction<SearchResponse>(
-      "marketplace-search",
-      { q: item.name, limit: 12 },
-    ).catch(() => ({ items: [], nextCursor: null }));
-    const searchItem = search.items.find((candidate) => candidate.slug === slug);
-    const images = [
-      ...new Set(
-        [...(item.images ?? []), item.imageUrl].filter(
-          (image): image is string => Boolean(image),
-        ),
-      ),
-    ]
-      .map((image) => safeImageUrl(image))
-      .filter((image): image is string => Boolean(image));
-    const city = item.city?.trim() || "";
-
-    return {
-      id: item.locationId,
-      companyId: item.companyId,
-      name: item.name,
-      slug: item.slug,
-      description: item.description?.trim() ?? "",
-      imageUrl: images[0] ?? null,
-      images,
-      street: item.street,
-      postalCode: item.postalCode,
-      city,
-      cityKey: cityKeyFromName(city),
-      countryCode: countryCodeFromValue(item.country),
-      latitude: item.lat,
-      longitude: item.lng,
-      timezone: item.timezone,
-      categories: profile.categories,
-      services: profile.services.map((serviceItem) => ({
-        id: serviceItem.serviceId,
-        name: serviceItem.name,
-        description: serviceItem.description,
-        treatmentKeys: treatmentKeysForName(serviceItem.name),
-        variants: serviceItem.variants.map((variant) => ({
-          id: variant.serviceVariantId,
-          name: variant.name,
-          price: Number(variant.price),
-          durationMinutes: Number(variant.durationMinutes),
-          currency: variant.currency ?? "EUR",
-        })),
-      })),
-      team: profile.team ?? [],
-      openingHours: item.openingHours ?? [],
-      reviews: [],
-      rating: searchItem?.rating ?? null,
-      reviewCount: searchItem?.reviewCount ?? 0,
-      likeCount: item.likeCount,
-      phone: item.phone ?? null,
-      website: item.website ?? null,
-      instagram: item.instagram ?? null,
-      updatedAt: new Date().toISOString(),
-      source: "live",
-    };
+    const profile = await readMarketplaceLocation(slug, locale);
+    if (!profile?.location) return null;
+    return profileFromLocation(profile);
   } catch (error) {
     if (error instanceof MarketplaceApiError && error.status === 404) {
       return null;
     }
     return profileFromProjection(slug);
   }
-}
+});
 
 async function profileFromProjection(slug: string): Promise<SalonProfile | null> {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
@@ -1024,7 +1108,7 @@ export function profileMatchesLocale(
 
 export function minimumServicePrice(salon: SalonProfile): number | null {
   const prices = salon.services.flatMap((item) =>
-    item.variants.map((variant) => variant.price),
+    item.variants.map((variant) => variant.price).filter((price) => price > 0),
   );
   return prices.length > 0 ? Math.min(...prices) : null;
 }

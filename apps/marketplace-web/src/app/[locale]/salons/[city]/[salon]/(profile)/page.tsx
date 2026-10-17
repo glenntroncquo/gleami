@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { notFound, permanentRedirect } from "next/navigation";
+import { NearbySalons, NearbySalonsSkeleton } from "@/components/marketplace/NearbySalons";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { SalonProfileView } from "@/components/marketplace/SalonProfileView";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import {
   getSalonBySlug,
-  getSalons,
   isSalonIndexable,
   localesForCountry,
   profileMatchesLocale,
@@ -123,10 +124,6 @@ export default async function SalonPage({ params }: Props) {
     city,
     salon: salon.slug,
   };
-  const nearby = (
-    await getSalons({ locale, city, limit: 6 })
-  ).filter((item) => item.slug !== salon.slug);
-
   return (
     <>
       <JsonLd
@@ -146,7 +143,15 @@ export default async function SalonPage({ params }: Props) {
         availableLocales={localesForCountry(salon.countryCode)}
       />
       <main id="main">
-        <SalonProfileView locale={locale} salon={salon} nearby={nearby} />
+        <SalonProfileView
+          locale={locale}
+          salon={salon}
+          nearby={
+            <Suspense fallback={<NearbySalonsSkeleton />}>
+              <NearbySalons locale={locale} city={city} slug={salon.slug} />
+            </Suspense>
+          }
+        />
       </main>
       <SiteFooter
         locale={locale}

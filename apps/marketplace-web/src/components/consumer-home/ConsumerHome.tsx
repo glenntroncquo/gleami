@@ -69,6 +69,7 @@ export function ConsumerHome({
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [categories, setCategories] = useState<MarketplaceCategory[]>([]);
+  const [categoriesReady, setCategoriesReady] = useState(false);
   const [salons, setSalons] = useState<SearchSalon[]>([]);
   const [favorites, setFavorites] = useState<HomeSalon[]>([]);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
@@ -93,12 +94,16 @@ export function ConsumerHome({
 
   useEffect(() => {
     let cancelled = false;
+    setCategoriesReady(false);
     void listCategories(locale.slice(0, 2))
       .then((rows) => {
         if (!cancelled) setCategories(rows);
       })
       .catch(() => {
         if (!cancelled) setCategories([]);
+      })
+      .finally(() => {
+        if (!cancelled) setCategoriesReady(true);
       });
     return () => {
       cancelled = true;
@@ -210,7 +215,7 @@ export function ConsumerHome({
     <div className={`${figtree.className} min-h-screen w-full bg-page text-navy`}>
       <Header homeHref={homeHref} businessHref={businessHref} />
       <main id="main">
-        <Hero placeLabel={placeLabel} tiles={cards.slice(0, 5)} onSearch={handleSearch} />
+        <Hero placeLabel={placeLabel} onSearch={handleSearch} />
         <ExploreSection
           venues={cards}
           favorites={favorites}
@@ -222,6 +227,7 @@ export function ConsumerHome({
           categories={pills}
           seeAllHref={routeFor(locale, { kind: "salons" })}
           loading={loading}
+          categoriesReady={categoriesReady}
           onCategoryChange={setCategoryId}
           onClearQuery={() => setQuery("")}
           onToggleFavorite={toggleFavorite}

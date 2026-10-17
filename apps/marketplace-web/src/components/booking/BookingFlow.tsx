@@ -47,6 +47,53 @@ function stepPath(base: string, step: Step): string {
   return `${base}/boeken/bevestiging`;
 }
 
+export function BookingSkeleton() {
+  return (
+    <div className="mx-auto max-w-3xl px-5 py-10" aria-busy="true">
+      <span className="sr-only">Loading</span>
+      <div className="h-4 w-28 rounded-full bg-navy/10 motion-safe:animate-pulse" aria-hidden="true" />
+      <div className="mt-8 h-9 w-64 max-w-full rounded-full bg-navy/10 motion-safe:animate-pulse" aria-hidden="true" />
+      <div className="mt-6 flex gap-2" aria-hidden="true">
+        <div className="h-10 w-28 rounded-full bg-navy/10 motion-safe:animate-pulse" />
+        <div className="h-10 w-24 rounded-full bg-navy/10 motion-safe:animate-pulse" />
+        <div className="h-10 w-32 rounded-full bg-navy/10 motion-safe:animate-pulse" />
+      </div>
+      <div className="mt-6 divide-y divide-line overflow-hidden rounded-3xl bg-white px-5 ring-1 ring-line" aria-hidden="true">
+        {Array.from({ length: 5 }, (_, index) => (
+          <div key={index} className="flex items-center justify-between gap-4 py-4">
+            <div>
+              <div className="h-4 w-40 rounded-full bg-navy/10 motion-safe:animate-pulse" />
+              <div className="mt-2 h-3 w-24 rounded-full bg-navy/10 motion-safe:animate-pulse" />
+            </div>
+            <div className="h-9 w-16 rounded-full bg-navy/10 motion-safe:animate-pulse" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SlotSkeleton() {
+  return (
+    <>
+      {Array.from({ length: 8 }, (_, index) => (
+        <div key={index} className="h-11 rounded-xl bg-navy/10 motion-safe:animate-pulse" aria-hidden="true" />
+      ))}
+    </>
+  );
+}
+
+function DetailsSkeleton() {
+  return (
+    <div className="mt-6 space-y-3" aria-busy="true">
+      <span className="sr-only">Loading</span>
+      <div className="h-4 w-16 rounded-full bg-navy/10 motion-safe:animate-pulse" aria-hidden="true" />
+      <div className="h-12 w-full rounded-xl bg-navy/10 motion-safe:animate-pulse" aria-hidden="true" />
+      <div className="h-12 w-32 rounded-full bg-navy/10 motion-safe:animate-pulse" aria-hidden="true" />
+    </div>
+  );
+}
+
 function money(value: number, locale: string): string {
   return new Intl.NumberFormat(locale, {
     style: "currency",
@@ -86,7 +133,7 @@ export function BookingFlow({ locale, city, slug, step }: BookingFlowProps) {
     return <p className="mx-auto max-w-xl px-5 py-16 text-muted">{error}</p>;
   }
   if (!salon || !draft) {
-    return <p className="mx-auto max-w-xl px-5 py-16 text-muted">Loading…</p>;
+    return <BookingSkeleton />;
   }
 
   const base = salonPath(locale, city, salon.slug);
@@ -321,8 +368,9 @@ function TimeStep({
           );
         })}
       </div>
-      <div className="mt-6 grid grid-cols-3 gap-2 sm:grid-cols-4">
-        {loading ? <p className="text-sm text-muted">Loading…</p> : null}
+      {loading ? <span className="sr-only">Loading times</span> : null}
+      <div className="mt-6 grid grid-cols-3 gap-2 sm:grid-cols-4" aria-busy={loading}>
+        {loading ? <SlotSkeleton /> : null}
         {slots.map((slot) => {
           const chosen = draft.slot?.time === slot.time && draft.dayKey === dayKey;
           return (
@@ -444,7 +492,7 @@ function DetailsStep({
     <section className="mt-6">
       <h1 className="text-3xl font-semibold tracking-tight">Bevestig</h1>
       <Summary locale={locale} items={draft.items} slotLabel={draft.slot?.time ?? ""} />
-      {loading ? <p className="mt-6 text-sm text-muted">Loading…</p> : null}
+      {loading ? <DetailsSkeleton /> : null}
       {!loading && !user && mode === "email" ? (
         <form
           className="mt-6 space-y-3"

@@ -17,6 +17,7 @@ type ExploreSectionProps = {
   categories: Array<{ id: string | null; name: string }>;
   seeAllHref: string;
   loading: boolean;
+  categoriesReady: boolean;
   onCategoryChange: (id: string | null) => void;
   onClearQuery: () => void;
   onToggleFavorite: (id: string) => void;
@@ -33,12 +34,18 @@ export function ExploreSection({
   categories,
   seeAllHref,
   loading,
+  categoriesReady,
   onCategoryChange,
   onClearQuery,
   onToggleFavorite,
 }: ExploreSectionProps) {
   return (
-    <section id="explore" aria-labelledby="explore-title" className="mx-auto max-w-7xl scroll-mt-24 px-5 pb-24 md:px-8 lg:pb-32">
+    <section
+      id="explore"
+      aria-labelledby="explore-title"
+      aria-busy={loading || !categoriesReady}
+      className="mx-auto max-w-7xl scroll-mt-24 px-5 pb-24 md:px-8 lg:pb-32"
+    >
       {favorites.length > 0 ? (
         <div className="mb-12">
           <h2 className="text-xl font-semibold tracking-tight text-navy">Favorieten</h2>
@@ -64,9 +71,14 @@ export function ExploreSection({
             {query ? `Results for “${query}”` : "Recommended near you"}
           </h2>
           <p className="mt-2 text-ink-muted">
-            {loading
-              ? "Looking for salons…"
-              : `${venues.length} ${venues.length === 1 ? "salon" : "salons"} near ${placeLabel}`}
+            {loading && venues.length === 0 ? (
+              <>
+                <span className="sr-only">Loading salons</span>
+                <span className="inline-block h-4 w-40 rounded-full bg-navy/10 motion-safe:animate-pulse" />
+              </>
+            ) : (
+              `${venues.length} ${venues.length === 1 ? "salon" : "salons"} near ${placeLabel}`
+            )}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -87,11 +99,17 @@ export function ExploreSection({
       </div>
 
       <div className="mt-8">
-        <CategoryPills categories={categories} active={categoryId} onChange={onCategoryChange} />
+        {categoriesReady ? (
+          <CategoryPills categories={categories} active={categoryId} onChange={onCategoryChange} />
+        ) : (
+          <CategoryPillsSkeleton />
+        )}
       </div>
 
       <div className="mt-10">
-        {venues.length === 0 && !loading ? (
+        {loading && venues.length === 0 ? (
+          <SalonGridSkeleton />
+        ) : venues.length === 0 ? (
           <div className="rounded-3xl bg-surface px-6 py-16 text-center">
             <p className="text-lg font-semibold text-navy">Nothing matches that just yet</p>
             <p className="mx-auto mt-2 max-w-sm text-ink-muted">
@@ -136,5 +154,31 @@ export function ExploreSection({
         )}
       </div>
     </section>
+  );
+}
+
+function CategoryPillsSkeleton() {
+  return (
+    <div className="-mx-5 overflow-hidden px-5 md:mx-0 md:px-0" aria-hidden="true">
+      <div className="flex w-max gap-2">
+        {["w-32", "w-28", "w-36", "w-24", "w-32", "w-28"].map((width, index) => (
+          <span key={index} className={`h-11 rounded-full bg-navy/10 motion-safe:animate-pulse ${width}`} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SalonGridSkeleton() {
+  return (
+    <div className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3" aria-hidden="true">
+      {Array.from({ length: 6 }, (_, index) => (
+        <div key={index} className="flex flex-col">
+          <div className="aspect-[4/3] w-full rounded-2xl bg-navy/10 motion-safe:animate-pulse" />
+          <div className="mt-4 h-4 w-2/3 rounded-full bg-navy/10 motion-safe:animate-pulse" />
+          <div className="mt-2 h-3.5 w-1/2 rounded-full bg-navy/10 motion-safe:animate-pulse" />
+        </div>
+      ))}
+    </div>
   );
 }

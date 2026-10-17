@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { BookingFlow } from "@/components/booking/BookingFlow";
+import { BookingFlow, BookingSkeleton } from "@/components/booking/BookingFlow";
 import { isLocale } from "@/lib/i18n";
 
 type Props = {
@@ -12,7 +12,7 @@ export default async function BookingServicesPage({ params }: Props) {
   if (!isLocale(locale)) notFound();
 
   return (
-    <Suspense fallback={<p className="mx-auto max-w-xl px-5 py-16 text-muted">Loading…</p>}>
+    <Suspense fallback={<BookingSkeleton />}>
       <BookingFlow locale={locale} city={city} slug={salon} step="services" />
     </Suspense>
   );

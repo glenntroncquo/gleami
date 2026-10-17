@@ -227,18 +227,30 @@ export async function locationBySlug(
   slug: string,
   locale: string,
 ): Promise<PublicLocation> {
-  const { data, error } = await client().functions.invoke<{
-    location: {
+  const { data, error } = await client().rpc("marketplace_location", {
+    p_slug: slug,
+    p_locale: locale.slice(0, 2),
+  });
+  const profile = data as {
+    location?: {
       locationId: string;
       companyId: string;
       name: string;
       slug: string;
       city: string | null;
     };
-    services: PublicLocation["services"];
-  }>("marketplace-location-get", { body: { slug, locale } });
-  if (!error && data?.location) {
-    return { ...data.location, services: data.services ?? [], priced: true };
+    services?: PublicLocation["services"];
+  } | null;
+  if (!error && profile?.location) {
+    return {
+      locationId: profile.location.locationId,
+      companyId: profile.location.companyId,
+      name: profile.location.name,
+      slug: profile.location.slug,
+      city: profile.location.city,
+      services: profile.services ?? [],
+      priced: true,
+    };
   }
   return locationFromProjection(slug);
 }

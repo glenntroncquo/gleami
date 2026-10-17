@@ -67,12 +67,7 @@ export function SalonProfileView({
       : language === "de"
         ? `${salon.name} bietet professionelle Beauty-Behandlungen in ${salon.city}. Entdecke Leistungen und Preise.`
         : `${salon.name} biedt professionele beautybehandelingen in ${salon.city}. Bekijk het aanbod en de prijzen hieronder.`;
-  const bookingOrigin =
-    process.env.NEXT_PUBLIC_BOOKING_URL ?? "https://booking.salonify.co";
-  const bookingUrl =
-    salon.source === "live"
-      ? `${bookingOrigin.replace(/\/$/, "")}/${salon.companyId}/${salon.slug}`
-      : `${routeFor(locale, salonRoute)}#services`;
+  const bookingUrl = `${routeFor(locale, salonRoute)}/boeken`;
 
   return (
     <>

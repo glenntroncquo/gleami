@@ -155,6 +155,8 @@
       "payment": "Betaling"
     },
     "title": "Nieuwe afspraak",
+    "edit": "Bewerken",
+    "editTitle": "Afspraak bewerken",
     "cancel": "Annuleren",
     "save": "Opslaan",
     "client": "Klant",
@@ -198,6 +200,7 @@
     "errorNotAvailable": "Deze medewerker is op dit tijdstip niet beschikbaar.",
     "errorInvalidSelection": "Ongeldige medewerker, dienst of variant geselecteerd.",
     "errorGeneric": "Kan afspraak niet aanmaken. Probeer het opnieuw.",
+    "errorUpdate": "Kan afspraak niet bijwerken. Probeer het opnieuw.",
     "done": "Klaar",
     "cancelAppointment": "Afspraak annuleren",
     "cancelConfirmTitle": "Deze afspraak annuleren?",

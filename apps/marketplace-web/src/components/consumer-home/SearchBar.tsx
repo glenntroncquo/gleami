@@ -4,12 +4,12 @@ import { useState, type ReactNode } from "react";
 import { SearchIcon } from "lucide-react";
 
 type SearchBarProps = {
+  placeLabel: string;
   onSearch: (query: string) => void;
 };
 
-export function SearchBar({ onSearch }: SearchBarProps) {
+export function SearchBar({ placeLabel, onSearch }: SearchBarProps) {
   const [treatment, setTreatment] = useState("");
-  const [location, setLocation] = useState("London");
   const [when, setWhen] = useState("Any time");
 
   return (
@@ -34,8 +34,8 @@ export function SearchBar({ onSearch }: SearchBarProps) {
       <Field label="Where" htmlFor="location" className="md:flex-1">
         <input
           id="location"
-          value={location}
-          onChange={(event) => setLocation(event.target.value)}
+          value={placeLabel}
+          readOnly
           className="w-full bg-transparent text-[15px] text-navy placeholder:text-ink-faint focus:outline-none"
         />
       </Field>

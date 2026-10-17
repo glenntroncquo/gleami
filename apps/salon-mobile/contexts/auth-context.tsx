@@ -15,6 +15,7 @@ interface AuthContextType {
   companyIds: string[];
   permissionKeys: readonly PermissionKey[];
   hasPermission: (perm: PermissionKey) => boolean;
+  setCompanyId: (companyId: string) => void;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
@@ -113,6 +114,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error?.message ?? null };
   };
 
+  const selectCompany = React.useCallback((next: string) => {
+    setCompanyId(next);
+    void writePreferredCompanyId(next);
+  }, []);
+
   const signOut = async () => {
     clearCalendarWarm();
     await clearSessionPreferences();
@@ -128,10 +134,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       companyIds,
       permissionKeys,
       hasPermission: (perm: PermissionKey) => permissionKeys.includes(perm),
+      setCompanyId: selectCompany,
       signIn,
       signOut,
     }),
-    [session, sessionLoading, membershipReady, companyId, companyIds, permissionKeys]
+    [session, sessionLoading, membershipReady, companyId, companyIds, permissionKeys, selectCompany]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

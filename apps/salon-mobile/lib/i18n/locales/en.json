@@ -155,6 +155,8 @@
       "payment": "Payment"
     },
     "title": "New appointment",
+    "edit": "Edit",
+    "editTitle": "Edit appointment",
     "cancel": "Cancel",
     "save": "Save",
     "client": "Client",
@@ -198,6 +200,7 @@
     "errorNotAvailable": "This staff member isn't available at this time.",
     "errorInvalidSelection": "Invalid staff, service, or variant selected.",
     "errorGeneric": "Failed to create appointment. Please try again.",
+    "errorUpdate": "Failed to update appointment. Please try again.",
     "done": "Done",
     "cancelAppointment": "Cancel appointment",
     "cancelConfirmTitle": "Cancel this appointment?",

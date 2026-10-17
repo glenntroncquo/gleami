@@ -1,8 +1,8 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from '@/contexts/auth-context';
 import {
-  hydrateLocationsForCompany,
+  hydrateAccessibleLocations,
   pickLocationId,
   type ShopLocation,
 } from '@/lib/api/memberships';
@@ -27,60 +27,76 @@ export function useLocation() {
 }
 
 export function LocationProvider({ children }: { children: React.ReactNode }) {
-  const { companyId, loading: authLoading } = useAuth();
+  const { companyId, loading: authLoading, user, setCompanyId } = useAuth();
   const [locations, setLocations] = useState<ShopLocation[]>([]);
   const [locationId, setLocationIdState] = useState<string | null>(null);
-  const [settledCompanyId, setSettledCompanyId] = useState<string | null>(null);
-  // True in the same render a company id appears, before the fetch effect runs.
-  const loading = authLoading || (companyId !== null && settledCompanyId !== companyId);
+  const [settledUserId, setSettledUserId] = useState<string | null>(null);
+  const userId = user?.id ?? null;
+  const companyIdRef = useRef(companyId);
+  companyIdRef.current = companyId;
+  // True until the signed-in user's locations have loaded.
+  const loading = authLoading || (userId !== null && settledUserId !== userId);
 
   useEffect(() => {
     if (authLoading) return;
-    if (!companyId) {
+    if (!userId) {
       setLocations([]);
       setLocationIdState(null);
-      setSettledCompanyId(null);
+      setSettledUserId(null);
       return;
     }
 
     let cancelled = false;
 
     (async () => {
-      const stored = await readPreferredLocationId(companyId);
+      const activeCompanyId = companyIdRef.current;
+      const stored = activeCompanyId ? await readPreferredLocationId(activeCompanyId) : null;
       if (!cancelled && stored) {
         setLocationIdState(stored);
       }
 
-      const nextLocations = await hydrateLocationsForCompany(companyId);
+      const nextLocations = await hydrateAccessibleLocations(userId);
       if (cancelled) return;
 
-      const picked = pickLocationId(nextLocations, stored);
+      const inCompany = activeCompanyId
+        ? nextLocations.filter((location) => location.company_id === activeCompanyId)
+        : [];
+      const picked = pickLocationId(inCompany.length > 0 ? inCompany : nextLocations, stored);
+      const pickedLocation = nextLocations.find((location) => location.id === picked);
+      const pickedCompanyId = pickedLocation?.company_id ?? activeCompanyId;
+
       setLocations(nextLocations);
       setLocationIdState(picked);
-      if (picked) {
-        void writePreferredLocationId(companyId, picked);
+      if (picked && pickedCompanyId) {
+        void writePreferredLocationId(pickedCompanyId, picked);
       }
-      setSettledCompanyId(companyId);
+      if (pickedCompanyId && pickedCompanyId !== companyIdRef.current) {
+        setCompanyId(pickedCompanyId);
+      }
+      setSettledUserId(userId);
     })().catch(() => {
       if (cancelled) return;
       setLocations([]);
       setLocationIdState((current) => current);
-      setSettledCompanyId(companyId);
+      setSettledUserId(userId);
     });
 
     return () => {
       cancelled = true;
     };
-  }, [authLoading, companyId]);
+  }, [authLoading, userId, setCompanyId]);
 
   const setLocationId = useCallback(
     (next: string) => {
       setLocationIdState(next);
-      if (companyId) {
-        void writePreferredLocationId(companyId, next);
+      const location = locations.find((row) => row.id === next);
+      const nextCompanyId = location?.company_id ?? companyId;
+      if (nextCompanyId) {
+        void writePreferredLocationId(nextCompanyId, next);
+        if (nextCompanyId !== companyId) setCompanyId(nextCompanyId);
       }
     },
-    [companyId]
+    [companyId, locations, setCompanyId]
   );
 
   const value = useMemo<LocationContextType>(

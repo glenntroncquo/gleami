@@ -91,6 +91,13 @@ export default function AppointmentDetailScreen() {
     load();
   }, [load]);
 
+  React.useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('calendarRefreshAppointments', () => {
+      load();
+    });
+    return () => subscription.remove();
+  }, [load]);
+
   const deletingNotes = React.useRef(new Set<string>());
   const handleDeleteNote = async (noteId: string) => {
     const clientId = event?.clientId;
@@ -396,12 +403,24 @@ export default function AppointmentDetailScreen() {
                 </View>
 
                 {!canceled ? (
-                  <Button
-                    label={t('appointment.cancelAppointment')}
-                    variant="destructive"
-                    onPress={handleCancel}
-                    loading={cancelling}
-                  />
+                  <>
+                    <Button
+                      label={t('appointment.edit')}
+                      variant="secondary"
+                      onPress={() =>
+                        router.push({
+                          pathname: '/appointment-new',
+                          params: { appointmentId: event.appointmentId },
+                        })
+                      }
+                    />
+                    <Button
+                      label={t('appointment.cancelAppointment')}
+                      variant="destructive"
+                      onPress={handleCancel}
+                      loading={cancelling}
+                    />
+                  </>
                 ) : null}
               </>
             ) : activeTab === 'client' ? (

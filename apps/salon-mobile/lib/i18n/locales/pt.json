@@ -153,6 +153,8 @@
       "payment": "Pagamento"
     },
     "title": "Novo agendamento",
+    "edit": "Editar",
+    "editTitle": "Editar agendamento",
     "cancel": "Cancelar",
     "save": "Salvar",
     "client": "Cliente",
@@ -196,6 +198,7 @@
     "errorNotAvailable": "Este funcionário não está disponível neste horário.",
     "errorInvalidSelection": "Funcionário, serviço ou variante inválidos.",
     "errorGeneric": "Falha ao criar agendamento. Tente novamente.",
+    "errorUpdate": "Falha ao atualizar o agendamento. Tente novamente.",
     "done": "Concluído",
     "cancelAppointment": "Cancelar agendamento",
     "cancelConfirmTitle": "Cancelar este agendamento?",

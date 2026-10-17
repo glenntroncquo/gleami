@@ -1,3 +1,4 @@
+import { locationsVisibleToUser } from '@/lib/api/location-access';
 import { supabase } from '@/lib/supabase';
 
 /** Live tables/RPCs exist; generated types in this repo predate memberships. */
@@ -106,23 +107,90 @@ export async function hydrateCompanyIds(jwtFallback: string[]): Promise<string[]
   return jwtFallback;
 }
 
-export async function hydrateLocationsForCompany(companyId: string): Promise<ShopLocation[]> {
-  try {
-    const locations = await withTimeout(fetchMyLocations(), null);
-    if (locations) {
-      return locations
-        .filter((location) => location.company_id === companyId && location.is_active)
-        .sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.name.localeCompare(b.name));
-    }
-  } catch {
-    // Fall through to a company-scoped location table read.
+const LOCATION_COLUMNS = 'id, company_id, name, image_url, is_active, is_primary';
+
+async function fetchLeaderCompanyIds(userId: string): Promise<string[]> {
+  const { data, error } = await live
+    .from('company_membership')
+    .select('company_id')
+    .eq('user_id', userId);
+  if (error) throw error;
+  return asStringIds(data);
+}
+
+async function fetchMemberLocationIds(userId: string): Promise<string[]> {
+  const { data, error } = await live
+    .from('location_membership')
+    .select('location_id, is_active')
+    .eq('user_id', userId)
+    .eq('is_active', true);
+  if (error) throw error;
+  if (!Array.isArray(data)) return [];
+  const ids: string[] = [];
+  for (const row of data) {
+    if (!row || typeof row !== 'object') continue;
+    const id = (row as { location_id?: unknown }).location_id;
+    if (typeof id === 'string' && id.length > 0) ids.push(id);
+  }
+  return [...new Set(ids)];
+}
+
+async function fetchLocationRows(filter: { companyIds?: string[]; locationIds?: string[] }): Promise<ShopLocation[]> {
+  let query = live.from('location').select(LOCATION_COLUMNS).eq('is_active', true);
+  if (filter.companyIds) query = query.in('company_id', filter.companyIds);
+  if (filter.locationIds) query = query.in('id', filter.locationIds);
+  const { data, error } = await query;
+  if (error) throw error;
+  return asLocations(data);
+}
+
+/**
+ * Locations the signed-in user can open.
+ * Company membership (owner/admin) includes every active shop of that company.
+ * Location membership includes only that shop.
+ */
+export async function hydrateAccessibleLocations(userId: string): Promise<ShopLocation[]> {
+  const [rpcLocations, leaderCompanyIds, memberLocationIds] = await Promise.all([
+    withTimeout(fetchMyLocations().catch(() => [] as ShopLocation[]), []),
+    withTimeout(fetchLeaderCompanyIds(userId).catch(() => [] as string[]), []),
+    withTimeout(fetchMemberLocationIds(userId).catch(() => [] as string[]), []),
+  ]);
+
+  const byId = new Map<string, ShopLocation>();
+  for (const row of rpcLocations ?? []) byId.set(row.id, row);
+
+  if ((leaderCompanyIds ?? []).length > 0) {
+    const companyRows = await withTimeout(fetchLocationRows({ companyIds: leaderCompanyIds ?? [] }).catch(() => []), []);
+    for (const row of companyRows ?? []) byId.set(row.id, row);
   }
 
-  const { data, error } = await live
+  const missingMemberIds = (memberLocationIds ?? []).filter((id) => !byId.has(id));
+  if (missingMemberIds.length > 0) {
+    const memberRows = await withTimeout(fetchLocationRows({ locationIds: missingMemberIds }).catch(() => []), []);
+    for (const row of memberRows ?? []) byId.set(row.id, row);
+  }
+
+  return locationsVisibleToUser({
+    locations: [...byId.values()],
+    leaderCompanyIds: leaderCompanyIds ?? [],
+    memberLocationIds: memberLocationIds ?? [],
+  });
+}
+
+export async function hydrateLocationsForCompany(companyId: string): Promise<ShopLocation[]> {
+  const { data } = await supabase.auth.getSession();
+  const userId = data.session?.user.id;
+  if (userId) {
+    const accessible = await hydrateAccessibleLocations(userId);
+    const forCompany = accessible.filter((location) => location.company_id === companyId);
+    if (forCompany.length > 0) return forCompany;
+  }
+
+  const { data: rows, error } = await live
     .from('location')
-    .select('id, company_id, name, image_url, is_active, is_primary')
+    .select(LOCATION_COLUMNS)
     .eq('company_id', companyId)
     .eq('is_active', true);
   if (error) throw error;
-  return asLocations(data).sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.name.localeCompare(b.name));
+  return asLocations(rows).sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.name.localeCompare(b.name));
 }

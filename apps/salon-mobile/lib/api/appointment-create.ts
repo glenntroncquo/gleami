@@ -1,5 +1,6 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 
+import { formatSalonWallClockTimestamp } from '@/components/calendar/date-utils';
 import { supabase } from '@/lib/supabase';
 import { ServiceVariantPhase } from '@/lib/api/services';
 
@@ -55,7 +56,7 @@ export async function createAppointment(payload: CreateAppointmentPayload): Prom
 
   const { data, error } = await supabase.functions.invoke('appointment-create-staff', {
     body: {
-      start: payload.start.toISOString(),
+      start: formatSalonWallClockTimestamp(payload.start),
       staffId: primaryStaffId,
       companyId: payload.companyId,
       locationId: payload.locationId,

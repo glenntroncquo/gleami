@@ -127,6 +127,21 @@ export function minutesBetweenWallClock(start: string, end: string): number {
 }
 
 /**
+ * Wall-clock timestamp for appointment.start.
+ * The column is timestamp without time zone, so the digits must be the salon clock.
+ * `Date.toISOString()` shifts them to UTC (9:30 in UTC+2 becomes 07:30).
+ */
+export function formatSalonWallClockTimestamp(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  const ss = String(date.getSeconds()).padStart(2, '0');
+  return `${y}-${m}-${d}T${hh}:${mm}:${ss}`;
+}
+
+/**
  * Builds the appointment `start`/`end` string format the backend still expects:
  * local wall-clock date/time parts with a literal "Z" suffix (not a real UTC conversion).
  */

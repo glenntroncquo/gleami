@@ -17,11 +17,12 @@ import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { createAppointment } from '@/lib/api/appointment-create';
-import { fetchStaff, StaffMember } from '@/lib/api/calendar';
+import { cartFromAppointment, updateAppointment } from '@/lib/api/appointment-update';
+import { fetchAppointmentById, fetchStaff, StaffMember } from '@/lib/api/calendar';
 import { ClientSearchResult } from '@/lib/api/clients';
 import { COLOR_MAP, mapTreatmentColorToEventColor } from '@/lib/treatment-colors';
 
-import { getMonthShortLabel } from '@/components/calendar/date-utils';
+import { getMonthShortLabel, parseSalonWallClock } from '@/components/calendar/date-utils';
 import { APPOINTMENT_DRAFT_EVENTS, CartItem, NewClientDraft } from '@/lib/appointment-draft';
 
 function formatDateForInput(date: Date) {
@@ -62,7 +63,8 @@ function clientDisplayName(first: string | null | undefined, last: string | null
 export default function NewAppointmentScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const params = useLocalSearchParams<{ date?: string; time?: string; staffId?: string }>();
+  const params = useLocalSearchParams<{ date?: string; time?: string; staffId?: string; appointmentId?: string }>();
+  const appointmentId = typeof params.appointmentId === 'string' ? params.appointmentId : undefined;
   const { companyId } = useAuth();
   const { locationId } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
@@ -80,9 +82,46 @@ export default function NewAppointmentScreen() {
   const [startDate, setStartDate] = React.useState<Date>(() => defaultStartDate(params.date, params.time));
 
   const [notes, setNotes] = React.useState('');
+  const [staffNotes, setStaffNotes] = React.useState<string | null>(null);
   const [notesOpen, setNotesOpen] = React.useState(false);
+  const [hydrating, setHydrating] = React.useState(Boolean(appointmentId));
   const [submitting, setSubmitting] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!appointmentId) return;
+    let cancelled = false;
+    setHydrating(true);
+    fetchAppointmentById(appointmentId)
+      .then((row) => {
+        if (cancelled || !row) return;
+        const items = cartFromAppointment(row);
+        setStartDate(parseSalonWallClock(row.start));
+        setNotes(row.notes ?? '');
+        setStaffNotes(row.staff_notes);
+        setNotesOpen(Boolean(row.notes));
+        setCart(items);
+        setStaffId(items[0]?.staffId ?? row.staff?.id ?? null);
+        if (row.client) {
+          setSelectedClient({
+            id: row.client.id,
+            first_name: row.client.first_name,
+            last_name: row.client.last_name,
+            email: row.client.email,
+          });
+          setNewClientDraft(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setErrorMessage(t('client.failedToLoad'));
+      })
+      .finally(() => {
+        if (!cancelled) setHydrating(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [appointmentId, t]);
 
   React.useEffect(() => {
     if (!companyId || !locationId) return;
@@ -162,7 +201,7 @@ export default function NewAppointmentScreen() {
   const firstNameValue = selectedClient?.first_name ?? newClientDraft?.firstName.trim() ?? '';
   const lastNameValue = selectedClient?.last_name ?? newClientDraft?.lastName.trim() ?? '';
   const hasClientIdentity = Boolean(selectedClient) || firstNameValue.length > 0;
-  const canSave = cart.length > 0 && Boolean(staffId) && emailValue.length > 0 && hasClientIdentity && !submitting;
+  const canSave = cart.length > 0 && Boolean(staffId) && emailValue.length > 0 && hasClientIdentity && !submitting && !hydrating;
 
   const selectedStaff = staffList.find((s) => s.id === staffId) ?? null;
   const staffName = selectedStaff
@@ -203,28 +242,48 @@ export default function NewAppointmentScreen() {
       return;
     }
 
+    if (appointmentId && !selectedClient?.id) {
+      setErrorMessage(t('appointment.validationMissingFields'));
+      return;
+    }
+
     setSubmitting(true);
     setErrorMessage(null);
     try {
-      const created = await createAppointment({
-        start: startDate,
-        companyId,
-        locationId,
-        clientId: selectedClient?.id,
-        segments: cart.map((item) => ({
-          serviceId: item.serviceId,
-          serviceVariantId: item.serviceVariantId,
-          staffId: item.staffId,
-          price: item.price,
-          phases: item.phases,
-          durationMinutes: item.durationMinutes,
-        })),
-        firstName: firstNameValue,
-        lastName: lastNameValue,
-        email: emailValue,
-        notes: notes.trim(),
-      });
-      DeviceEventEmitter.emit('calendarRefreshAppointments', { appointmentId: created.id });
+      if (appointmentId && selectedClient) {
+        await updateAppointment({
+          appointmentId,
+          companyId,
+          locationId,
+          clientId: selectedClient.id,
+          email: emailValue,
+          start: startDate,
+          notes: notes.trim(),
+          staffNotes,
+          segments: cart,
+        });
+        DeviceEventEmitter.emit('calendarRefreshAppointments', { appointmentId });
+      } else {
+        const created = await createAppointment({
+          start: startDate,
+          companyId,
+          locationId,
+          clientId: selectedClient?.id,
+          segments: cart.map((item) => ({
+            serviceId: item.serviceId,
+            serviceVariantId: item.serviceVariantId,
+            staffId: item.staffId,
+            price: item.price,
+            phases: item.phases,
+            durationMinutes: item.durationMinutes,
+          })),
+          firstName: firstNameValue,
+          lastName: lastNameValue,
+          email: emailValue,
+          notes: notes.trim(),
+        });
+        DeviceEventEmitter.emit('calendarRefreshAppointments', { appointmentId: created.id });
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (err) {
@@ -237,7 +296,7 @@ export default function NewAppointmentScreen() {
       } else if (message.includes('foreign key') || message.includes('constraint')) {
         setErrorMessage(t('appointment.errorInvalidSelection'));
       } else {
-        setErrorMessage(t('appointment.errorGeneric'));
+        setErrorMessage(appointmentId ? t('appointment.errorUpdate') : t('appointment.errorGeneric'));
       }
     } finally {
       setSubmitting(false);
@@ -254,6 +313,8 @@ export default function NewAppointmentScreen() {
     notes,
     startDate,
     selectedClient,
+    staffNotes,
+    appointmentId,
     router,
     t,
   ]);
@@ -345,7 +406,7 @@ export default function NewAppointmentScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: t('appointment.title'),
+          title: appointmentId ? t('appointment.editTitle') : t('appointment.title'),
           unstable_headerLeftItems: ({ tintColor }) => [
             {
               type: 'button',
@@ -364,6 +425,9 @@ export default function NewAppointmentScreen() {
         </View>
       ) : null}
 
+      {hydrating ? (
+        <RowListSkeleton count={4} />
+      ) : (
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.slotCard}>
           {Platform.OS === 'web' ? (
@@ -482,6 +546,7 @@ export default function NewAppointmentScreen() {
           </Pressable>
         )}
       </ScrollView>
+      )}
       <FormFooter>
         <Button
           label={t('appointment.save')}

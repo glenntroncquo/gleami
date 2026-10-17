@@ -834,8 +834,80 @@ export async function getSalonBySlug(
     if (error instanceof MarketplaceApiError && error.status === 404) {
       return null;
     }
-    throw error;
+    return profileFromProjection(slug);
   }
+}
+
+async function profileFromProjection(slug: string): Promise<SalonProfile | null> {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+  const fields = [
+    "location_id",
+    "company_id",
+    "name",
+    "slug",
+    "image_url",
+    "city",
+    "address",
+    "treatments",
+    "rating",
+    "review_count",
+    "like_count",
+  ].join(",");
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/marketplace_search_location?select=${fields}&slug=eq.${encodeURIComponent(slug)}&limit=1`,
+    {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      next: { revalidate: 300 },
+    },
+  );
+  if (!response.ok) return null;
+  const rows = (await response.json()) as ProjectionRestRow[];
+  const row = rows[0];
+  if (!row) return null;
+  const city = row.city?.trim() || "";
+  const rating =
+    row.rating == null || !Number.isFinite(Number(row.rating))
+      ? null
+      : Number(row.rating);
+  return {
+    id: row.location_id,
+    companyId: row.company_id,
+    name: row.name,
+    slug: row.slug,
+    description: "",
+    imageUrl: safeImageUrl(row.image_url),
+    images: [],
+    street: row.address,
+    postalCode: null,
+    city,
+    cityKey: cityKeyFromName(city),
+    countryCode: "BE",
+    latitude: null,
+    longitude: null,
+    timezone: "Europe/Brussels",
+    categories: [],
+    services: (row.treatments ?? []).map((treatment) => ({
+      id: treatment.serviceId,
+      name: treatment.name,
+      description: null,
+      treatmentKeys: treatmentKeysForName(treatment.name),
+      variants: [],
+    })),
+    team: [],
+    openingHours: [],
+    reviews: [],
+    rating,
+    reviewCount: row.review_count ?? 0,
+    likeCount: row.like_count ?? 0,
+    phone: null,
+    website: null,
+    instagram: null,
+    updatedAt: new Date().toISOString(),
+    source: "live",
+  };
 }
 
 export async function getAllPublishedSalonCards(): Promise<SalonCard[]> {

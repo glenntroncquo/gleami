@@ -35,6 +35,7 @@ export default async function LocaleHomePage({ params }: Props) {
         data={breadcrumbJsonLd(locale, [{ name: "Gleami", route }])}
       />
       <ConsumerHome
+        locale={locale}
         homeHref={routeFor(locale, { kind: "home" })}
         businessHref={routeFor(locale, { kind: "business" })}
       />

@@ -29,6 +29,9 @@ export const pt = {
     emptyQueryTitle: 'Não há salões para esta pesquisa',
     emptyQueryBody: 'Tenta outro nome ou tratamento.',
     categoriesError: 'Não foi possível carregar as categorias.',
+    closeMapCard: 'Fechar cartão do salão',
+    review: '{{count}} avaliação',
+    reviews: '{{count}} avaliações',
   },
   availability: {
     today: 'Disponível hoje',

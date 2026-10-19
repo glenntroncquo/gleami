@@ -3,12 +3,13 @@
 type CategoryPillsProps = {
   categories: Array<{ id: string | null; name: string }>;
   active: string | null;
+  label: string;
   onChange: (id: string | null) => void;
 };
 
-export function CategoryPills({ categories, active, onChange }: CategoryPillsProps) {
+export function CategoryPills({ categories, active, label, onChange }: CategoryPillsProps) {
   return (
-    <div className="-mx-5 overflow-x-auto px-5 md:mx-0 md:px-0" role="group" aria-label="Filter by category">
+    <div className="-mx-5 overflow-x-auto px-5 md:mx-0 md:px-0" role="group" aria-label={label}>
       <div className="flex w-max gap-2">
         {categories.map((category) => {
           const isActive = category.id === active;

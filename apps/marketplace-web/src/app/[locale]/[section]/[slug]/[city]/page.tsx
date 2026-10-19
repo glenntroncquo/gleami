@@ -34,6 +34,7 @@ const LOCAL_PAGE_MINIMUM_SALONS = 3;
 const launchCities: Record<Locale, CityKey[]> = {
   "nl-be": ["ghent", "antwerp", "brussels"],
   "fr-be": ["ghent", "antwerp", "brussels"],
+  en: ["ghent", "antwerp", "brussels"],
   "nl-nl": ["amsterdam"],
   "fr-fr": ["paris"],
   "de-de": ["cologne"],

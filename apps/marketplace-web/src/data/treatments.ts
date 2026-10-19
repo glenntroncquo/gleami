@@ -41,6 +41,15 @@ export const treatmentEditorial: Record<
       goodToKnow:
         "Frage nach, ob Tönung, Styling und Pflege im angezeigten Preis enthalten sind.",
     },
+    en: {
+      summary:
+        "Balayage is a freehand colour technique that paints lighter pieces through the hair for a soft, natural blend.",
+      detail:
+        "The colour is matched to your base, hair condition and how much upkeep you want. A consultation and toner are often part of the appointment.",
+      duration: "Expect about 2 to 4 hours, depending on length and the result.",
+      goodToKnow:
+        "Ask whether toner, blow-dry and aftercare products are included in the listed price.",
+    },
   },
   haircut: {
     nl: {
@@ -69,6 +78,15 @@ export const treatmentEditorial: Record<
       duration: "Die meisten Haarschnitte dauern etwa 30 bis 75 Minuten.",
       goodToKnow:
         "Prüfe, ob Waschen und Föhnen enthalten sind, und wähle bei der Buchung die passende Haarlänge.",
+    },
+    en: {
+      summary:
+        "A good haircut starts with a short talk about your hair, your routine and the shape you want.",
+      detail:
+        "The service can include a wash, cut, blow-dry and styling. Salons often price by length, technique or stylist.",
+      duration: "Most haircuts take about 30 to 75 minutes.",
+      goodToKnow:
+        "Check whether the wash and blow-dry are included, and pick the right hair length when you book.",
     },
   },
   keratin: {
@@ -102,6 +120,15 @@ export const treatmentEditorial: Record<
       goodToKnow:
         "Frage nach dem verwendeten Produkt und danach, wann du das Haar wieder waschen darfst.",
     },
+    en: {
+      summary:
+        "A keratin treatment makes hair smoother, reduces frizz and can make styling at home easier.",
+      detail:
+        "The result and how long it lasts depend on the product, your hair type and the aftercare. A specialist should say what is realistic before you start.",
+      duration: "Depending on hair length, a treatment often takes 2 to 4 hours.",
+      goodToKnow:
+        "Ask which product is used and how long to wait before the first wash.",
+    },
   },
   nails: {
     nl: {
@@ -133,6 +160,16 @@ export const treatmentEditorial: Record<
         "Je nach Technik und Design dauert ein Termin meist 30 bis 90 Minuten.",
       goodToKnow:
         "Buche das Entfernen vorhandenen Materials separat und erwähne mögliche Empfindlichkeiten.",
+    },
+    en: {
+      summary:
+        "Nail treatments range from a classic manicure and gel polish to BIAB and nail art.",
+      detail:
+        "Choose a service that fits your natural nail, the result you want and how much upkeep you prefer.",
+      duration:
+        "An appointment usually takes 30 to 90 minutes, depending on technique and design.",
+      goodToKnow:
+        "Book a removal separately if you already have product on your nails, and mention any sensitivities.",
     },
   },
 };

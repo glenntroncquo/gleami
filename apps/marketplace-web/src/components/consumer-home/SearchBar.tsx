@@ -2,15 +2,23 @@
 
 import { useState, type ReactNode } from "react";
 import { SearchIcon } from "lucide-react";
+import type { HomeCopy } from "./messages";
 
 type SearchBarProps = {
-  placeLabel: string;
+  copy: HomeCopy;
+  nearby: boolean;
   onSearch: (query: string) => void;
 };
 
-export function SearchBar({ placeLabel, onSearch }: SearchBarProps) {
+export function SearchBar({ copy, nearby, onSearch }: SearchBarProps) {
   const [treatment, setTreatment] = useState("");
-  const [when, setWhen] = useState("Any time");
+  const [when, setWhen] = useState("any");
+  const whenOptions = [
+    { value: "any", label: copy.whenAny },
+    { value: "today", label: copy.whenToday },
+    { value: "tomorrow", label: copy.whenTomorrow },
+    { value: "weekend", label: copy.whenWeekend },
+  ];
 
   return (
     <form
@@ -21,36 +29,37 @@ export function SearchBar({ placeLabel, onSearch }: SearchBarProps) {
       }}
       className="grid gap-1 rounded-3xl border border-line bg-white p-2 shadow-soft md:flex md:items-center md:rounded-full"
     >
-      <Field label="Treatment" htmlFor="treatment" className="md:flex-[1.3]">
+      <Field label={copy.treatment} htmlFor="treatment" className="md:flex-[1.3]">
         <input
           id="treatment"
           value={treatment}
           onChange={(event) => setTreatment(event.target.value)}
-          placeholder="Haircut, massage, nails…"
+          placeholder={copy.treatmentPlaceholder}
           className="w-full bg-transparent text-[15px] text-navy placeholder:text-ink-faint focus:outline-none"
         />
       </Field>
       <Divider />
-      <Field label="Where" htmlFor="location" className="md:flex-1">
+      <Field label={copy.where} htmlFor="location" className="md:flex-1">
         <input
           id="location"
-          value={placeLabel}
+          value={nearby ? copy.placeNear : copy.placeBelgium}
           readOnly
           className="w-full bg-transparent text-[15px] text-navy placeholder:text-ink-faint focus:outline-none"
         />
       </Field>
       <Divider />
-      <Field label="When" htmlFor="when" className="md:flex-1">
+      <Field label={copy.when} htmlFor="when" className="md:flex-1">
         <select
           id="when"
           value={when}
           onChange={(event) => setWhen(event.target.value)}
           className="w-full cursor-pointer appearance-none bg-transparent text-[15px] text-navy focus:outline-none"
         >
-          <option>Any time</option>
-          <option>Today</option>
-          <option>Tomorrow</option>
-          <option>This weekend</option>
+          {whenOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
         </select>
       </Field>
       <button
@@ -58,7 +67,7 @@ export function SearchBar({ placeLabel, onSearch }: SearchBarProps) {
         className="mt-1 inline-flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-navy px-6 text-[15px] font-semibold text-white transition-colors duration-150 hover:bg-navy-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-peri focus-visible:ring-offset-2 md:mt-0 md:h-14"
       >
         <SearchIcon className="h-[18px] w-[18px]" aria-hidden="true" />
-        Search
+        {copy.search}
       </button>
     </form>
   );

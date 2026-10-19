@@ -1089,7 +1089,7 @@ export function localesForCountry(
 ): Locale[] {
   switch (countryCode) {
     case "BE":
-      return ["nl-be", "fr-be"];
+      return ["nl-be", "fr-be", "en"];
     case "NL":
       return ["nl-nl"];
     case "FR":

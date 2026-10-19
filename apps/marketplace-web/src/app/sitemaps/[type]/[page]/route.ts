@@ -10,6 +10,7 @@ import {
   blogPostSlugs,
   cityNames,
   localeConfig,
+  launchLocales,
   locales,
   localesForCity,
   routeFor,
@@ -72,9 +73,19 @@ ${entry.lastModified ? `    <lastmod>${xmlEscape(entry.lastModified)}</lastmod>\
   </url>`;
 }
 
+function homeAlternates(locale: Locale): readonly Locale[] {
+  return launchLocales.includes(locale)
+    ? launchLocales
+    : locales.filter((item) => !launchLocales.includes(item));
+}
+
 async function staticEntries(): Promise<SitemapEntry[]> {
   return locales.flatMap((locale) => [
-    { locale, route: { kind: "home" } as const },
+    {
+      locale,
+      route: { kind: "home" } as const,
+      alternates: homeAlternates(locale),
+    },
     ...(hasLiveMarketplace()
       ? [{ locale, route: { kind: "salons" } as const }]
       : []),

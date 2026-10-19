@@ -39,6 +39,9 @@ const nl = {
     emptyQueryTitle: 'Geen salons voor deze zoekopdracht',
     emptyQueryBody: 'Probeer een andere naam of behandeling.',
     categoriesError: 'Categorieën laden lukt niet.',
+    closeMapCard: 'Sluit salonkaart',
+    review: '{{count}} beoordeling',
+    reviews: '{{count}} beoordelingen',
   },
   availability: {
     today: 'Vandaag beschikbaar',

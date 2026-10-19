@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { supabaseAdmin } from "@/shared/supabase";
 import { formatDate, formatTime } from "@/shared/format-date";
-import { sendEmail } from "@/shared/resend";
+import { sendEmail, transactionalFrom } from "@/shared/resend";
 import {
   fetchAppointmentServicesForEmail,
   type AppointmentServiceForEmail,
@@ -342,7 +342,7 @@ serve(async (req)=>{
     console.log("Sending email...");
     // Send email via Resend
     const emailResult = await sendEmail({
-      from: `${company ? sanitizeDisplayName(company.name) : "Salonify"} <afspraken@notifications.salonify.co>`,
+      from: transactionalFrom(company ? sanitizeDisplayName(company.name) : "Salonify"),
       to: [
         email
       ],

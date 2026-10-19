@@ -1,7 +1,7 @@
-export const locales = ["nl-be", "fr-be", "nl-nl", "fr-fr", "de-de"] as const;
+export const locales = ["nl-be", "fr-be", "en", "nl-nl", "fr-fr", "de-de"] as const;
 
 export type Locale = (typeof locales)[number];
-export type Language = "nl" | "fr" | "de";
+export type Language = "nl" | "fr" | "en" | "de";
 export type Country = "BE" | "NL" | "FR" | "DE";
 
 type LocaleConfig = {
@@ -51,6 +51,22 @@ export const localeConfig: Record<Locale, LocaleConfig> = {
       salons: "salons",
       treatments: "traitements",
       business: "pour-salons",
+      blog: "inspiration",
+    },
+  },
+  en: {
+    locale: "en",
+    language: "en",
+    country: "BE",
+    hreflang: "en-BE",
+    htmlLang: "en-BE",
+    label: "English",
+    regionLabel: "Belgium",
+    currency: "EUR",
+    paths: {
+      salons: "salons",
+      treatments: "treatments",
+      business: "for-salons",
       blog: "inspiration",
     },
   },
@@ -105,7 +121,7 @@ export const localeConfig: Record<Locale, LocaleConfig> = {
 };
 
 export const defaultLocale: Locale = "nl-be";
-export const launchLocales: readonly Locale[] = ["nl-be", "fr-be"];
+export const launchLocales: readonly Locale[] = ["nl-be", "fr-be", "en"];
 
 export function isLocale(value: string): value is Locale {
   return locales.includes(value as Locale);
@@ -129,6 +145,7 @@ export const citySlugs = {
   amsterdam: {
     "nl-be": "amsterdam",
     "fr-be": "amsterdam",
+    en: "amsterdam",
     "nl-nl": "amsterdam",
     "fr-fr": "amsterdam",
     "de-de": "amsterdam",
@@ -136,6 +153,7 @@ export const citySlugs = {
   antwerp: {
     "nl-be": "antwerpen",
     "fr-be": "anvers",
+    en: "antwerp",
     "nl-nl": "antwerpen",
     "fr-fr": "anvers",
     "de-de": "antwerpen",
@@ -143,6 +161,7 @@ export const citySlugs = {
   brussels: {
     "nl-be": "brussel",
     "fr-be": "bruxelles",
+    en: "brussels",
     "nl-nl": "brussel",
     "fr-fr": "bruxelles",
     "de-de": "bruessel",
@@ -150,6 +169,7 @@ export const citySlugs = {
   cologne: {
     "nl-be": "keulen",
     "fr-be": "cologne",
+    en: "cologne",
     "nl-nl": "keulen",
     "fr-fr": "cologne",
     "de-de": "koeln",
@@ -157,6 +177,7 @@ export const citySlugs = {
   ghent: {
     "nl-be": "gent",
     "fr-be": "gand",
+    en: "ghent",
     "nl-nl": "gent",
     "fr-fr": "gand",
     "de-de": "gent",
@@ -164,6 +185,7 @@ export const citySlugs = {
   kruishoutem: {
     "nl-be": "kruishoutem",
     "fr-be": "kruishoutem",
+    en: "kruishoutem",
     "nl-nl": "kruishoutem",
     "fr-fr": "kruishoutem",
     "de-de": "kruishoutem",
@@ -171,6 +193,7 @@ export const citySlugs = {
   merelbeke: {
     "nl-be": "merelbeke",
     "fr-be": "merelbeke",
+    en: "merelbeke",
     "nl-nl": "merelbeke",
     "fr-fr": "merelbeke",
     "de-de": "merelbeke",
@@ -178,6 +201,7 @@ export const citySlugs = {
   paris: {
     "nl-be": "parijs",
     "fr-be": "paris",
+    en: "paris",
     "nl-nl": "parijs",
     "fr-fr": "paris",
     "de-de": "paris",
@@ -198,18 +222,19 @@ export const cityCountries: Record<CityKey, Country> = {
 };
 
 export const cityNames: Record<CityKey, Record<Language, string>> = {
-  amsterdam: { nl: "Amsterdam", fr: "Amsterdam", de: "Amsterdam" },
-  antwerp: { nl: "Antwerpen", fr: "Anvers", de: "Antwerpen" },
-  brussels: { nl: "Brussel", fr: "Bruxelles", de: "Brüssel" },
-  cologne: { nl: "Keulen", fr: "Cologne", de: "Köln" },
-  ghent: { nl: "Gent", fr: "Gand", de: "Gent" },
+  amsterdam: { nl: "Amsterdam", fr: "Amsterdam", en: "Amsterdam", de: "Amsterdam" },
+  antwerp: { nl: "Antwerpen", fr: "Anvers", en: "Antwerp", de: "Antwerpen" },
+  brussels: { nl: "Brussel", fr: "Bruxelles", en: "Brussels", de: "Brüssel" },
+  cologne: { nl: "Keulen", fr: "Cologne", en: "Cologne", de: "Köln" },
+  ghent: { nl: "Gent", fr: "Gand", en: "Ghent", de: "Gent" },
   kruishoutem: {
     nl: "Kruishoutem",
     fr: "Kruishoutem",
+    en: "Kruishoutem",
     de: "Kruishoutem",
   },
-  merelbeke: { nl: "Merelbeke", fr: "Merelbeke", de: "Merelbeke" },
-  paris: { nl: "Parijs", fr: "Paris", de: "Paris" },
+  merelbeke: { nl: "Merelbeke", fr: "Merelbeke", en: "Merelbeke", de: "Merelbeke" },
+  paris: { nl: "Parijs", fr: "Paris", en: "Paris", de: "Paris" },
 };
 
 export function cityKeyFromSlug(locale: Locale, slug: string): CityKey | null {
@@ -237,6 +262,7 @@ export const treatmentSlugs = {
   balayage: {
     "nl-be": "balayage",
     "fr-be": "balayage",
+    en: "balayage",
     "nl-nl": "balayage",
     "fr-fr": "balayage",
     "de-de": "balayage",
@@ -244,6 +270,7 @@ export const treatmentSlugs = {
   haircut: {
     "nl-be": "knippen",
     "fr-be": "coupe",
+    en: "haircut",
     "nl-nl": "knippen",
     "fr-fr": "coupe",
     "de-de": "haarschnitt",
@@ -251,6 +278,7 @@ export const treatmentSlugs = {
   keratin: {
     "nl-be": "keratine",
     "fr-be": "keratine",
+    en: "keratin",
     "nl-nl": "keratine",
     "fr-fr": "keratine",
     "de-de": "keratin",
@@ -258,6 +286,7 @@ export const treatmentSlugs = {
   nails: {
     "nl-be": "nagels",
     "fr-be": "ongles",
+    en: "nails",
     "nl-nl": "nagels",
     "fr-fr": "ongles",
     "de-de": "naegel",
@@ -270,10 +299,10 @@ export const treatmentNames: Record<
   TreatmentKey,
   Record<Language, string>
 > = {
-  balayage: { nl: "Balayage", fr: "Balayage", de: "Balayage" },
-  haircut: { nl: "Knippen", fr: "Coupe", de: "Haarschnitt" },
-  keratin: { nl: "Keratine", fr: "Kératine", de: "Keratin" },
-  nails: { nl: "Nagels", fr: "Ongles", de: "Nägel" },
+  balayage: { nl: "Balayage", fr: "Balayage", en: "Balayage", de: "Balayage" },
+  haircut: { nl: "Knippen", fr: "Coupe", en: "Haircut", de: "Haarschnitt" },
+  keratin: { nl: "Keratine", fr: "Kératine", en: "Keratin", de: "Keratin" },
+  nails: { nl: "Nagels", fr: "Ongles", en: "Nails", de: "Nägel" },
 };
 
 export function treatmentKeyFromSlug(
@@ -309,6 +338,7 @@ export const blogPostSlugs = {
   onlineBooking: {
     "nl-be": "online-boeken-voor-je-salon",
     "fr-be": "reservation-en-ligne-pour-votre-salon",
+    en: "online-booking-for-your-salon",
     "nl-nl": "online-boeken-voor-je-salon",
     "fr-fr": "reservation-en-ligne-pour-votre-salon",
     "de-de": "online-buchung-fuer-deinen-salon",
@@ -392,6 +422,7 @@ export function routeFor(locale: Locale, route: RouteDescriptor): string {
 const legacyBusinessSlugs: Record<Locale, readonly string[]> = {
   "nl-be": ["voor-bedrijven"],
   "fr-be": ["pour-les-pros"],
+  en: ["for-businesses"],
   "nl-nl": ["voor-bedrijven"],
   "fr-fr": ["pour-les-pros"],
   "de-de": ["fuer-betriebe"],

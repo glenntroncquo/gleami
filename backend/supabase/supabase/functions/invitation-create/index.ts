@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsHeadersFor, rejectDisallowedOrigin } from "../_shared/infrastructure/http/cors.ts";
-import { sendEmail } from "../_shared/infrastructure/email/resend.ts";
+import { sendEmail, transactionalFrom } from "../_shared/infrastructure/email/resend.ts";
 import {
   adminClient,
   escapeHtml,
@@ -455,7 +455,7 @@ Deno.serve(async (req) => {
         : "";
       try {
         await sendEmail({
-          from: `${headerSafe(company.name ?? "Gleami")} <afspraken@notifications.salonify.co>`,
+          from: transactionalFrom(headerSafe(company.name ?? "Gleami")),
           to: [email],
           subject: `${accountExists ? "Link" : "Create"} your login for ${headerSafe(company.name ?? "Gleami")}`,
           text: [

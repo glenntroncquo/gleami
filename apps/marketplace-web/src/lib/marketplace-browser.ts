@@ -2,8 +2,13 @@ import type { Session } from "@supabase/supabase-js";
 import { getBrowserSupabase } from "./browser-supabase";
 import type { AvailabilityDay } from "./booking/slots";
 
-export const GHENT = { lat: 51.0543, lng: 3.7174 };
 export const SEARCH_RADIUS_KM = 25;
+export const BELGIUM_BBOX = {
+  minLng: 2.52,
+  minLat: 49.48,
+  maxLng: 6.41,
+  maxLat: 51.51,
+};
 
 export type MarketplaceCategory = {
   id: string;
@@ -106,16 +111,26 @@ export async function listCategories(locale: string): Promise<MarketplaceCategor
 export async function searchSalons(input: {
   q?: string;
   categoryIds?: string[];
-  center: { lat: number; lng: number };
+  center?: { lat: number; lng: number } | null;
   radiusKm?: number;
+  bbox?: {
+    minLng: number;
+    minLat: number;
+    maxLng: number;
+    maxLat: number;
+  } | null;
   limit?: number;
 }): Promise<SearchSalon[]> {
   const { data, error } = await client().rpc("marketplace_search", {
     p_q: input.q?.trim() ? input.q.trim() : null,
     p_category_ids: input.categoryIds?.length ? input.categoryIds : null,
-    p_lat: input.center.lat,
-    p_lng: input.center.lng,
-    p_radius_km: input.radiusKm ?? SEARCH_RADIUS_KM,
+    p_lat: input.center?.lat ?? null,
+    p_lng: input.center?.lng ?? null,
+    p_radius_km: input.center ? input.radiusKm ?? SEARCH_RADIUS_KM : null,
+    p_min_lng: input.bbox?.minLng ?? null,
+    p_min_lat: input.bbox?.minLat ?? null,
+    p_max_lng: input.bbox?.maxLng ?? null,
+    p_max_lat: input.bbox?.maxLat ?? null,
     p_limit: input.limit ?? 24,
   });
   if (error) throw new Error(error.message);

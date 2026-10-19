@@ -29,6 +29,9 @@ export const de = {
     emptyQueryTitle: 'Keine Salons für diese Suche',
     emptyQueryBody: 'Versuch einen anderen Namen oder eine andere Behandlung.',
     categoriesError: 'Kategorien konnten nicht geladen werden.',
+    closeMapCard: 'Salonkarte schließen',
+    review: '{{count}} Bewertung',
+    reviews: '{{count}} Bewertungen',
   },
   availability: {
     today: 'Heute verfügbar',

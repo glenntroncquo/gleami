@@ -10,8 +10,9 @@ import { Hero } from "./Hero";
 import type { HomeSalon } from "./VenueCard";
 import { useMarketplaceUser } from "./useMarketplaceUser";
 import { cityKeyFromName, localizedCitySlug, routeFor, type Locale } from "@/lib/i18n";
+import { homeCopy } from "./messages";
 import {
-  GHENT,
+  BELGIUM_BBOX,
   SEARCH_RADIUS_KM,
   listCategories,
   listFavorites,
@@ -65,6 +66,7 @@ export function ConsumerHome({
   homeHref = "/",
   businessHref = routeFor("nl-be", { kind: "business" }),
 }: ConsumerHomeProps) {
+  const copy = homeCopy(locale);
   const { user } = useMarketplaceUser();
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -73,8 +75,7 @@ export function ConsumerHome({
   const [salons, setSalons] = useState<SearchSalon[]>([]);
   const [favorites, setFavorites] = useState<HomeSalon[]>([]);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
-  const [center, setCenter] = useState(GHENT);
-  const [placeLabel, setPlaceLabel] = useState("Gent");
+  const [center, setCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -82,11 +83,9 @@ export function ConsumerHome({
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setCenter({ lat: position.coords.latitude, lng: position.coords.longitude });
-        setPlaceLabel("jou");
       },
       () => {
-        setCenter(GHENT);
-        setPlaceLabel("Gent");
+        setCenter(null);
       },
       { enableHighAccuracy: false, timeout: 8000 },
     );
@@ -117,7 +116,8 @@ export function ConsumerHome({
       q: query,
       categoryIds: categoryId ? [categoryId] : [],
       center,
-      radiusKm: SEARCH_RADIUS_KM,
+      radiusKm: center ? SEARCH_RADIUS_KM : undefined,
+      bbox: center ? null : BELGIUM_BBOX,
       limit: 24,
     })
       .then((items) => {
@@ -207,22 +207,23 @@ export function ConsumerHome({
   );
 
   const pills = [
-    { id: null, name: "All treatments" },
+    { id: null, name: copy.allTreatments },
     ...categories.map((category) => ({ id: category.id, name: category.name })),
   ];
 
   return (
     <div className={`${figtree.className} min-h-screen w-full bg-page text-navy`}>
-      <Header homeHref={homeHref} businessHref={businessHref} />
+      <Header locale={locale} homeHref={homeHref} businessHref={businessHref} copy={copy} />
       <main id="main">
-        <Hero placeLabel={placeLabel} onSearch={handleSearch} />
+        <Hero copy={copy} nearby={center != null} onSearch={handleSearch} />
         <ExploreSection
           venues={cards}
           favorites={favorites}
           savedIds={savedIds}
           showFavorite={Boolean(user)}
           query={query}
-          placeLabel={placeLabel}
+          nearby={center != null}
+          copy={copy}
           categoryId={categoryId}
           categories={pills}
           seeAllHref={routeFor(locale, { kind: "salons" })}
@@ -232,9 +233,9 @@ export function ConsumerHome({
           onClearQuery={() => setQuery("")}
           onToggleFavorite={toggleFavorite}
         />
-        <BusinessSection businessHref={businessHref} />
+        <BusinessSection locale={locale} businessHref={businessHref} copy={copy} />
       </main>
-      <Footer />
+      <Footer locale={locale} copy={copy} />
     </div>
   );
 }

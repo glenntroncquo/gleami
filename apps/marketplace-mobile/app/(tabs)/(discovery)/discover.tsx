@@ -6,8 +6,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SearchBar } from '@/src/components/expandable-search';
 import { DiscoverMap } from '@/src/components/discover-map';
-import { DiscoverSheet } from '@/src/components/discover-sheet';
+import { DiscoverSheet, discoverSheetCollapsedHeight } from '@/src/components/discover-sheet';
 import { GlassPill } from '@/src/components/glass';
+import { MapSalonCard } from '@/src/components/map-salon-card';
 import { useCategories, useSearchResults } from '@/src/hooks/use-marketplace';
 import { t } from '@/src/i18n';
 import { useDiscovery } from '@/src/store/discovery';
@@ -16,7 +17,9 @@ export default function DiscoverScreen() {
   const { expandSearch } = useLocalSearchParams<{ expandSearch?: string }>();
   const openSheet = useLocalSearchParams<{ openSheet?: string }>().openSheet === '1';
   const insets = useSafeAreaInsets();
-  const [searchBarHeight, setSearchBarHeight] = useState(58);
+  const [searchBarHeight, setSearchBarHeight] = useState(40);
+  const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+  const [sheetCollapsed, setSheetCollapsed] = useState(true);
   const sheetTopInset = insets.top + 8 + searchBarHeight + 8;
   const q = useDiscovery((state) => state.q);
   const categoryId = useDiscovery((state) => state.categoryIds[0] ?? null);
@@ -33,6 +36,7 @@ export default function DiscoverScreen() {
     () => search.data?.pages.flatMap((page) => page.items) ?? [],
     [search.data],
   );
+  const selected = items.find((item) => item.slug === selectedSlug) ?? null;
   const categoryName = categories.data?.find((category) => category.id === categoryId)?.name;
   const summary = q || (categoryCount > 1 ? `${categoryCount} behandelingen` : categoryName) || 'Alle behandelingen';
 
@@ -63,14 +67,20 @@ export default function DiscoverScreen() {
 
   return (
     <View className="flex-1 bg-canvas">
-      <DiscoverMap items={items} />
+      <DiscoverMap items={items} selectedSlug={selectedSlug} onSelect={setSelectedSlug} />
       <View pointerEvents="box-none" className="absolute inset-0">
-        <View pointerEvents="box-none" style={{ paddingTop: insets.top + 8 }} className="gap-3">
-          <Pressable accessibilityRole="button" accessibilityLabel="Locatie wijzigen" onPress={() => router.push('/location')} className="mx-5 h-10 flex-row items-center gap-2 self-start rounded-full bg-white/95 px-4 shadow-sm">
-            <Ionicons name="location" size={15} color="#6488E8" /><Text className="text-xs font-semibold text-ink">{locationLabel}</Text><Ionicons name="chevron-down" size={12} color="#071D43" />
-          </Pressable>
-          <View onLayout={(event) => setSearchBarHeight(event.nativeEvent.layout.height)}>
-            <SearchBar variant="results" summary={summary} autoExpand={expandSearch === '1'} />
+        <View pointerEvents="box-none" style={{ paddingTop: insets.top + 8 }}>
+          <View
+            pointerEvents="box-none"
+            onLayout={(event) => setSearchBarHeight(event.nativeEvent.layout.height)}
+            style={{ paddingHorizontal: 20 }}
+            className="flex-row items-center gap-2">
+            <Pressable accessibilityRole="button" accessibilityLabel="Locatie wijzigen" onPress={() => router.push('/location')} className="h-10 max-w-[46%] shrink flex-row items-center gap-1.5 rounded-full bg-white/95 px-3.5 shadow-sm">
+              <Ionicons name="location" size={15} color="#6488E8" /><Text numberOfLines={1} className="shrink text-xs font-semibold text-ink">{locationLabel}</Text><Ionicons name="chevron-down" size={12} color="#071D43" />
+            </Pressable>
+            <View className="min-w-0 flex-1">
+              <SearchBar variant="results" summary={summary} autoExpand={expandSearch === '1'} />
+            </View>
           </View>
         </View>
         {areaSearchVisible ? (
@@ -86,7 +96,12 @@ export default function DiscoverScreen() {
           </View>
         ) : null}
       </View>
-      <DiscoverSheet topInset={sheetTopInset} openInitially={openSheet} />
+      <DiscoverSheet topInset={sheetTopInset} openInitially={openSheet} onCollapsedChange={setSheetCollapsed} />
+      {selected && sheetCollapsed ? (
+        <View pointerEvents="box-none" className="absolute inset-x-0 px-4" style={{ bottom: discoverSheetCollapsedHeight(insets.bottom) + 12, zIndex: 20 }}>
+          <MapSalonCard item={selected} onClose={() => setSelectedSlug(null)} />
+        </View>
+      ) : null}
     </View>
   );
 }

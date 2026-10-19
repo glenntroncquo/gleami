@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ConsumerHome } from "@/components/consumer-home/ConsumerHome";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { launchLocales } from "@/lib/i18n";
 import { createPageMetadata } from "@/lib/seo";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/structured-data";
 
@@ -9,9 +10,10 @@ export const revalidate = 3600;
 export const metadata: Metadata = createPageMetadata({
   locale: "nl-be",
   route: { kind: "home" },
-  title: "Boek beauty en wellness bij jou in de buurt | Gleami",
+  title: "Salon boeken in België | Gleami",
   description:
-    "Ontdek salons en beautyprofessionals bij jou in de buurt. Vergelijk behandelingen en boek jouw volgende afspraak.",
+    "Ontdek salons en beautyprofessionals in België. Vergelijk behandelingen en boek jouw volgende afspraak.",
+  alternateLocales: launchLocales,
 });
 
 export default function RootPage() {

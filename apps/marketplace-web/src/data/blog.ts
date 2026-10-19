@@ -91,6 +91,43 @@ export const blogPosts: Record<BlogPostKey, Record<Language, BlogPost>> = {
         },
       ],
     },
+    en: {
+      title: "Online booking for your salon: a calm start",
+      description:
+        "Practical steps for taking appointments online without making your salon schedule more complicated.",
+      category: "Salon management",
+      readingTime: "5 min read",
+      publishedAt: "2026-10-05",
+      updatedAt: "2026-10-05",
+      intro:
+        "Online booking works when it follows how your salon already runs. Start with a reliable calendar, clear services and realistic availability, not with a button on the website.",
+      sections: [
+        {
+          title: "Start with your services",
+          paragraphs: [
+            "Give every service a recognisable name, a correct duration and a price the client understands. Skip internal abbreviations. Say what is included, especially for colour and services that depend on hair length.",
+          ],
+          bullets: [
+            "Add variants only when they make the choice clearer.",
+            "Leave time for preparation and finishing.",
+            "Assign only the team members who perform the service.",
+          ],
+        },
+        {
+          title: "Publish availability that is true",
+          paragraphs: [
+            "A client expects a visible time to be genuinely free. Working hours, breaks, leave and existing appointments should come from the same schedule.",
+            "You can start with a short booking window and widen it once the team is used to the new way of working.",
+          ],
+        },
+        {
+          title: "Make the next step clear",
+          paragraphs: [
+            "Right after booking, show what was reserved, where the appointment takes place and how the client can get in touch. A clear confirmation avoids scattered messages.",
+          ],
+        },
+      ],
+    },
     de: {
       title: "Online-Buchung für deinen Salon: ruhig starten",
       description:

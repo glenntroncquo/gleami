@@ -19,10 +19,19 @@ type VenueCardProps = {
   venue: HomeSalon;
   isFavorite: boolean;
   showFavorite: boolean;
+  saveLabel: string;
+  unsaveLabel: string;
   onToggleFavorite: (id: string) => void;
 };
 
-export function VenueCard({ venue, isFavorite, showFavorite, onToggleFavorite }: VenueCardProps) {
+export function VenueCard({
+  venue,
+  isFavorite,
+  showFavorite,
+  saveLabel,
+  unsaveLabel,
+  onToggleFavorite,
+}: VenueCardProps) {
   return (
     <article className="group relative flex flex-col">
       <Link
@@ -55,7 +64,7 @@ export function VenueCard({ venue, isFavorite, showFavorite, onToggleFavorite }:
       {showFavorite ? (
         <button
           type="button"
-          aria-label={isFavorite ? `Remove ${venue.name} from saved` : `Save ${venue.name}`}
+          aria-label={isFavorite ? unsaveLabel : saveLabel}
           aria-pressed={isFavorite}
           onClick={() => onToggleFavorite(venue.id)}
           className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-white/95 shadow-soft transition-transform duration-150 ease-snappy active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-peri"

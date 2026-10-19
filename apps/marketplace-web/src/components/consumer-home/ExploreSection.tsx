@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { XIcon } from "lucide-react";
 import { CategoryPills } from "./CategoryPills";
+import type { HomeCopy } from "./messages";
 import { VenueCard, type HomeSalon } from "./VenueCard";
 
 type ExploreSectionProps = {
@@ -12,7 +13,8 @@ type ExploreSectionProps = {
   savedIds: Set<string>;
   showFavorite: boolean;
   query: string;
-  placeLabel: string;
+  nearby: boolean;
+  copy: HomeCopy;
   categoryId: string | null;
   categories: Array<{ id: string | null; name: string }>;
   seeAllHref: string;
@@ -29,7 +31,8 @@ export function ExploreSection({
   savedIds,
   showFavorite,
   query,
-  placeLabel,
+  nearby,
+  copy,
   categoryId,
   categories,
   seeAllHref,
@@ -48,7 +51,7 @@ export function ExploreSection({
     >
       {favorites.length > 0 ? (
         <div className="mb-12">
-          <h2 className="text-xl font-semibold tracking-tight text-navy">Favorieten</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-navy">{copy.favorites}</h2>
           <div className="mt-4 flex gap-4 overflow-x-auto pb-2">
             {favorites.map((venue) => (
               <Link key={venue.id} href={venue.href} className="w-60 shrink-0">
@@ -68,16 +71,18 @@ export function ExploreSection({
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
           <h2 id="explore-title" className="text-3xl font-semibold tracking-[-0.025em] text-navy md:text-[40px]">
-            {query ? `Results for “${query}”` : "Recommended near you"}
+            {query ? copy.exploreResults(query) : nearby ? copy.exploreNear : copy.exploreBelgium}
           </h2>
           <p className="mt-2 text-ink-muted">
             {loading && venues.length === 0 ? (
               <>
-                <span className="sr-only">Loading salons</span>
+                <span className="sr-only">{copy.loading}</span>
                 <span className="inline-block h-4 w-40 rounded-full bg-navy/10 motion-safe:animate-pulse" />
               </>
+            ) : nearby ? (
+              copy.countNear(venues.length)
             ) : (
-              `${venues.length} ${venues.length === 1 ? "salon" : "salons"} near ${placeLabel}`
+              copy.countBelgium(venues.length)
             )}
           </p>
         </div>
@@ -89,18 +94,23 @@ export function ExploreSection({
               className="inline-flex items-center gap-1.5 self-start rounded-full px-3 py-1.5 text-sm font-semibold text-peri-dark transition-colors duration-150 hover:bg-peri-tint md:self-auto"
             >
               <XIcon className="h-4 w-4" aria-hidden="true" />
-              Clear search
+              {copy.clearSearch}
             </button>
           ) : null}
           <Link href={seeAllHref} className="text-sm font-semibold text-navy underline-offset-2 hover:underline">
-            See all
+            {copy.seeAll}
           </Link>
         </div>
       </div>
 
       <div className="mt-8">
         {categoriesReady ? (
-          <CategoryPills categories={categories} active={categoryId} onChange={onCategoryChange} />
+          <CategoryPills
+            categories={categories}
+            active={categoryId}
+            label={copy.filterCategories}
+            onChange={onCategoryChange}
+          />
         ) : (
           <CategoryPillsSkeleton />
         )}
@@ -111,10 +121,8 @@ export function ExploreSection({
           <SalonGridSkeleton />
         ) : venues.length === 0 ? (
           <div className="rounded-3xl bg-surface px-6 py-16 text-center">
-            <p className="text-lg font-semibold text-navy">Nothing matches that just yet</p>
-            <p className="mx-auto mt-2 max-w-sm text-ink-muted">
-              Try a different treatment, or browse everything available near you.
-            </p>
+            <p className="text-lg font-semibold text-navy">{copy.emptyTitle}</p>
+            <p className="mx-auto mt-2 max-w-sm text-ink-muted">{copy.emptyBody}</p>
             <button
               type="button"
               onClick={() => {
@@ -123,7 +131,7 @@ export function ExploreSection({
               }}
               className="mt-6 rounded-full bg-navy px-5 py-2.5 text-[15px] font-semibold text-white transition-colors duration-150 hover:bg-navy-700"
             >
-              Show all salons
+              {copy.showAll}
             </button>
           </div>
         ) : (
@@ -144,6 +152,8 @@ export function ExploreSection({
                       venue={venue}
                       isFavorite={savedIds.has(venue.id)}
                       showFavorite={showFavorite}
+                      saveLabel={copy.save(venue.name)}
+                      unsaveLabel={copy.unsave(venue.name)}
                       onToggleFavorite={onToggleFavorite}
                     />
                   </div>

@@ -2,15 +2,17 @@ import React from 'react';
 
 type LogoProps = {
   inverse?: boolean;
+  className?: string;
 };
 
-export function Logo({ inverse = false }: LogoProps) {
+export function Logo({ inverse = false, className = 'h-8 w-auto' }: LogoProps) {
   return (
-    <span
-      className={`relative inline-block pr-2 text-[26px] font-bold leading-none tracking-[-0.045em] ${inverse ? 'text-white' : 'text-ink'}`}>
-      
-      gleami
-      <span className="absolute right-0 top-0 h-[7px] w-[7px] rounded-full bg-rose-400" aria-hidden="true" />
-    </span>);
-
+    <img
+      src={inverse ? '/gleami-wordmark-white.svg' : '/gleami-wordmark.svg'}
+      alt="Gleami"
+      width={96}
+      height={32}
+      className={className}
+    />
+  );
 }

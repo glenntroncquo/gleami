@@ -4,17 +4,19 @@ import { mapboxToken } from '@/src/config';
 import { bboxAround } from '@/src/lib/geo';
 import { t } from '@/src/i18n';
 import { useDiscovery } from '@/src/store/discovery';
-import React, { useCallback, useRef, useState } from 'react';
-import { Platform, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 
 type MapPlaceholderProps = {
   items: SearchItem[];
   reason: 'token' | 'web';
+  selectedSlug: string | null;
+  onSelect: (slug: string | null) => void;
 };
 
-export function MapPlaceholder({ items, reason }: MapPlaceholderProps) {
+export function MapPlaceholder({ items, reason, selectedSlug, onSelect }: MapPlaceholderProps) {
   const center = useDiscovery((state) => state.center);
   const userLocation = useDiscovery((state) => state.userLocation);
   const showAreaSearch = useDiscovery((state) => state.showAreaSearch);
@@ -64,6 +66,12 @@ export function MapPlaceholder({ items, reason }: MapPlaceholderProps) {
     runOnJS(applyPan)(event.translationX, event.translationY);
   });
 
+  useEffect(() => {
+    if (selectedSlug && !items.some((item) => item.slug === selectedSlug)) {
+      onSelect(null);
+    }
+  }, [items, onSelect, selectedSlug]);
+
   const hint = reason === 'web' || (Platform.OS === 'web' && !mapboxToken) ? t('discover.mapWebHint') : t('discover.mapTokenHint');
   const title = userLocation ? t('discover.yourLocation') : t('discover.defaultCity');
 
@@ -94,14 +102,23 @@ export function MapPlaceholder({ items, reason }: MapPlaceholderProps) {
         {items.map((item) => {
           const x = size.width / 2 + (item.lng - view.lng) * 4200;
           const y = size.height / 2 - (item.lat - view.lat) * 4200;
-          if (x < 8 || y < 8 || x > size.width - 8 || y > size.height - 8) return null;
+          if (x < 8 || y < 28 || x > size.width - 8 || y > size.height - 8) return null;
+          const active = item.slug === selectedSlug;
           return (
-            <View
+            <Pressable
               key={item.locationId}
+              accessibilityRole="button"
               accessibilityLabel={item.name}
-              className="absolute h-3.5 w-3.5 rounded-full border-2 border-white bg-ink"
-              style={{ left: x - 7, top: y - 7 }}
-            />
+              onPress={() => onSelect(item.slug)}
+              className="absolute items-center"
+              style={{ left: x - 64, top: y - 28, width: 128 }}>
+              <Text
+                numberOfLines={1}
+                className={`mb-1 max-w-[128px] rounded-full bg-white px-2 py-0.5 text-center text-[11px] text-ink ${active ? 'font-bold' : 'font-semibold'}`}>
+                {item.name}
+              </Text>
+              <View className={`rounded-full border-2 border-white bg-ink ${active ? 'h-4 w-4' : 'h-3.5 w-3.5'}`} />
+            </Pressable>
           );
         })}
         <View className="flex-1 items-center justify-center px-8" pointerEvents="none">

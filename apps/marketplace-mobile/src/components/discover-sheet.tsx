@@ -17,13 +17,24 @@ import { useDiscovery } from '@/src/store/discovery';
 import { brandColors as colors } from '@/src/theme/colors';
 import { DEFAULT_RADIUS_KM } from '@/src/config';
 
-/** Grabber (8 + 4 + 8) above the 44pt title/filters row. Also the collapsed height. */
+/** Grabber (8 + 4 + 8) above the 44pt title/filters row. */
 const HANDLE_HEIGHT = 64;
+const ANDROID_TAB_CLEARANCE = 74;
 
-export function DiscoverSheet({ topInset, openInitially = false }: { topInset: number; openInitially?: boolean }) {
+/** Space the floating tab bar already occupies at the bottom of the discover screen. */
+export function discoverTabClearance(bottomInset: number): number {
+  return bottomInset + (Platform.OS === 'ios' ? 0 : ANDROID_TAB_CLEARANCE);
+}
+
+/** Height of the sheet while it is collapsed to the grabber and title row. */
+export function discoverSheetCollapsedHeight(bottomInset: number): number {
+  return discoverTabClearance(bottomInset) + HANDLE_HEIGHT;
+}
+
+export function DiscoverSheet({ topInset, openInitially = false, onCollapsedChange }: { topInset: number; openInitially?: boolean; onCollapsedChange?: (collapsed: boolean) => void }) {
   const insets = useSafeAreaInsets();
   // Native tabs already contribute their height to the screen's bottom safe area.
-  const tabClearance = insets.bottom + (Platform.OS === 'ios' ? 0 : 74);
+  const tabClearance = discoverTabClearance(insets.bottom);
   const sheet = useRef<BottomSheet>(null);
   const [collapsed, setCollapsed] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -85,7 +96,10 @@ export function DiscoverSheet({ topInset, openInitially = false }: { topInset: n
   const availability = useNextAvailable(pairs);
   const renderedIds = useMemo(() => new Set(rendered.map((item) => item.locationId)), [rendered]);
 
-  const snapPoints = useMemo(() => [tabClearance + HANDLE_HEIGHT, '58%', '100%'], [tabClearance]);
+  const snapPoints = useMemo(
+    () => [discoverSheetCollapsedHeight(insets.bottom), '58%', '100%'],
+    [insets.bottom],
+  );
 
   // Stable identity: an inline renderItem re-renders every card (and reloads
   // every carousel image) on each viewability tick.
@@ -123,7 +137,12 @@ export function DiscoverSheet({ topInset, openInitially = false }: { topInset: n
     <BottomSheet
       ref={sheet}
       index={0}
-      onChange={(index) => setCollapsed(index === 0)}
+      onChange={(index) => {
+        const next = index === 0;
+        setCollapsed(next);
+        onCollapsedChange?.(next);
+      }}
+      onAnimate={(_fromIndex, toIndex) => onCollapsedChange?.(toIndex === 0)}
       enableDynamicSizing={false}
       snapPoints={snapPoints}
       topInset={topInset}

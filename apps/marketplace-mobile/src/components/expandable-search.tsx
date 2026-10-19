@@ -72,15 +72,19 @@ export function SearchBar({ variant, summary, autoExpand = false }: { variant: A
       open(variant);
     }
   }, [autoExpand, laidOut, open, variant]);
+  const compact = variant === 'results';
   return (
-    <View style={styles.barHost} onLayout={() => setLaidOut(true)}>
-      <Pressable ref={ref} collapsable={false} onPress={() => open(variant)} accessibilityRole="button" accessibilityLabel="Zoek locaties en behandelingen" style={styles.bar}>
-        <Ionicons name="search-outline" size={20} color={colors.navy} />
-        <View style={{ flex: 1 }}>
-          <Text numberOfLines={1} style={[styles.barLabel, summary ? styles.barQuery : null]}>{summary || 'Zoek locaties, behandelingen'}</Text>
-          {variant === 'results' ? <Text style={styles.barSubtitle}>Pas je zoekopdracht aan</Text> : null}
-        </View>
-        {variant === 'home' ? <View style={styles.smallButton}><Text style={styles.buttonText}>Zoek</Text></View> : <Ionicons name="options-outline" size={20} color={colors.navy} />}
+    <View style={compact ? styles.compactHost : styles.barHost} onLayout={() => setLaidOut(true)}>
+      <Pressable ref={ref} collapsable={false} onPress={() => open(variant)} accessibilityRole="button" accessibilityLabel="Zoek locaties en behandelingen" style={compact ? styles.compactBar : styles.bar}>
+        <Ionicons name="search-outline" size={compact ? 16 : 20} color={colors.navy} />
+        {compact ? (
+          <Text numberOfLines={1} style={styles.compactLabel}>{summary || 'Zoeken'}</Text>
+        ) : (
+          <View style={{ flex: 1 }}>
+            <Text numberOfLines={1} style={[styles.barLabel, summary ? styles.barQuery : null]}>{summary || 'Zoek locaties, behandelingen'}</Text>
+          </View>
+        )}
+        {variant === 'home' ? <View style={styles.smallButton}><Text style={styles.buttonText}>Zoek</Text></View> : null}
       </Pressable>
     </View>
   );
@@ -162,7 +166,7 @@ function SearchOverlay({ session, measureResults, onClosed }: {
     const measure = () => measureResults((rect) => {
       if (cancelled) return;
       if (!rect && ++attempts < 8) { timer = setTimeout(measure, 40); return; }
-      animate(rect ?? { x: 20, y: insets.top + 8, width: width - 40, height: 58 }, false, onClosed);
+      animate(rect ?? { x: width * 0.42, y: insets.top + 8, width: width * 0.58 - 20, height: 40 }, false, onClosed);
     });
     timer = setTimeout(measure, 60);
     return () => { cancelled = true; clearTimeout(timer); };
@@ -216,9 +220,8 @@ function SearchOverlay({ session, measureResults, onClosed }: {
         </Animated.View>
         <Animated.View accessibilityViewIsModal style={[styles.panel, { left: box.x, top: box.y, width: box.width, height: box.height, borderRadius: box.radius }]}>
           {phase === 'submitting' ? <View pointerEvents="none" style={styles.arrivingPill}>
-            <Ionicons name="search-outline" size={20} color={colors.navy} />
-            <View style={{ flex: 1 }}><Text numberOfLines={1} style={styles.barQuery}>{displayValue || 'Alle behandelingen'}</Text><Text style={styles.barSubtitle}>Pas je zoekopdracht aan</Text></View>
-            <Ionicons name="options-outline" size={20} color={colors.navy} />
+            <Ionicons name="search-outline" size={16} color={colors.navy} />
+            <Text numberOfLines={1} style={styles.compactLabel}>{displayValue || 'Alle behandelingen'}</Text>
           </View> : <>
             <Animated.View style={[styles.headingRow, { opacity: box.body }]}>
               <Text accessibilityRole="header" style={styles.heading}>Wat zoek je?</Text>
@@ -259,10 +262,12 @@ function SearchOverlay({ session, measureResults, onClosed }: {
 
 const styles = StyleSheet.create({
   barHost: { marginHorizontal: 20 },
+  compactHost: { flex: 1 },
   bar: { minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 30, paddingLeft: 18, paddingRight: 8, paddingVertical: 7, backgroundColor: '#fff', borderWidth: 1, borderColor: colors.line, boxShadow: '0 3px 14px #071D4312' },
+  compactBar: { height: 40, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 20, paddingHorizontal: 14, backgroundColor: 'rgba(255,255,255,0.95)', boxShadow: '0 1px 4px #071D4314' },
+  compactLabel: { flex: 1, minWidth: 0, color: colors.navy, fontSize: 13, fontWeight: '600' },
   barLabel: { color: colors.muted, fontSize: 12 },
   barQuery: { color: colors.navy, fontSize: 14, fontWeight: '600' },
-  barSubtitle: { color: colors.muted, fontSize: 11, marginTop: 3 },
   smallButton: { borderRadius: 24, paddingHorizontal: 17, paddingVertical: 12, backgroundColor: colors.navy },
   buttonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   panel: { position: 'absolute', backgroundColor: '#fff', overflow: 'hidden', borderWidth: 1, borderColor: colors.line, boxShadow: '0 12px 40px #071D4326' },
@@ -284,5 +289,5 @@ const styles = StyleSheet.create({
   reset: { minHeight: 44, justifyContent: 'center' },
   resetText: { color: colors.navy, textDecorationLine: 'underline', fontSize: 13, fontWeight: '500' },
   submit: { minHeight: 46, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.blue, borderRadius: 14, paddingHorizontal: 24 },
-  arrivingPill: { height: 58, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18 },
+  arrivingPill: { height: 40, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14 },
 });

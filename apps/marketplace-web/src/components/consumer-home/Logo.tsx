@@ -1,12 +1,16 @@
-export function Logo({ inverted = false }: { inverted?: boolean }) {
+type LogoProps = {
+  inverted?: boolean;
+  className?: string;
+};
+
+export function Logo({ inverted = false, className = "h-9 w-auto" }: LogoProps) {
   return (
-    <span
-      className={`inline-flex items-baseline text-[26px] font-bold tracking-[-0.04em] ${
-        inverted ? "text-white" : "text-navy"
-      }`}
-    >
-      gleami
-      <span className="ml-0.5 inline-block h-2 w-2 rounded-full bg-peri-light" aria-hidden="true" />
-    </span>
+    <img
+      src={inverted ? "/gleami-wordmark-white.svg" : "/gleami-wordmark.svg"}
+      alt="Gleami"
+      width={108}
+      height={36}
+      className={className}
+    />
   );
 }

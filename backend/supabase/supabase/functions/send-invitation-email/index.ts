@@ -9,6 +9,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { INTERNAL_SECRET_HEADER, internalSecretMatches } from "@/shared/internal-secret";
 import { UnauthenticatedError } from "@/shared/errors";
 import { escapeHtml, sanitizeDisplayName } from "@/shared/escape-html";
+import { transactionalFrom } from "@/shared/resend";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -110,7 +111,7 @@ Deno.serve(async (req)=>{
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        from: `${sanitizeDisplayName(companyName)} <afspraken@notifications.salonify.co>`,
+        from: transactionalFrom(sanitizeDisplayName(companyName)),
         to: [
           invitation.email
         ],

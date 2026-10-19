@@ -29,6 +29,9 @@ export const en = {
     emptyQueryTitle: 'No salons for this search',
     emptyQueryBody: 'Try another name or treatment.',
     categoriesError: 'Categories could not be loaded.',
+    closeMapCard: 'Close salon card',
+    review: '{{count}} review',
+    reviews: '{{count}} reviews',
   },
   availability: {
     today: 'Available today',

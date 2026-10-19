@@ -1,20 +1,16 @@
-import { LogoMark } from "@/components/ui/LogoMark";
-
 type LogoProps = {
   inverse?: boolean;
+  className?: string;
 };
 
-export function Logo({ inverse = false }: LogoProps) {
+export function Logo({ inverse = false, className = "h-8 w-auto" }: LogoProps) {
   return (
-    <span className="inline-flex items-center gap-2">
-      <LogoMark inverse={inverse} />
-      <span
-        className={`text-[19px] font-semibold tracking-[-0.02em] ${
-          inverse ? "text-white" : "text-ink"
-        }`}
-      >
-        Gleami
-      </span>
-    </span>
+    <img
+      src={inverse ? "/gleami-wordmark-white.svg" : "/gleami-wordmark.svg"}
+      alt="Gleami"
+      width={96}
+      height={32}
+      className={className}
+    />
   );
 }

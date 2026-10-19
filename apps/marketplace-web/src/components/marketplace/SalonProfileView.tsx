@@ -15,6 +15,7 @@ import {
   minimumServicePrice,
   type SalonProfile,
 } from "@/data/marketplace";
+import { SalonServices } from "@/components/marketplace/SalonServices";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { getCopy } from "@/lib/copy";
 import {
@@ -39,6 +40,7 @@ function treatmentHref(locale: Locale, treatment: TreatmentKey): string {
 const dayNames = {
   nl: ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"],
   fr: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"],
+  en: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
   de: ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"],
 } as const;
 
@@ -76,7 +78,7 @@ export function SalonProfileView({
         </div>
       ) : null}
 
-      <div className="mx-auto max-w-7xl px-5 pb-20 pt-8 md:px-8 md:pt-10">
+      <div className="mx-auto max-w-7xl overflow-x-clip px-5 pb-28 pt-8 md:px-8 md:pt-10 lg:pb-20">
         <nav
           aria-label="Breadcrumb"
           className="flex flex-wrap items-center gap-1.5 text-[13px] text-muted"
@@ -121,7 +123,7 @@ export function SalonProfileView({
         </section>
 
         <div className="mt-10 grid gap-12 lg:grid-cols-12 lg:gap-16">
-          <main className="lg:col-span-8">
+          <main className="min-w-0 lg:col-span-8">
             <div className="flex items-start justify-between gap-6">
               <div>
                 <div className="flex flex-wrap gap-2">
@@ -190,53 +192,22 @@ export function SalonProfileView({
               </p>
             </section>
 
-            <section id="services" className="mt-12 border-t border-line pt-10">
-              <h2 className="text-[26px] font-semibold tracking-tight">
-                {copy.salon.services}
-              </h2>
-              <div className="mt-6 divide-y divide-line rounded-[24px] bg-white px-5 ring-1 ring-line md:px-7">
-                {salon.services.map((service) => {
-                  const treatment = service.treatmentKeys[0];
-                  return (
-                  <article key={service.id} className="py-6">
-                    <h3 className="text-[18px] font-semibold">
-                      {treatment ? (
-                        <Link
-                          href={treatmentHref(locale, treatment)}
-                          className="hover:underline"
-                        >
-                          {service.name}
-                        </Link>
-                      ) : (
-                        service.name
-                      )}
-                    </h3>
-                    {service.description ? (
-                      <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-muted">
-                        {service.description}
-                      </p>
-                    ) : null}
-                    <ul className="mt-4 grid gap-2">
-                      {service.variants.map((variant) => (
-                        <li
-                          key={variant.id}
-                          className="flex items-center justify-between gap-4 rounded-xl bg-canvas px-4 py-3 text-[14px]"
-                        >
-                          <span>
-                            <span className="font-medium">{variant.name}</span>
-                            <span className="ml-2 text-muted">
-                              {variant.durationMinutes} {copy.salon.minutes}
-                            </span>
-                          </span>
-                          <strong>{formatMoney(variant.price, locale)}</strong>
-                        </li>
-                      ))}
-                    </ul>
-                  </article>
-                  );
-                })}
-              </div>
-            </section>
+            <SalonServices
+              locale={locale}
+              slug={salon.slug}
+              bookingUrl={bookingUrl}
+              services={salon.services}
+              heading={copy.salon.services}
+              book={copy.salon.book}
+              bookNow={copy.salon.bookNow}
+              minutes={copy.salon.minutes}
+              available={copy.salon.servicesAvailable(
+                salon.services.reduce(
+                  (sum, service) => sum + service.variants.length,
+                  0,
+                ),
+              )}
+            />
 
             {salon.team.length > 0 ? (
               <section className="mt-12 border-t border-line pt-10">

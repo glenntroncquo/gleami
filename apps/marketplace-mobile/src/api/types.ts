@@ -128,14 +128,14 @@ export type LocationGetResponse = {
     postalCode: string;
     city: string;
     country: string;
-    lat: number;
-    lng: number;
+    lat: number | null;
+    lng: number | null;
     timezone: string;
     likeCount: number;
   };
   categories: LocationCategory[];
   services: LocationService[];
-  /** Not sent by marketplace-location-get yet; the Team section appears once it is. */
+  /** Not sent by marketplace_location yet; the Team section appears once it is. */
   team?: LocationTeamMember[];
 };
 

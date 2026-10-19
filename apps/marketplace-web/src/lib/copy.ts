@@ -87,6 +87,9 @@ type Copy = {
     categories: string;
     from: string;
     minutes: string;
+    book: string;
+    bookNow: string;
+    servicesAvailable: (count: number) => string;
     open: string;
     closed: string;
     unavailable: string;
@@ -259,7 +262,7 @@ const nl: Copy = {
       "Besteed minder tijd aan losse tools en meer tijd aan je klanten en je zaak.",
   },
   salon: {
-    services: "Behandelingen en prijzen",
+    services: "Diensten",
     about: "Over deze salon",
     hours: "Openingsuren",
     team: "Team",
@@ -273,6 +276,10 @@ const nl: Copy = {
     categories: "Categorieën",
     from: "vanaf",
     minutes: "min",
+    book: "Boek",
+    bookNow: "Nu boeken",
+    servicesAvailable: (count) =>
+      count === 1 ? "1 dienst beschikbaar" : `${count} diensten beschikbaar`,
     open: "Open",
     closed: "Gesloten",
     unavailable: "Niet opgegeven",
@@ -457,7 +464,7 @@ const fr: Copy = {
       "Passez moins de temps dans des outils séparés et plus de temps avec vos clients.",
   },
   salon: {
-    services: "Prestations et tarifs",
+    services: "Prestations",
     about: "À propos du salon",
     hours: "Horaires",
     team: "Équipe",
@@ -471,6 +478,12 @@ const fr: Copy = {
     categories: "Catégories",
     from: "à partir de",
     minutes: "min",
+    book: "Réserver",
+    bookNow: "Réserver maintenant",
+    servicesAvailable: (count) =>
+      count === 1
+        ? "1 prestation disponible"
+        : `${count} prestations disponibles`,
     open: "Ouvert",
     closed: "Fermé",
     unavailable: "Non renseigné",
@@ -592,7 +605,7 @@ const de: Copy = {
       "Verbringe weniger Zeit in einzelnen Tools und mehr Zeit mit deinen Kunden.",
   },
   salon: {
-    services: "Behandlungen und Preise",
+    services: "Leistungen",
     about: "Über diesen Salon",
     hours: "Öffnungszeiten",
     team: "Team",
@@ -606,6 +619,10 @@ const de: Copy = {
     categories: "Kategorien",
     from: "ab",
     minutes: "Min.",
+    book: "Buchen",
+    bookNow: "Jetzt buchen",
+    servicesAvailable: (count) =>
+      count === 1 ? "1 Leistung verfügbar" : `${count} Leistungen verfügbar`,
     open: "Geöffnet",
     closed: "Geschlossen",
     unavailable: "Nicht angegeben",
@@ -654,7 +671,206 @@ const de: Copy = {
   },
 };
 
-const dictionaries: Record<Language, Copy> = { nl, fr, de };
+const en: Copy = {
+  skip: "Skip to content",
+  nav: {
+    discover: "Discover salons",
+    treatments: "Treatments",
+    business: "For businesses",
+    login: "Log in",
+    menu: "Open menu",
+    close: "Close menu",
+  },
+  actions: {
+    explore: "Discover salons",
+    start: "Start with Gleami",
+    demo: "Book a demo",
+    publish: "Publish your salon",
+    book: "Book an appointment",
+    viewSalon: "View salon",
+    viewAll: "View all",
+    search: "Search",
+  },
+  consumer: {
+    eyebrow: "Beauty, near you",
+    title: "Find your next",
+    mutedTitle: "favourite salon.",
+    description:
+      "Discover salons, compare treatments and prices, and book a time that works for you.",
+    searchPlaceholder: "Salon or treatment",
+    locationPlaceholder: "City or postcode",
+    popularTitle: "Explore by city",
+    popularDescription:
+      "From a quick haircut to a full glow-up. Find professionals nearby.",
+    featuredTitle: "Salons to discover",
+    featuredDescription:
+      "Check the offer, the location and available treatments before you choose.",
+    categoriesTitle: "What are you in the mood for?",
+    businessCalloutTitle: "Grow your salon with Gleami.",
+    businessCalloutBody:
+      "Run your calendar, clients, team and payments, and get found by new clients.",
+    salonsCount: (count) => `${count} ${count === 1 ? "salon" : "salons"}`,
+    demoNotice: "Sample view. Connect Supabase to show published salons.",
+    noResults: "No salons are published here yet.",
+  },
+  business: {
+    eyebrow: "Salon software from Gleami",
+    title: "Everything your salon needs.",
+    mutedTitle: "In one place.",
+    description:
+      "Manage appointments, clients, staff, payments and more on one clear platform.",
+    reassurance: "Quick to set up · No credit card required",
+    overviewTitle: "One platform. Your whole salon.",
+    overviewBody:
+      "Leave the separate calendar, client spreadsheet and payment tool behind. Gleami brings the daily running of your salon into one calm workspace.",
+    features: [
+      {
+        title: "Smart calendar",
+        description:
+          "Plan the whole team with treatment duration, breaks and availability in one view.",
+      },
+      {
+        title: "Online booking",
+        description:
+          "Clients book 24/7 through your booking link, salon profile or the marketplace.",
+      },
+      {
+        title: "Client records",
+        description:
+          "Keep visit history, preferences and notes for every appointment.",
+      },
+      {
+        title: "Team and schedule",
+        description:
+          "Manage working hours, treatments and access per team member.",
+      },
+      {
+        title: "Payments",
+        description: "Take payment smoothly and keep transactions in a clear overview.",
+      },
+      {
+        title: "Insights",
+        description:
+          "Follow revenue, occupancy and returning clients without spreadsheets.",
+      },
+    ],
+    marketplaceEyebrow: "Gleami marketplace",
+    marketplaceTitle: "Get found by new clients.",
+    marketplaceBody:
+      "Publish your salon on Gleami. People nearby discover your offer, compare treatments and book open times.",
+    marketplaceSteps: [
+      "Run your salon",
+      "Publish your profile",
+      "Get discovered",
+      "Receive bookings",
+      "Everything lands straight in your calendar",
+    ],
+    mockBooking: "New booking",
+    mockBookingTime: "Today · 12:30",
+    mockReminder: "Reminder sent",
+    mockAutomatic: "Automatic and on time",
+    faqEyebrow: "Common questions",
+    faqTitle: "Questions, answered.",
+    faqBody:
+      "Prefer to see how Gleami fits your salon in person? Book a short demo.",
+    faqs: [
+      {
+        question: "What is Gleami?",
+        answer:
+          "Gleami brings calendar, online booking, clients, team, services and payments together. Your salon can also appear on the Gleami marketplace.",
+      },
+      {
+        question: "Who is Gleami for?",
+        answer:
+          "Independent beauty professionals and small to mid-sized salons, including hairdressers, barbers, nail studios and beauty salons.",
+      },
+      {
+        question: "Can clients book online themselves?",
+        answer:
+          "Yes. Clients see open times and can book through your own booking link or your public salon profile.",
+      },
+      {
+        question: "Can I manage my team?",
+        answer:
+          "Yes. You can set working hours, services and access for each team member.",
+      },
+      {
+        question: "How does the marketplace work?",
+        answer:
+          "Once you publish, clients can find your salon by place and treatment. A booking goes straight into your Gleami calendar.",
+      },
+    ],
+    finalTitle: "Ready to run your salon differently?",
+    finalBody:
+      "Spend less time on separate tools and more time with your clients and your business.",
+  },
+  salon: {
+    services: "Services",
+    about: "About this salon",
+    hours: "Opening hours",
+    team: "Team",
+    reviews: "Reviews",
+    photos: "Photos",
+    location: "Location",
+    phone: "Phone",
+    website: "Website",
+    instagram: "Instagram",
+    nearby: "Nearby",
+    categories: "Categories",
+    from: "from",
+    minutes: "min",
+    book: "Book",
+    bookNow: "Book now",
+    servicesAvailable: (count) =>
+      count === 1 ? "1 service available" : `${count} services available`,
+    open: "Open",
+    closed: "Closed",
+    unavailable: "Not listed",
+    noReviews: "No verified reviews yet",
+    illustrative: "This is sample content, not a real salon listing.",
+  },
+  treatment: {
+    indexTitle: "Find the right treatment for you.",
+    indexDescription:
+      "Explore popular beauty treatments, see what to expect and compare salons.",
+    findTitle: (name) => `${name}: salons, prices and information`,
+    findDescription: (name) =>
+      `See what to expect from ${name.toLowerCase()} and discover salons that offer it.`,
+    localTitle: (treatment, city) => `${treatment} in ${city}`,
+    localDescription: (treatment, city) =>
+      `Compare salons for ${treatment.toLowerCase()} in ${city}, check prices and choose a salon that fits.`,
+    guideTitle: "What can you expect?",
+    guideBody:
+      "A good salon talks through your wishes, the expected duration, the result and the price beforehand. Always read the full service description before you book.",
+    qualityTitle: "How to choose a salon",
+    qualityItems: [
+      "Look for clear treatment details and prices.",
+      "Read recent, verified reviews when they are available.",
+      "Check the location, duration and any aftercare.",
+    ],
+  },
+  city: {
+    title: (city) => `Salons in ${city}`,
+    description: (city) =>
+      `Discover hair and beauty professionals in ${city}. Compare treatments, prices and locations.`,
+    localIntro: (city) =>
+      `Find a salon in ${city} that fits your treatment, schedule and budget.`,
+  },
+  footer: {
+    description:
+      "Discover salons and give beauty professionals one clear platform for their daily work.",
+    marketplace: "Marketplace",
+    company: "Gleami for businesses",
+    legal: "Legal",
+    salons: "All salons",
+    cities: "Popular cities",
+    privacy: "Privacy",
+    terms: "Terms",
+    rights: "All rights reserved.",
+  },
+};
+
+const dictionaries: Record<Language, Copy> = { nl, fr, en, de };
 
 export function getCopy(locale: Locale): Copy {
   return dictionaries[localeConfig[locale].language];

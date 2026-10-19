@@ -1,9 +1,17 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { ConsumerHome } from "@/components/consumer-home/ConsumerHome";
+import { homeCopy } from "@/components/consumer-home/messages";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { getCopy } from "@/lib/copy";
-import { defaultLocale, isLocale, routeFor, type Locale } from "@/lib/i18n";
+import {
+  defaultLocale,
+  isLocale,
+  launchLocales,
+  locales,
+  routeFor,
+  type Locale,
+} from "@/lib/i18n";
 import { createPageMetadata } from "@/lib/seo";
 import { breadcrumbJsonLd } from "@/lib/structured-data";
 
@@ -13,12 +21,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale: value } = await params;
   if (!isLocale(value)) return {};
   const copy = getCopy(value);
+  const home = homeCopy(value);
+  const alternateLocales = launchLocales.includes(value)
+    ? launchLocales
+    : locales.filter((locale) => !launchLocales.includes(locale));
 
   return createPageMetadata({
     locale: value,
     route: { kind: "home" },
-    title: `${copy.consumer.title} ${copy.consumer.mutedTitle} | Gleami`,
+    title: `${home.pageTitle} | Gleami`,
     description: copy.consumer.description,
+    alternateLocales,
   });
 }
 

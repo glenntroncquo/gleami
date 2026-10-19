@@ -1,4 +1,6 @@
+import { localeConfig, type Locale } from "@/lib/i18n";
 import { appointments, staff, weeklyRevenue } from "./data";
+import type { HomeCopy } from "./messages";
 import type { Tone } from "./types";
 
 const HOUR = 52;
@@ -32,8 +34,23 @@ function timeLabel(hour: number): string {
   return `${hours}:${minutes}`;
 }
 
-export function CalendarMock() {
+type CalendarMockProps = {
+  locale: Locale;
+  copy: HomeCopy;
+};
+
+export function CalendarMock({ locale, copy }: CalendarMockProps) {
   const max = Math.max(...weeklyRevenue);
+  const dateLabel = new Intl.DateTimeFormat(localeConfig[locale].htmlLang, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(2026, 9, 8));
+  const revenueLabel = new Intl.NumberFormat(localeConfig[locale].htmlLang, {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  }).format(8420);
 
   return (
     <div className="relative" aria-hidden="true">
@@ -42,9 +59,9 @@ export function CalendarMock() {
           <div className="flex items-center justify-between border-b border-line px-5 py-4">
             <div>
               <p className="text-xs text-ink-faint">Atelier Nord</p>
-              <p className="font-semibold text-navy">Thursday, 8 October</p>
+              <p className="font-semibold text-navy">{dateLabel}</p>
             </div>
-            <span className="rounded-full bg-peri-tint px-3 py-1 text-xs font-semibold text-peri-dark">Today</span>
+            <span className="rounded-full bg-peri-tint px-3 py-1 text-xs font-semibold text-peri-dark">{copy.mockToday}</span>
           </div>
 
           <div className="grid grid-cols-[44px_repeat(3,1fr)] border-b border-line text-sm">
@@ -90,9 +107,9 @@ export function CalendarMock() {
       </div>
 
       <div className="mt-4 rounded-2xl bg-white p-4 shadow-float sm:absolute sm:-bottom-10 sm:-left-8 sm:mt-0 sm:w-[240px]">
-        <p className="text-xs text-ink-faint">Revenue this week</p>
+        <p className="text-xs text-ink-faint">{copy.mockRevenue}</p>
         <div className="mt-1 flex items-baseline gap-2">
-          <p className="text-2xl font-semibold tracking-tight text-navy">£8,420</p>
+          <p className="text-2xl font-semibold tracking-tight text-navy">{revenueLabel}</p>
           <span className="text-xs font-semibold text-green">+12%</span>
         </div>
         <div className="mt-3 flex h-14 items-end gap-1.5">

@@ -1,4 +1,4 @@
-import { cardGallery, SEARCH_CARD_IMAGE_LIMIT } from '@/src/api/gallery';
+import { cardGallery, publicMarketplaceImageUrl, SEARCH_CARD_IMAGE_LIMIT } from '@/src/api/gallery';
 import { supabaseUrl, useMocks } from '@/src/config';
 import {
   mockCategories,
@@ -56,6 +56,110 @@ export async function nextAvailable(request: NextAvailableRequest): Promise<Next
   return unwrap(data, error);
 }
 
+/** Storage path or an already-public URL. Matches the web profile mapper. */
+function marketplaceImage(value: unknown): string | null {
+  if (typeof value !== 'string' || value.length === 0) return null;
+  if (value.startsWith('http://') || value.startsWith('https://')) return value;
+  if (!supabaseUrl || value.includes('..')) return null;
+  return publicMarketplaceImageUrl(value, supabaseUrl);
+}
+
+function asNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function asText(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+/**
+ * Same call as marketplace-web: public `marketplace_location` RPC.
+ * The edge function opens Postgres with a database password the app does not have.
+ */
+function locationFromRpc(data: unknown): LocationGetResponse {
+  if (!data || typeof data !== 'object') throw new Error('NOT_FOUND');
+  const profile = data as {
+    location?: Record<string, unknown>;
+    categories?: unknown;
+    services?: unknown;
+  };
+  const location = profile.location;
+  if (!location || typeof location.slug !== 'string' || typeof location.locationId !== 'string') {
+    throw new Error('NOT_FOUND');
+  }
+
+  const images = [
+    ...new Set(
+      (Array.isArray(location.images) ? location.images : [])
+        .map(marketplaceImage)
+        .filter((image): image is string => Boolean(image)),
+    ),
+  ];
+  const imageUrl = marketplaceImage(location.imageUrl);
+  const gallery = images.length > 0 ? images : imageUrl ? [imageUrl] : [];
+
+  const categories = (Array.isArray(profile.categories) ? profile.categories : []).flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const row = item as Record<string, unknown>;
+    if (typeof row.id !== 'string' || typeof row.name !== 'string' || typeof row.slug !== 'string') return [];
+    return [{ id: row.id, name: row.name, slug: row.slug }];
+  });
+
+  const services = (Array.isArray(profile.services) ? profile.services : []).flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const row = item as Record<string, unknown>;
+    if (typeof row.serviceId !== 'string' || typeof row.name !== 'string') return [];
+    const variants = (Array.isArray(row.variants) ? row.variants : []).flatMap((variant) => {
+      if (!variant || typeof variant !== 'object') return [];
+      const option = variant as Record<string, unknown>;
+      if (typeof option.serviceVariantId !== 'string' || typeof option.name !== 'string') return [];
+      return [
+        {
+          serviceVariantId: option.serviceVariantId,
+          name: option.name,
+          price: asNumber(option.price) ?? 0,
+          durationMinutes: asNumber(option.durationMinutes) ?? 0,
+        },
+      ];
+    });
+    return [
+      {
+        serviceId: row.serviceId,
+        name: row.name,
+        description: asText(row.description),
+        variants,
+      },
+    ];
+  });
+
+  return {
+    location: {
+      locationId: location.locationId,
+      companyId: asText(location.companyId),
+      name: asText(location.name),
+      slug: location.slug,
+      description: asText(location.description),
+      imageUrl: gallery[0] ?? '',
+      images: gallery,
+      street: asText(location.street),
+      postalCode: asText(location.postalCode),
+      city: asText(location.city),
+      country: asText(location.country),
+      lat: asNumber(location.lat),
+      lng: asNumber(location.lng),
+      timezone: asText(location.timezone),
+      likeCount: asNumber(location.likeCount) ?? 0,
+    },
+    categories,
+    services,
+  };
+}
+
 export async function locationBySlug(
   slug: string,
   locale: MarketplaceLocale = getMarketplaceLocale(),
@@ -65,10 +169,12 @@ export async function locationBySlug(
     if (!location) throw new Error('NOT_FOUND');
     return location;
   }
-  const { data, error } = await getSupabase().functions.invoke<LocationGetResponse>('marketplace-location-get', {
-    body: { slug, locale },
+  const { data, error } = await getSupabase().rpc('marketplace_location', {
+    p_slug: slug,
+    p_locale: locale,
   });
-  return unwrap(data, error);
+  if (error) throw new Error(error.message);
+  return locationFromRpc(data);
 }
 
 type CategoryQueryRow = MarketplaceCategoryRow & {

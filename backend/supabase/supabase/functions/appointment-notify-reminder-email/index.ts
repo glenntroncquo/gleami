@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { supabaseAdmin } from "@/shared/supabase";
 import { formatDate, formatTime } from "@/shared/format-date";
-import { sendEmail } from "@/shared/resend";
+import { sendEmail, transactionalFrom } from "@/shared/resend";
 import { fetchAppointmentServicesForEmail } from "@/shared/appointment-services-for-email";
 import { fetchNotificationPlace, placeToEmailAddress } from "@/shared/notification-place-fetch";
 import {
@@ -234,7 +234,7 @@ serve(async (req)=>{
         const reminderHtml = createReminderEmail(reminderEmailData);
         // Send reminder email
         const emailResult = await sendEmail({
-          from: `${company.name} <afspraken@salonify.co>`,
+          from: transactionalFrom(company.name),
           to: [
             client.email
           ],

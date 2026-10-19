@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { z } from "zod";
 import Stripe from "stripe";
 import { createClient } from "supabase";
+import { transactionalFrom } from "@/shared/resend";
 type SupabaseClient = any;
 
 // --- cors ---
@@ -720,7 +721,7 @@ async function createOrderCheckout(params: {
 
   try {
     await sendEmail({
-      from: `${companyName} <afspraken@notifications.salonify.co>`,
+      from: transactionalFrom(companyName),
       to: [clientEmail],
       subject,
       text,
@@ -951,7 +952,7 @@ async function createAppointmentDepositCheckout(params: {
 
   try {
     await sendEmail({
-      from: `${companyName} <afspraken@notifications.salonify.co>`,
+      from: transactionalFrom(companyName),
       to: [clientEmail],
       subject,
       text,

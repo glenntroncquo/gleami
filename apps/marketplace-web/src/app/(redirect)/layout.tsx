@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_ORIGIN),
   title: "Gleami",
   description:
-    "Discover beauty salons and run your salon with one clear platform.",
+    "Ontdek salons en beautyprofessionals in België. Vergelijk behandelingen en boek jouw volgende afspraak.",
 };
 
 export default function RedirectLayout({

@@ -29,6 +29,9 @@ export const fr = {
     emptyQueryTitle: 'Aucun salon pour cette recherche',
     emptyQueryBody: 'Essayez un autre nom ou un autre soin.',
     categoriesError: 'Impossible de charger les catégories.',
+    closeMapCard: 'Fermer la fiche du salon',
+    review: '{{count}} avis',
+    reviews: '{{count}} avis',
   },
   availability: {
     today: 'Disponible aujourd’hui',

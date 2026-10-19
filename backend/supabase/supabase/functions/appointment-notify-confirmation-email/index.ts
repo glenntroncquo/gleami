@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { supabaseAdmin } from "@/shared/supabase";
 import { formatDate, formatTime } from "@/shared/format-date";
-import { sendEmail } from "@/shared/resend";
+import { sendEmail, transactionalFrom } from "@/shared/resend";
 import { fetchAppointmentServicesForEmail } from "@/shared/appointment-services-for-email";
 import { fetchNotificationPlace, placeToEmailAddress, staffNotificationRecipients } from "@/shared/notification-place-fetch";
 import { assertInternalSecret } from "@/shared/internal-secret";
@@ -292,7 +292,7 @@ serve(async (req)=>{
     // Send confirmation email to client
     try {
       const clientEmailResult = await sendEmail({
-        from: `${company.name} <afspraken@notifications.salonify.co>`,
+        from: transactionalFrom(company.name),
         to: [
           client.email
         ],
@@ -309,7 +309,7 @@ serve(async (req)=>{
         for (const recipient of staffRecipients) {
           try {
             const staffEmailResult = await sendEmail({
-              from: `${company.name} <afspraken@notifications.salonify.co>`,
+              from: transactionalFrom(company.name),
               to: [recipient],
               subject: staffSubject,
               text: staffText,

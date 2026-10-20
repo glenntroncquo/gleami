@@ -1026,6 +1026,7 @@
     "description": "Gerencie os clientes do seu salão e suas informações",
     "noClientsFound": "Nenhum cliente encontrado",
     "rowsPerPage": "Linhas por página",
+    "pageOf": "de",
     "create": "Criar Cliente",
     "edit": "Editar Cliente",
     "delete": "Excluir Cliente",

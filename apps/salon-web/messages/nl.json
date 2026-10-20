@@ -1026,6 +1026,7 @@
     "description": "Beheer uw salon klanten en hun informatie",
     "noClientsFound": "Geen klanten gevonden",
     "rowsPerPage": "Rijen per pagina",
+    "pageOf": "van",
     "create": "Klant Aanmaken",
     "edit": "Klant Bewerken",
     "delete": "Klant Verwijderen",

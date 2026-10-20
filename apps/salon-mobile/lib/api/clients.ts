@@ -111,6 +111,71 @@ export async function fetchClients(companyId: string, locationId?: string | null
   return clientsFromLocationRows(data);
 }
 
+export const CLIENT_PAGE_SIZE = 25;
+
+export type ClientPage = {
+  clients: Client[];
+  total: number;
+};
+
+const MOBILE_SEARCH_COLUMNS = ['first_name', 'last_name', 'email', 'phone'] as const;
+
+/** One PostgREST `or` filter per word, ANDed by the caller. */
+function clientSearchFilters(term: string): string[] {
+  const tokens = term
+    .trim()
+    .split(/\s+/)
+    .map((token) => token.replace(/[%_,().*\\":]/g, ''))
+    .filter((token) => token.length > 0)
+    .slice(0, 5);
+
+  return tokens.map((token) => {
+    const pattern = `"%${token}%"`;
+    return MOBILE_SEARCH_COLUMNS.map((column) => `${column}.ilike.${pattern}`).join(',');
+  });
+}
+
+/**
+ * One page of clients for the selected shop. Membership is `client_location`.
+ * Search matches name, email, or phone so paging stays correct while filtering.
+ */
+export async function fetchClientsPage(args: {
+  locationId: string;
+  page: number;
+  pageSize?: number;
+  search?: string;
+  sortDescending?: boolean;
+}): Promise<ClientPage> {
+  const pageSize = Math.max(1, args.pageSize ?? CLIENT_PAGE_SIZE);
+  const page = Math.max(0, args.page);
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
+  const ascending = !args.sortDescending;
+
+  let query = live
+    .from('client')
+    .select(`${CLIENT_FIELDS}, client_location!inner(location_id)`, { count: 'exact' })
+    .eq('client_location.location_id', args.locationId);
+
+  for (const filter of clientSearchFilters(args.search ?? '')) {
+    query = query.or(filter);
+  }
+
+  const { data, error, count } = await query
+    .order('first_name', { ascending, nullsFirst: false })
+    .order('last_name', { ascending, nullsFirst: false })
+    .order('id', { ascending: true })
+    .range(from, to);
+
+  if (error) throw error;
+
+  const clients = (Array.isArray(data) ? data : [])
+    .map((row) => asClient(row))
+    .filter((client): client is Client => client !== null);
+
+  return { clients, total: typeof count === 'number' ? count : clients.length };
+}
+
 export async function fetchClient(clientId: string): Promise<Client | null> {
   const { data, error } = await supabase
     .from('client')

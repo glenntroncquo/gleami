@@ -1026,6 +1026,7 @@
     "description": "Manage your salon clients and their information",
     "noClientsFound": "No clients found",
     "rowsPerPage": "Rows per page",
+    "pageOf": "of",
     "create": "Create Client",
     "edit": "Edit Client",
     "delete": "Delete Client",

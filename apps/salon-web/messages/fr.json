@@ -1021,6 +1021,7 @@
     "description": "Gérez vos clients de salon et leurs informations",
     "noClientsFound": "Aucun client trouvé",
     "rowsPerPage": "Lignes par page",
+    "pageOf": "sur",
     "create": "Créer un Client",
     "edit": "Modifier le Client",
     "delete": "Supprimer le Client",

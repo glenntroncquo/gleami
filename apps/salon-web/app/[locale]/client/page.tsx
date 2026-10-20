@@ -4,14 +4,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   ColumnDef,
-  ColumnFiltersState,
-  FilterFn,
   flexRender,
   getCoreRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
   PaginationState,
   SortingState,
   useReactTable,
@@ -86,50 +80,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { createClient } from "@/lib/supabase/client";
 import { useCompanyId, useLocationId } from "@/lib/company-util";
+import { PAGE_FETCH_TIMEOUT_MS, withTimeout } from "@/lib/async/fail-closed";
 import {
-  asLocationClient,
-  fetchClientIdsForLocation,
-} from "@/lib/location";
-import {
-  PAGE_FETCH_TIMEOUT_MS,
-  resolveLocationScopeIds,
-  startFailClosedLoad,
-  withTimeout,
-} from "@/lib/async/fail-closed";
+  clientPageCount,
+  isClientSortColumn,
+} from "@/lib/api/client/queries/client-page";
+import { fetchClientPage } from "@/lib/api/client/queries/fetch-client-page";
 import { ClientDetailSheet } from "@/components/client-detail-sheet";
 import { ClientSheet } from "@/components/client-sheet";
-
-async function loadClientRows(locationId: string | null): Promise<Client[]> {
-  const supabase = createClient();
-  let query = supabase
-    .from("client")
-    .select("id, first_name, last_name, email, phone, created_at, updated_at")
-    .order("first_name", { ascending: true });
-
-  if (locationId) {
-    const scopedIds = await resolveLocationScopeIds(
-      () => fetchClientIdsForLocation(asLocationClient(supabase), locationId),
-      "client location scope",
-    );
-    if (scopedIds) {
-      if (scopedIds.length === 0) return [];
-      query = query.in("id", scopedIds);
-    }
-  }
-
-  const { data: clients, error } = await withTimeout(
-    query,
-    PAGE_FETCH_TIMEOUT_MS,
-    "client list",
-  );
-  if (error) {
-    console.error("Error fetching clients:", error);
-    return [];
-  }
-  return clients || [];
-}
 
 type Client = {
   id: string;
@@ -139,17 +98,6 @@ type Client = {
   phone: string | null;
   created_at: string;
   updated_at: string | null;
-};
-
-// Custom filter function for multi-column searching
-const multiColumnFilterFn: FilterFn<Client> = (row, columnId, filterValue) => {
-  const fullName = `${row.original.first_name || ""} ${
-    row.original.last_name || ""
-  }`.trim();
-  const searchableRowContent =
-    `${fullName} ${row.original.email || ""}`.toLowerCase();
-  const searchTerm = (filterValue ?? "").toLowerCase();
-  return searchableRowContent.includes(searchTerm);
 };
 
 // Move columns inside the component to access translations
@@ -186,7 +134,6 @@ const createColumns = (
         </div>
       );
     },
-    filterFn: multiColumnFilterFn,
     enableHiding: false,
   },
   {
@@ -214,13 +161,26 @@ export default function ClientPage() {
   const id = useId();
   const companyId = useCompanyId();
   const locationId = useLocationId();
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 50,
   });
+  const [search, setSearch] = useState("");
+  const [total, setTotal] = useState(0);
+  const [refreshToken, setRefreshToken] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [scopedLocationId, setScopedLocationId] = useState(locationId);
+  if (locationId !== scopedLocationId) {
+    setScopedLocationId(locationId);
+    setLoading(true);
+    setData([]);
+    setTotal(0);
+    if (pagination.pageIndex !== 0) {
+      setPagination((current) => ({ ...current, pageIndex: 0 }));
+    }
+    if (search !== "") setSearch("");
+  }
 
   const [sorting, setSorting] = useState<SortingState>([
     {
@@ -242,51 +202,82 @@ export default function ClientPage() {
 
   const columns = createColumns(t, handleRowClick);
 
-  const refreshClientData = async () => {
-    setLoading(true);
-    try {
-      setData(await loadClientRows(locationId));
-    } catch (error) {
-      console.error("Error refreshing client data:", error);
-      setData([]);
-    } finally {
-      setLoading(false);
-    }
+  const refreshClientData = () => {
+    setRefreshToken((current) => current + 1);
   };
 
   useEffect(() => {
-    return startFailClosedLoad(
-      setLoading,
-      async (isCancelled) => {
+    let cancelled = false;
+    const sort = sorting[0];
+    const sortColumn = sort && isClientSortColumn(sort.id) ? sort.id : "first_name";
+    const handle = window.setTimeout(() => {
+      void (async () => {
         try {
-          const rows = await loadClientRows(locationId);
-          if (!isCancelled()) setData(rows);
+          const page = await withTimeout(
+            fetchClientPage({
+              locationId,
+              pageIndex: pagination.pageIndex,
+              pageSize: pagination.pageSize,
+              search,
+              sortColumn,
+              sortDescending: Boolean(sort?.desc),
+            }),
+            PAGE_FETCH_TIMEOUT_MS,
+            "client list",
+          );
+          if (cancelled) return;
+          setData(page.rows);
+          setTotal(page.total);
+          const lastPage = Math.max(0, clientPageCount(page.total, pagination.pageSize) - 1);
+          if (pagination.pageIndex > lastPage) {
+            setPagination((current) => ({ ...current, pageIndex: lastPage }));
+          }
         } catch (error) {
           console.error("Error fetching clients:", error);
-          if (!isCancelled()) setData([]);
+          if (!cancelled) {
+            setData([]);
+            setTotal(0);
+          }
+        } finally {
+          if (!cancelled) setLoading(false);
         }
-      },
-      { label: "clients" },
-    );
-  }, [locationId, companyId]);
+      })();
+    }, search.trim() ? 250 : 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
+  }, [
+    locationId,
+    companyId,
+    pagination.pageIndex,
+    pagination.pageSize,
+    sorting,
+    search,
+    refreshToken,
+  ]);
 
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    onSortingChange: setSorting,
+    manualPagination: true,
+    manualSorting: true,
+    pageCount: Math.max(1, clientPageCount(total, pagination.pageSize)),
+    rowCount: total,
+    onSortingChange: (updater) => {
+      setSorting(updater);
+      setPagination((current) =>
+        current.pageIndex === 0 ? current : { ...current, pageIndex: 0 },
+      );
+    },
     enableSortingRemoval: false,
-    getPaginationRowModel: getPaginationRowModel(),
     onPaginationChange: setPagination,
-    onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    getFilteredRowModel: getFilteredRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
     state: {
       sorting,
       pagination,
-      columnFilters,
       columnVisibility,
     },
   });
@@ -339,19 +330,17 @@ export default function ClientPage() {
                     ref={inputRef}
                     className={cn(
                       "peer min-w-60 ps-9",
-                      Boolean(
-                        table.getColumn("first_name")?.getFilterValue()
-                      ) && "pe-9"
+                      Boolean(search) && "pe-9"
                     )}
-                    value={
-                      (table.getColumn("first_name")?.getFilterValue() ??
-                        "") as string
-                    }
-                    onChange={(e) =>
-                      table
-                        .getColumn("first_name")
-                        ?.setFilterValue(e.target.value)
-                    }
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setPagination((current) =>
+                        current.pageIndex === 0
+                          ? current
+                          : { ...current, pageIndex: 0 },
+                      );
+                    }}
                     placeholder={t("clients.filterByNameOrEmail")}
                     type="text"
                     aria-label={t("clients.filterByNameOrEmail")}
@@ -359,12 +348,17 @@ export default function ClientPage() {
                   <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 peer-disabled:opacity-50">
                     <ListFilterIcon size={16} aria-hidden="true" />
                   </div>
-                  {Boolean(table.getColumn("first_name")?.getFilterValue()) && (
+                  {Boolean(search) && (
                     <button
                       className="text-muted-foreground/80 hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 absolute inset-y-0 end-0 flex h-full w-9 items-center justify-center rounded-e-md transition-[color,box-shadow] outline-none focus:z-10 focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
                       aria-label={t("common.clear")}
                       onClick={() => {
-                        table.getColumn("first_name")?.setFilterValue("");
+                        setSearch("");
+                        setPagination((current) =>
+                          current.pageIndex === 0
+                            ? current
+                            : { ...current, pageIndex: 0 },
+                        );
                         if (inputRef.current) {
                           inputRef.current.focus();
                         }
@@ -499,7 +493,7 @@ export default function ClientPage() {
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between gap-8">
+            <div className="flex shrink-0 items-center justify-between gap-8">
               {/* Results per page */}
               <div className="flex items-center gap-3">
                 <Label htmlFor={id} className="max-sm:sr-only">
@@ -508,7 +502,7 @@ export default function ClientPage() {
                 <Select
                   value={table.getState().pagination.pageSize.toString()}
                   onValueChange={(value) => {
-                    table.setPageSize(Number(value));
+                    setPagination({ pageIndex: 0, pageSize: Number(value) });
                   }}
                 >
                   <SelectTrigger id={id} className="w-fit whitespace-nowrap">
@@ -530,9 +524,11 @@ export default function ClientPage() {
                   aria-live="polite"
                 >
                   <span className="text-foreground">
-                    {table.getState().pagination.pageIndex *
-                      table.getState().pagination.pageSize +
-                      1}
+                    {table.getRowCount() === 0
+                      ? 0
+                      : table.getState().pagination.pageIndex *
+                          table.getState().pagination.pageSize +
+                        1}
                     -
                     {Math.min(
                       Math.max(
@@ -544,7 +540,7 @@ export default function ClientPage() {
                       table.getRowCount()
                     )}
                   </span>{" "}
-                  of{" "}
+                  {t("clients.pageOf")}{" "}
                   <span className="text-foreground">
                     {table.getRowCount().toString()}
                   </span>

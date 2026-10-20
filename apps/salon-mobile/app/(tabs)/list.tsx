@@ -21,7 +21,7 @@ import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Client, fetchClients } from '@/lib/api/clients';
+import { Client, CLIENT_PAGE_SIZE, fetchClientsPage } from '@/lib/api/clients';
 
 /** How long a load can take before we bother showing a skeleton at all — avoids a flash on fast responses. */
 const SKELETON_DELAY_MS = 300;
@@ -70,10 +70,13 @@ export default function ClientsScreen() {
   const styles = createStyles(theme);
 
   const [clients, setClients] = React.useState<Client[]>([]);
+  const [total, setTotal] = React.useState(0);
+  const [page, setPage] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [sortDescending, setSortDescending] = React.useState(false);
   const reduceMotion = useReducedMotion();
 
@@ -81,6 +84,17 @@ export default function ClientsScreen() {
   // coming back from a client's detail screen) can refresh in place instead of
   // showing a skeleton over data we already have.
   const loadedLocationRef = React.useRef<string | null>(null);
+  const requestRef = React.useRef(0);
+  const filtersRef = React.useRef({
+    search: '',
+    sortDescending: false,
+    locationId: null as string | null,
+  });
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const loadClients = React.useCallback(async (showLoading: boolean) => {
     if (!companyId) {
@@ -90,22 +104,48 @@ export default function ClientsScreen() {
     if (locationLoading) return;
     if (!locationId) {
       setClients([]);
+      setTotal(0);
       setLoading(false);
       loadedLocationRef.current = null;
       return;
     }
+
+    const filtersChanged =
+      filtersRef.current.search !== debouncedSearch ||
+      filtersRef.current.sortDescending !== sortDescending ||
+      filtersRef.current.locationId !== locationId;
+    const pageIndex = filtersChanged ? 0 : page;
+    filtersRef.current = { search: debouncedSearch, sortDescending, locationId };
+    if (filtersChanged && page !== 0) {
+      requestRef.current += 1;
+      setPage(0);
+      return;
+    }
+
     if (showLoading) setLoading(true);
+    const requestId = ++requestRef.current;
     try {
-      const data = await fetchClients(companyId, locationId);
-      setClients(data);
+      const data = await fetchClientsPage({
+        locationId,
+        page: pageIndex,
+        pageSize: CLIENT_PAGE_SIZE,
+        search: debouncedSearch,
+        sortDescending,
+      });
+      if (requestId !== requestRef.current) return;
+      setClients(data.clients);
+      setTotal(data.total);
       setError(null);
       loadedLocationRef.current = locationId;
+      const lastPage = data.total === 0 ? 0 : Math.ceil(data.total / CLIENT_PAGE_SIZE) - 1;
+      if (pageIndex > lastPage) setPage(lastPage);
     } catch (err) {
+      if (requestId !== requestRef.current) return;
       setError(err instanceof Error ? err.message : t('client.failedToLoadClients'));
     } finally {
-      if (showLoading) setLoading(false);
+      if (requestId === requestRef.current) setLoading(false);
     }
-  }, [companyId, locationId, locationLoading, t]);
+  }, [companyId, locationId, locationLoading, t, debouncedSearch, sortDescending, page]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -118,22 +158,6 @@ export default function ClientsScreen() {
     await loadClients(false);
     setRefreshing(false);
   }, [loadClients]);
-
-  const filteredClients = React.useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    const matched = !term
-      ? clients
-      : clients.filter((client) => {
-          const name = clientName(client, '').toLowerCase();
-          const email = (client.email ?? '').toLowerCase();
-          const phone = (client.phone ?? '').toLowerCase();
-          return name.includes(term) || email.includes(term) || phone.includes(term);
-        });
-    return [...matched].sort((a, b) => {
-      const order = clientName(a, '').localeCompare(clientName(b, ''), undefined, { sensitivity: 'base' });
-      return sortDescending ? -order : order;
-    });
-  }, [clients, searchTerm, sortDescending]);
 
   const openSort = () => {
     Alert.alert(t('client.sortByName'), undefined, [
@@ -224,12 +248,12 @@ export default function ClientsScreen() {
       ) : (
         <Animated.View key="content" entering={FadeIn.duration(reduceMotion ? 100 : 200)} style={{ flex: 1 }}>
         <FlatList
-          data={filteredClients}
+          data={clients}
           keyExtractor={(item) => item.id}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-          contentContainerStyle={[styles.listContent, filteredClients.length === 0 && styles.listContentEmpty]}
+          contentContainerStyle={[styles.listContent, clients.length === 0 && styles.listContentEmpty]}
           ListEmptyComponent={
-            searchTerm ? (
+            searchTerm.trim() ? (
               <EmptyState
                 icon="search"
                 title={t('client.noResults')}
@@ -266,6 +290,38 @@ export default function ClientsScreen() {
             );
           }}
         />
+        {total > CLIENT_PAGE_SIZE ? (
+          <View style={styles.pager}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('client.previousPage')}
+              accessibilityState={{ disabled: page === 0 }}
+              disabled={page === 0}
+              onPress={() => setPage((current) => Math.max(0, current - 1))}
+              style={[styles.pagerButton, page === 0 && styles.pagerButtonDisabled]}>
+              <AppIcon name="chevronLeft" size={18} color={theme.text} />
+            </Pressable>
+            <Text style={styles.pagerLabel}>
+              {t('client.pageRange', {
+                from: page * CLIENT_PAGE_SIZE + 1,
+                to: Math.min(total, (page + 1) * CLIENT_PAGE_SIZE),
+                total,
+              })}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('client.nextPage')}
+              accessibilityState={{ disabled: (page + 1) * CLIENT_PAGE_SIZE >= total }}
+              disabled={(page + 1) * CLIENT_PAGE_SIZE >= total}
+              onPress={() => setPage((current) => current + 1)}
+              style={[
+                styles.pagerButton,
+                (page + 1) * CLIENT_PAGE_SIZE >= total && styles.pagerButtonDisabled,
+              ]}>
+              <AppIcon name="chevronRight" size={18} color={theme.text} />
+            </Pressable>
+          </View>
+        ) : null}
         </Animated.View>
       )}
 
@@ -424,5 +480,36 @@ const createStyles = (theme: typeof Colors.light) =>
     skeletonSubtitle: {
       height: 11,
       marginTop: 6,
+    },
+    pager: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      paddingHorizontal: Design.screenPadding,
+      paddingTop: 8,
+      paddingBottom: 12,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.border,
+    },
+    pagerButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.background,
+    },
+    pagerButtonDisabled: {
+      opacity: 0.35,
+    },
+    pagerLabel: {
+      flex: 1,
+      textAlign: 'center',
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.muted,
     },
   });

@@ -170,6 +170,16 @@ export default function ClientPage() {
   const [total, setTotal] = useState(0);
   const [refreshToken, setRefreshToken] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [sorting, setSorting] = useState<SortingState>([
+    {
+      id: "first_name",
+      desc: false,
+    },
+  ]);
+
+  const [data, setData] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [scopedLocationId, setScopedLocationId] = useState(locationId);
   if (locationId !== scopedLocationId) {
     setScopedLocationId(locationId);
@@ -181,17 +191,6 @@ export default function ClientPage() {
     }
     if (search !== "") setSearch("");
   }
-
-  const [sorting, setSorting] = useState<SortingState>([
-    {
-      id: "first_name",
-      desc: false,
-    },
-  ]);
-
-  const [data, setData] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isClientSheetOpen, setIsClientSheetOpen] = useState(false);
   const [isCreateClientSheetOpen, setIsCreateClientSheetOpen] = useState(false);
 

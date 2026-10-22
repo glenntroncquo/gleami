@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "../globals.css";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 import { SITE_ORIGIN } from "@/lib/seo";
 
 const inter = Inter({
@@ -25,7 +26,9 @@ export default function RedirectLayout({
       className={`${inter.variable} bg-canvas`}
       data-scroll-behavior="smooth"
     >
-      <body className="bg-canvas font-sans text-ink">{children}</body>
+      <body className="bg-canvas font-sans text-ink">
+        <AuthProvider locale="nl-be">{children}</AuthProvider>
+      </body>
     </html>
   );
 }

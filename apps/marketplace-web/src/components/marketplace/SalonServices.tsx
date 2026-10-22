@@ -17,6 +17,7 @@ type SalonServicesProps = {
   bookNow: string;
   minutes: string;
   available: string;
+  className?: string;
 };
 
 function priceLabel(value: number, locale: Locale): string {
@@ -37,6 +38,7 @@ export function SalonServices({
   bookNow,
   minutes,
   available,
+  className,
 }: SalonServicesProps) {
   const router = useRouter();
   const bookable = services.filter((service) => service.variants.length > 0);
@@ -58,15 +60,19 @@ export function SalonServices({
       slot: null,
       note: "",
       bookingId: null,
+      contact: null,
     });
-    router.push(`${bookingUrl}/tijd`);
+    router.push(bookingUrl);
   };
 
   if (!active) return null;
 
   return (
-    <section id="services" className="mt-12 min-w-0 border-t border-line pt-10">
-      <h2 className="text-xl font-semibold tracking-tight text-navy">{heading}</h2>
+    <section
+      id="services"
+      className={className ?? "mt-12 min-w-0 border-t border-line pt-10"}
+    >
+      <h2 className="text-[28px] font-semibold tracking-tight text-navy">{heading}</h2>
       {bookable.length > 1 ? (
         <div className="mt-4 w-full min-w-0 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex w-max gap-2">
@@ -97,23 +103,23 @@ export function SalonServices({
           return (
             <li
               key={variant.id}
-              className={`flex items-center gap-4 py-5 ${index === 0 ? "" : "border-t border-line"}`}
+              className={`flex flex-wrap items-center gap-x-4 gap-y-3 py-5 ${index === 0 ? "" : "border-t border-line"}`}
             >
-              <div className="min-w-0 flex-1">
-                <p className="text-base font-semibold text-navy">{name}</p>
+              <div className="min-w-0 flex-1 basis-48">
+                <p className="text-[16px] font-semibold text-navy">{name}</p>
                 {variant.durationMinutes > 0 ? (
-                  <p className="mt-1 text-sm text-muted">
+                  <p className="mt-1 text-[14px] text-muted">
                     {variant.durationMinutes} {minutes}
                   </p>
                 ) : null}
-                <p className="mt-2 text-base font-semibold text-navy">
-                  {priceLabel(variant.price, locale)}
-                </p>
               </div>
+              <p className="shrink-0 text-[16px] font-semibold text-navy">
+                {priceLabel(variant.price, locale)}
+              </p>
               <button
                 type="button"
                 onClick={() => bookVariant(active, variant)}
-                className="h-9 shrink-0 rounded-full border border-line px-4 text-sm font-semibold text-navy"
+                className="h-10 shrink-0 rounded-full bg-ink px-4 text-[14px] font-semibold text-white transition hover:bg-ink-soft"
               >
                 {book}
               </button>

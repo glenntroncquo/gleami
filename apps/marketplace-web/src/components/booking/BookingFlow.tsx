@@ -1,9 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getBrowserSupabase } from "@/lib/browser-supabase";
+import { ArrowLeftIcon, CheckIcon, PlusIcon, XIcon } from "lucide-react";
+import { AuthDialog } from "@/components/auth/AuthDialog";
+import { authCopy } from "@/components/auth/copy";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { readSavedContact, writeSavedContact } from "@/components/booking/saved-contact";
+import { areaField, textField } from "@/components/ui/fields";
+import { LoadingDots } from "@/components/ui/loading-dots";
 import { buildCatalog, itemKey, type CatalogItem } from "@/lib/booking/catalog";
 import { dateKey, dayKeysFrom, dayNumber, today, weekdayLabel } from "@/lib/booking/dates";
 import {
@@ -21,13 +27,13 @@ import {
   createAppointment,
   listAvailability,
   locationBySlug,
-  lookupEmail,
   SlotTakenError,
   type PublicLocation,
 } from "@/lib/marketplace-browser";
-import { useMarketplaceUser } from "@/components/consumer-home/useMarketplaceUser";
 
 type Step = "services" | "time" | "details" | "done";
+
+const salonCache = new Map<string, PublicLocation>();
 
 type BookingFlowProps = {
   locale: Locale;
@@ -109,12 +115,28 @@ export function BookingFlow({ locale, city, slug, step }: BookingFlowProps) {
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<BookingDraft | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+    const cached = salonCache.get(`${locale}:${slug}`);
+    if (cached) setSalon(cached);
     setDraft(readDraft(slug));
+  }, [locale, slug]);
+
+  useEffect(() => {
+    if (step === "time") router.prefetch(stepPath(salonPath(locale, city, slug), "details"));
+  }, [step, router, locale, city, slug]);
+
+  useEffect(() => {
     let cancelled = false;
     void locationBySlug(slug, locale.slice(0, 2))
       .then((location) => {
-        if (!cancelled) setSalon(location);
+        if (cancelled) return;
+        if (!location) {
+          setError("This salon is not available to book.");
+          return;
+        }
+        salonCache.set(`${locale}:${slug}`, location);
+        setSalon(location);
       })
       .catch(() => {
         if (!cancelled) setError("This salon is not available to book.");
@@ -140,10 +162,7 @@ export function BookingFlow({ locale, city, slug, step }: BookingFlowProps) {
   const go = (next: Step, query = "") => router.push(`${stepPath(base, next)}${query}`);
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-10">
-      <Link href={base} className="text-sm text-muted hover:text-ink">
-        {salon.name}
-      </Link>
+    <div key={step} className="booking-step mx-auto max-w-3xl px-5 py-10">
       {step === "services" ? (
         <ServicesStep
           locale={locale}
@@ -151,6 +170,7 @@ export function BookingFlow({ locale, city, slug, step }: BookingFlowProps) {
           draft={draft}
           onSave={save}
           onContinue={() => go("time")}
+          onClose={() => router.push(base)}
         />
       ) : null}
       {step === "time" ? (
@@ -160,6 +180,7 @@ export function BookingFlow({ locale, city, slug, step }: BookingFlowProps) {
           draft={draft}
           onSave={save}
           onBack={() => go("services")}
+          onClose={() => router.push(base)}
           onContinue={() => go("details")}
           slotTaken={searchParams.get("taken") === "1"}
         />
@@ -171,6 +192,7 @@ export function BookingFlow({ locale, city, slug, step }: BookingFlowProps) {
           draft={draft}
           onSave={save}
           onBack={() => go("time")}
+          onClose={() => router.push(base)}
           onTaken={() => {
             save({ ...draft, slot: null });
             go("time", "?taken=1");
@@ -185,21 +207,47 @@ export function BookingFlow({ locale, city, slug, step }: BookingFlowProps) {
   );
 }
 
+function BookingNav({ onBack, onClose }: { onBack: () => void; onClose: () => void }) {
+  return (
+    <div className="flex items-center justify-between">
+      <button
+        type="button"
+        onClick={onBack}
+        aria-label="Terug"
+        className="flex h-11 w-11 items-center justify-center rounded-full text-ink hover:bg-white"
+      >
+        <ArrowLeftIcon aria-hidden="true" className="h-5 w-5" />
+      </button>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Sluiten"
+        className="flex h-11 w-11 items-center justify-center rounded-full text-ink hover:bg-white"
+      >
+        <XIcon aria-hidden="true" className="h-5 w-5" />
+      </button>
+    </div>
+  );
+}
+
 function ServicesStep({
   locale,
   salon,
   draft,
   onSave,
   onContinue,
+  onClose,
 }: {
   locale: Locale;
   salon: PublicLocation;
   draft: BookingDraft;
   onSave: (draft: BookingDraft) => void;
   onContinue: () => void;
+  onClose: () => void;
 }) {
   const catalog = useMemo(() => buildCatalog(salon.services), [salon.services]);
   const [activeId, setActiveId] = useState(catalog[0]?.id ?? "");
+  const [breakdown, setBreakdown] = useState(false);
   const active = catalog.find((category) => category.id === activeId) ?? catalog[0];
   const selected = new Set(draft.items.map((item) => `${item.serviceId}:${item.variantId}`));
 
@@ -214,67 +262,195 @@ function ServicesStep({
   const price = draft.items.reduce((sum, item) => sum + item.price, 0);
   const minutes = draft.items.reduce((sum, item) => sum + item.durationMinutes, 0);
 
+  const countLabel =
+    draft.items.length === 1
+      ? "1 behandeling"
+      : `${draft.items.length} behandelingen`;
+
+  useEffect(() => {
+    if (draft.items.length === 0) setBreakdown(false);
+  }, [draft.items.length]);
+
+  useEffect(() => {
+    if (!breakdown) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setBreakdown(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [breakdown]);
+
   return (
-    <section className="mt-6">
-      <h1 className="text-3xl font-semibold tracking-tight">Kies een behandeling</h1>
+    <section className="pb-28 lg:pb-0">
+      <BookingNav onBack={onClose} onClose={onClose} />
+      <h1 className="mt-4 text-[32px] font-semibold tracking-tight">Kies een behandeling</h1>
       {catalog.length > 1 ? (
-        <div className="mt-6 flex gap-2 overflow-x-auto">
-          {catalog.map((category) => (
-            <button
-              key={category.id}
-              type="button"
-              onClick={() => setActiveId(category.id)}
-              className={`rounded-full px-4 py-2 text-sm ${
-                category.id === active?.id ? "bg-ink text-white" : "bg-white ring-1 ring-line"
-              }`}
-            >
-              {category.name}
-            </button>
-          ))}
+        <div className="mt-6 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {catalog.map((category) => {
+            const chosen = category.id === active?.id;
+            return (
+              <button
+                key={category.id}
+                type="button"
+                aria-pressed={chosen}
+                onClick={() => setActiveId(category.id)}
+                className={`h-10 shrink-0 whitespace-nowrap rounded-full px-4 text-sm font-semibold ${
+                  chosen ? "bg-ink text-white" : "bg-white text-ink ring-1 ring-line"
+                }`}
+              >
+                {category.name}
+              </button>
+            );
+          })}
         </div>
       ) : null}
-      <ul className="mt-6 divide-y divide-line rounded-3xl bg-white px-5 ring-1 ring-line">
+      <ul className="mt-6 space-y-3">
         {active?.items.map((item) => {
           const key = itemKey(item);
           const on = selected.has(key);
           return (
-            <li key={key} className="flex items-center justify-between gap-4 py-4">
-              <div>
-                <p className="font-medium">{item.variant.name}</p>
-                {item.variant.durationMinutes > 0 ? (
-                  <p className="text-sm text-muted">
-                    {item.service.name} · {item.variant.durationMinutes} min
-                  </p>
-                ) : null}
-              </div>
+            <li key={key}>
               <button
                 type="button"
+                aria-pressed={on}
                 onClick={() => toggle(item)}
-                className={`rounded-full px-4 py-2 text-sm font-medium ${
-                  on ? "bg-ink text-white" : "bg-canvas ring-1 ring-line"
+                className={`flex w-full items-center gap-4 rounded-2xl bg-white px-5 py-4 text-left ring-1 transition ${
+                  on ? "ring-2 ring-ink" : "ring-line hover:ring-ink/25"
                 }`}
               >
-                {salon.priced ? money(item.variant.price, locale) : on ? "Gekozen" : "Kies"}
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[16px] font-semibold">{item.variant.name}</span>
+                  {item.variant.durationMinutes > 0 ? (
+                    <span className="mt-1 block text-sm text-muted">
+                      {item.variant.durationMinutes} min
+                    </span>
+                  ) : null}
+                  {salon.priced ? (
+                    <span className="mt-3 block text-[16px] font-semibold">
+                      {money(item.variant.price, locale)}
+                    </span>
+                  ) : null}
+                </span>
+                <span
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                    on ? "bg-ink text-white" : "text-ink ring-1 ring-line"
+                  }`}
+                >
+                  {on ? (
+                    <CheckIcon aria-hidden="true" className="h-5 w-5" />
+                  ) : (
+                    <PlusIcon aria-hidden="true" className="h-5 w-5" />
+                  )}
+                </span>
               </button>
             </li>
           );
         })}
       </ul>
-      <footer className="mt-8 flex items-center justify-between">
-        <p className="text-sm text-muted">
-          {draft.items.length}
-          {minutes > 0 ? ` · ${minutes} min` : ""}
-          {price > 0 ? ` · ${money(price, locale)}` : ""}
-        </p>
+      <footer className="mt-8 hidden items-center justify-between lg:flex">
+        <button
+          type="button"
+          disabled={draft.items.length === 0}
+          onClick={() => setBreakdown(true)}
+          className="text-left text-sm text-muted disabled:opacity-60"
+        >
+          {draft.items.length === 0
+            ? "Kies een behandeling"
+            : `${countLabel}${minutes > 0 ? ` · ${minutes} min` : ""}${price > 0 ? ` · ${money(price, locale)}` : ""}`}
+        </button>
         <button
           type="button"
           disabled={draft.items.length === 0}
           onClick={onContinue}
-          className="rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white disabled:opacity-40"
+          className="h-12 rounded-full bg-ink px-6 text-sm font-semibold text-white disabled:opacity-40"
         >
           Kies een tijd
         </button>
       </footer>
+      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-4 border-t border-line bg-white px-5 py-3 lg:hidden">
+        <button
+          type="button"
+          disabled={draft.items.length === 0}
+          onClick={() => setBreakdown(true)}
+          className="min-w-0 text-left disabled:opacity-60"
+        >
+          <span className="block text-base font-semibold">
+            {price > 0 ? money(price, locale) : draft.items.length === 0 ? "—" : countLabel}
+          </span>
+          <span className="block truncate text-sm text-muted">
+            {draft.items.length === 0
+              ? "Kies een behandeling"
+              : `${countLabel}${minutes > 0 ? ` · ${minutes} min` : ""}`}
+          </span>
+        </button>
+        <button
+          type="button"
+          disabled={draft.items.length === 0}
+          onClick={onContinue}
+          className="h-12 shrink-0 rounded-full bg-ink px-5 text-sm font-semibold text-white disabled:opacity-40"
+        >
+          Kies een tijd
+        </button>
+      </div>
+      {breakdown ? (
+        <div className="fixed inset-0 z-40">
+          <button
+            type="button"
+            aria-label="Sluiten"
+            className="absolute inset-0 bg-ink/45"
+            onClick={() => setBreakdown(false)}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Prijsoverzicht"
+            className="absolute inset-x-0 bottom-0 rounded-t-[28px] bg-white px-5 pb-6 pt-4 shadow-float"
+          >
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setBreakdown(false)}
+                aria-label="Sluiten"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-ink"
+              >
+                <XIcon aria-hidden="true" className="h-5 w-5" />
+              </button>
+            </div>
+            <h2 className="text-[28px] font-semibold tracking-tight">Prijsoverzicht</h2>
+            <ul className="mt-6">
+              {draft.items.map((item) => (
+                <li
+                  key={`${item.serviceId}:${item.variantId}`}
+                  className="flex items-start justify-between gap-4 border-t border-line py-4 first:border-t-0 first:pt-0"
+                >
+                  <span>
+                    <span className="block font-medium">{item.variantName}</span>
+                    {item.durationMinutes > 0 ? (
+                      <span className="mt-1 block text-sm text-muted">
+                        {item.durationMinutes} min
+                      </span>
+                    ) : null}
+                  </span>
+                  {salon.priced ? (
+                    <span className="font-medium">{money(item.price, locale)}</span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+            <div className="flex items-center justify-between border-t border-line pt-4 text-[16px] font-semibold">
+              <span>Totaal</span>
+              <span>{salon.priced ? money(price, locale) : countLabel}</span>
+            </div>
+            <button
+              type="button"
+              onClick={onContinue}
+              className="mt-6 flex h-14 w-full items-center justify-center rounded-full bg-ink text-[16px] font-semibold text-white"
+            >
+              Kies een tijd
+            </button>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -285,6 +461,7 @@ function TimeStep({
   draft,
   onSave,
   onBack,
+  onClose,
   onContinue,
   slotTaken,
 }: {
@@ -293,6 +470,7 @@ function TimeStep({
   draft: BookingDraft;
   onSave: (draft: BookingDraft) => void;
   onBack: () => void;
+  onClose: () => void;
   onContinue: () => void;
   slotTaken: boolean;
 }) {
@@ -343,13 +521,14 @@ function TimeStep({
   const slots = mergeDaySlots(dayKey ? days[dayKey] : undefined);
 
   return (
-    <section className="mt-6">
-      <h1 className="text-3xl font-semibold tracking-tight">Kies een moment</h1>
+    <section>
+      <BookingNav onBack={onBack} onClose={onClose} />
+      <h1 className="mt-4 text-3xl font-semibold tracking-tight">Kies een moment</h1>
       {slotTaken ? (
         <p className="mt-4 text-sm text-muted">Dit moment is net geboekt. Kies een andere tijd.</p>
       ) : null}
       {failed ? <p className="mt-4 text-sm text-muted">Tijden laden lukt nu niet.</p> : null}
-      <div className="mt-6 flex gap-2 overflow-x-auto pb-2">
+      <div className="no-scrollbar mt-6 flex gap-2 overflow-x-auto pb-1">
         {keys.list.map((key) => {
           const open = mergeDaySlots(days[key]).length > 0;
           return (
@@ -414,6 +593,7 @@ function DetailsStep({
   draft,
   onSave,
   onBack,
+  onClose,
   onTaken,
   onDone,
 }: {
@@ -422,30 +602,58 @@ function DetailsStep({
   draft: BookingDraft;
   onSave: (draft: BookingDraft) => void;
   onBack: () => void;
+  onClose: () => void;
   onTaken: () => void;
   onDone: () => void;
 }) {
-  const { user, loading } = useMarketplaceUser();
+  const { user, loading } = useAuth();
+  const copy = authCopy(locale);
+  const [guest, setGuest] = useState(false);
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
-  const [mode, setMode] = useState<"email" | "password" | "code" | "profile">("email");
+  const [remember, setRemember] = useState(false);
+  const [rememberReady, setRememberReady] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [note, setNote] = useState(draft.note);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const ready = Boolean(
-    user?.profileComplete && user.firstName && user.lastName && user.phone && user.email,
-  );
+  const identified = Boolean(user?.firstName && user?.lastName && user?.email);
   const price = draft.items.reduce((sum, item) => sum + item.price, 0);
+  const confirmClass =
+    "mt-5 flex h-[58px] w-full items-center justify-center rounded-full bg-ink text-[17px] font-semibold text-white disabled:opacity-40 data-[busy=true]:opacity-100";
 
   useEffect(() => {
-    if (user?.firstName) setFirstName(user.firstName);
-    if (user?.lastName) setLastName(user.lastName);
-    if (user?.phone) setPhone(user.phone);
+    if (!user) return;
+    setFirstName(user.firstName);
+    setLastName(user.lastName);
+    setEmail(user.email);
+    setPhone(user.phone);
+    setEditing(!user.phone);
+  }, [user?.id, user?.firstName, user?.lastName, user?.email, user?.phone]);
+
+  useEffect(() => {
+    if (user) return;
+    const saved = readSavedContact();
+    if (saved && (saved.firstName || saved.lastName || saved.email || saved.phone)) {
+      setFirstName(saved.firstName);
+      setLastName(saved.lastName);
+      setEmail(saved.email);
+      setPhone(saved.phone);
+      setRemember(true);
+    }
+    setRememberReady(true);
   }, [user]);
+
+  useEffect(() => {
+    if (!rememberReady || user) return;
+    if (!remember) {
+      writeSavedContact(null);
+      return;
+    }
+    writeSavedContact({ firstName, lastName, email, phone });
+  }, [rememberReady, remember, firstName, lastName, email, phone, user]);
 
   useEffect(() => {
     if (draft.items.length === 0 || !draft.slot) onBack();
@@ -453,8 +661,15 @@ function DetailsStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const confirm = async () => {
-    if (!user || !draft.slot) return;
+  const book = async (contact: { firstName: string; lastName: string; email: string; phone: string } | null) => {
+    if (!draft.slot) return;
+    const person = contact ?? (user ? {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      phone: user.phone,
+    } : null);
+    if (!person) return;
     setBusy(true);
     setMessage(null);
     try {
@@ -468,13 +683,20 @@ function DetailsStep({
           serviceVariantId: item.variantId,
         })),
         price,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phone: user.phone,
+        firstName: person.firstName,
+        lastName: person.lastName,
+        email: person.email,
+        phone: person.phone,
         notes: note,
       });
-      onSave({ ...draft, note, bookingId: result.bookingId });
+      if (user) {
+        await completeAccount({
+          firstName: person.firstName,
+          lastName: person.lastName,
+          phone: person.phone,
+        }).catch(() => undefined);
+      }
+      onSave({ ...draft, note, bookingId: result.bookingId, contact: user ? null : contact });
       onDone();
     } catch (error) {
       if (error instanceof SlotTakenError) {
@@ -489,161 +711,89 @@ function DetailsStep({
   };
 
   return (
-    <section className="mt-6">
-      <h1 className="text-3xl font-semibold tracking-tight">Bevestig</h1>
+    <section>
+      <BookingNav onBack={onBack} onClose={onClose} />
+      <h1 className="mt-4 text-3xl font-semibold tracking-tight">{copy.confirm}</h1>
       <Summary locale={locale} items={draft.items} slotLabel={draft.slot?.time ?? ""} />
       {loading ? <DetailsSkeleton /> : null}
-      {!loading && !user && mode === "email" ? (
-        <form
-          className="mt-6 space-y-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setBusy(true);
-            setMessage(null);
-            void lookupEmail(email.trim())
-              .then(async (status) => {
-                if (status.hasPassword) {
-                  setMode("password");
-                  return;
-                }
-                const supabase = getBrowserSupabase();
-                if (!supabase) return;
-                const { error } = await supabase.auth.signInWithOtp({
-                  email: email.trim(),
-                  options: { shouldCreateUser: true },
-                });
-                if (error) setMessage(error.message);
-                else setMode("code");
-              })
-              .catch(() => setMessage("Dit e-mailadres kon niet worden gecontroleerd."))
-              .finally(() => setBusy(false));
-          }}
-        >
-          <label className="block text-sm font-medium">
-            E-mail
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-line px-3 py-3"
-            />
-          </label>
-          <button type="submit" disabled={busy} className="rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white">
-            Ga verder
-          </button>
-        </form>
+      {!loading && !identified && !guest ? (
+        <AuthDialog
+          locale={locale}
+          open
+          embedded
+          purpose="book"
+          allowGuest
+          onClose={onBack}
+          onGuest={() => setGuest(true)}
+        />
       ) : null}
-      {!user && mode === "password" ? (
+      {!loading && !identified && guest ? (
         <form
-          className="mt-6 space-y-3"
+          className="mt-6"
           onSubmit={(event) => {
             event.preventDefault();
-            const supabase = getBrowserSupabase();
-            if (!supabase) return;
-            setBusy(true);
-            void supabase.auth
-              .signInWithPassword({ email: email.trim(), password })
-              .then(({ error }) => {
-                if (error) setMessage("E-mail of wachtwoord klopt niet.");
-              })
-              .finally(() => setBusy(false));
-          }}
-        >
-          <label className="block text-sm font-medium">
-            Wachtwoord
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-line px-3 py-3"
-            />
-          </label>
-          <button type="submit" disabled={busy} className="rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white">
-            Aanmelden
-          </button>
-        </form>
-      ) : null}
-      {!user && mode === "code" ? (
-        <form
-          className="mt-6 space-y-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const supabase = getBrowserSupabase();
-            if (!supabase) return;
-            setBusy(true);
-            void supabase.auth
-              .verifyOtp({ email: email.trim(), token: code.trim(), type: "email" })
-              .then(({ error }) => {
-                if (error) setMessage("Die code klopt niet of is verlopen.");
-                else setMode("profile");
-              })
-              .finally(() => setBusy(false));
-          }}
-        >
-          <label className="block text-sm font-medium">
-            Code uit je e-mail
-            <input
-              inputMode="numeric"
-              required
-              value={code}
-              onChange={(event) => setCode(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-line px-3 py-3"
-            />
-          </label>
-          <button type="submit" disabled={busy} className="rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white">
-            Bevestig code
-          </button>
-        </form>
-      ) : null}
-      {user && !ready ? (
-        <form
-          className="mt-6 space-y-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setBusy(true);
-            void completeAccount({
+            void book({
               firstName: firstName.trim(),
               lastName: lastName.trim(),
+              email: email.trim(),
               phone: phone.trim(),
-              ...(password ? { password } : {}),
-            })
-              .catch(() => setMessage("Je gegevens konden niet worden opgeslagen."))
-              .finally(() => setBusy(false));
+            });
           }}
         >
-          <label className="block text-sm font-medium">
-            Voornaam
-            <input required value={firstName} onChange={(event) => setFirstName(event.target.value)} className="mt-1 w-full rounded-xl border border-line px-3 py-3" />
+          <h2 className="text-[22px] font-semibold tracking-tight">{copy.guestTitle}</h2>
+          <p className="mt-2 text-sm text-muted">{copy.guestBody}</p>
+          <label className="mt-4 block text-[15px] font-semibold">
+            {copy.firstName}
+            <input
+              required
+              autoComplete="given-name"
+              value={firstName}
+              onChange={(event) => setFirstName(event.target.value)}
+              className={textField}
+            />
           </label>
-          <label className="block text-sm font-medium">
-            Achternaam
-            <input required value={lastName} onChange={(event) => setLastName(event.target.value)} className="mt-1 w-full rounded-xl border border-line px-3 py-3" />
+          <label className="mt-4 block text-[15px] font-semibold">
+            {copy.lastName}
+            <input
+              required
+              autoComplete="family-name"
+              value={lastName}
+              onChange={(event) => setLastName(event.target.value)}
+              className={textField}
+            />
           </label>
-          <label className="block text-sm font-medium">
-            Telefoon
-            <input required placeholder="+32470000000" value={phone} onChange={(event) => setPhone(event.target.value)} className="mt-1 w-full rounded-xl border border-line px-3 py-3" />
+          <label className="mt-4 block text-[15px] font-semibold">
+            {copy.email}
+            <input
+              required
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className={textField}
+            />
           </label>
-          {mode === "profile" ? (
-            <label className="block text-sm font-medium">
-              Wachtwoord
-              <input type="password" minLength={8} required value={password} onChange={(event) => setPassword(event.target.value)} className="mt-1 w-full rounded-xl border border-line px-3 py-3" />
-            </label>
-          ) : null}
-          <button type="submit" disabled={busy} className="rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white">
-            Opslaan
-          </button>
-        </form>
-      ) : null}
-      {ready && user ? (
-        <div className="mt-6 space-y-4">
-          <p className="text-sm">
-            {user.firstName} {user.lastName}
-            <span className="block text-muted">{user.email}</span>
-          </p>
-          <label className="block text-sm font-medium">
-            Opmerking
+          <label className="mt-4 block text-[15px] font-semibold">
+            {copy.phone}
+            <input
+              required
+              autoComplete="tel"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              className={textField}
+            />
+          </label>
+          <label className="mt-4 flex items-start gap-3 text-sm font-medium text-ink">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(event) => setRemember(event.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-[#5B7CF0]"
+            />
+            {copy.rememberDetails}
+          </label>
+          <label className="mt-4 block text-[15px] font-semibold">
+            {copy.note}
             <textarea
               value={note}
               onChange={(event) => {
@@ -651,17 +801,130 @@ function DetailsStep({
                 setNote(value);
                 onSave({ ...draft, note: value });
               }}
-              className="mt-1 w-full rounded-xl border border-line px-3 py-3"
+              className={areaField}
+              rows={3}
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={busy || (!salon.priced && price <= 0)}
+            data-busy={busy || undefined}
+            className={confirmClass}
+          >
+            {busy ? (
+              <LoadingDots label={copy.working} />
+            ) : salon.priced || price > 0 ? (
+              `${copy.confirm} · ${money(price, locale)}`
+            ) : (
+              copy.priceUnavailable
+            )}
+          </button>
+        </form>
+      ) : null}
+      {!loading && identified && user ? (
+        <div className="mt-6">
+          <h2 className="text-[22px] font-semibold tracking-tight">{copy.guestTitle}</h2>
+          {editing ? (
+            <form
+              className="mt-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setBusy(true);
+                setMessage(null);
+                void completeAccount({
+                  firstName: firstName.trim(),
+                  lastName: lastName.trim(),
+                  phone: phone.trim(),
+                })
+                  .then(() => setEditing(false))
+                  .catch(() => setMessage(copy.profileError))
+                  .finally(() => setBusy(false));
+              }}
+            >
+              <label className="block text-[15px] font-semibold">
+                {copy.firstName}
+                <input
+                  required
+                  autoComplete="given-name"
+                  value={firstName}
+                  onChange={(event) => setFirstName(event.target.value)}
+                  className={textField}
+                />
+              </label>
+              <label className="mt-4 block text-[15px] font-semibold">
+                {copy.lastName}
+                <input
+                  required
+                  autoComplete="family-name"
+                  value={lastName}
+                  onChange={(event) => setLastName(event.target.value)}
+                  className={textField}
+                />
+              </label>
+              <p className="mt-4 text-[15px] font-semibold">
+                {copy.email}
+                <span className="mt-2 block font-normal text-muted">{user.email}</span>
+              </p>
+              <label className="mt-4 block text-[15px] font-semibold">
+                {copy.phone}
+                <input
+                  required
+                  autoComplete="tel"
+                  value={phone}
+                  onChange={(event) => setPhone(event.target.value)}
+                  className={textField}
+                />
+              </label>
+              <button type="submit" disabled={busy} data-busy={busy || undefined} className={confirmClass}>
+                {busy ? <LoadingDots label={copy.working} /> : copy.saveProfile}
+              </button>
+            </form>
+          ) : (
+            <div className="mt-3">
+              <p className="text-[15px] font-medium">
+                {user.firstName} {user.lastName}
+                <span className="block font-normal text-muted">{user.email}</span>
+                {user.phone ? <span className="block font-normal text-muted">{user.phone}</span> : null}
+              </p>
+              <button type="button" onClick={() => setEditing(true)} className="mt-3 text-sm font-semibold text-peri-dark">
+                {copy.editDetails}
+              </button>
+            </div>
+          )}
+          <label className="mt-4 block text-[15px] font-semibold">
+            {copy.note}
+            <textarea
+              value={note}
+              onChange={(event) => {
+                const value = event.target.value;
+                setNote(value);
+                onSave({ ...draft, note: value });
+              }}
+              className={areaField}
               rows={3}
             />
           </label>
           <button
             type="button"
-            disabled={busy || (!salon.priced && price <= 0)}
-            onClick={() => void confirm()}
-            className="rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white disabled:opacity-40"
+            disabled={busy || !firstName.trim() || !lastName.trim() || !phone.trim() || (!salon.priced && price <= 0)}
+            data-busy={busy || undefined}
+            onClick={() =>
+              void book({
+                firstName: firstName.trim(),
+                lastName: lastName.trim(),
+                email: user.email,
+                phone: phone.trim(),
+              })
+            }
+            className={confirmClass}
           >
-            {salon.priced || price > 0 ? `Bevestig · ${money(price, locale)}` : "Prijs niet beschikbaar"}
+            {busy ? (
+              <LoadingDots label={copy.working} />
+            ) : salon.priced || price > 0 ? (
+              `${copy.confirm} · ${money(price, locale)}`
+            ) : (
+              copy.priceUnavailable
+            )}
           </button>
         </div>
       ) : null}
@@ -715,20 +978,34 @@ function DoneStep({
   salon: PublicLocation;
   draft: BookingDraft;
 }) {
+  const copy = authCopy(locale);
+  const { user, openAuth } = useAuth();
   return (
     <section className="mt-6">
-      <h1 className="text-3xl font-semibold tracking-tight">Je bent geboekt</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">{copy.booked}</h1>
       <p className="mt-3 text-muted">
         {salon.name}
         {draft.slot ? ` · ${draft.slot.time}` : ""}
-        {draft.bookingId ? ` · ${draft.bookingId}` : ""}
       </p>
       <Summary locale={locale} items={draft.items} slotLabel={draft.slot?.time ?? ""} />
+      {draft.contact && !user ? (
+        <div className="mt-6 rounded-3xl bg-white px-5 py-5 ring-1 ring-line">
+          <p className="text-[17px] font-semibold">{copy.keepAppointment}</p>
+          <p className="mt-2 text-sm text-muted">{copy.keepAppointmentBody}</p>
+          <button
+            type="button"
+            onClick={() => openAuth({ purpose: "account", email: draft.contact?.email })}
+            className="mt-4 rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white"
+          >
+            {copy.login}
+          </button>
+        </div>
+      ) : null}
       <Link
         href={salonPath(locale, city, salon.slug)}
         className="mt-8 inline-flex rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white"
       >
-        Terug naar de salon
+        {copy.backToSalon}
       </Link>
     </section>
   );

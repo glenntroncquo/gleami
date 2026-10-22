@@ -3,10 +3,10 @@ import type { Appointment, StaffMember } from '../types/calendar';
 export const calendarDateLabel = 'Tuesday, 29 September';
 
 export const calendarStaff: StaffMember[] = [
-{ id: 'emma', name: 'Emma', role: 'Senior stylist', tone: 'rose', hours: '9:00–18:00' },
-{ id: 'lucas', name: 'Lucas', role: 'Barber', tone: 'sky', hours: '9:00–17:30' },
-{ id: 'sofia', name: 'Sofia', role: 'Nail artist', tone: 'sage', hours: '9:00–17:00' },
-{ id: 'mila', name: 'Mila', role: 'Lash & brow artist', tone: 'lilac', hours: '9:30–16:30' }];
+{ id: 'emma', name: 'Emma Vermeulen', firstName: 'Emma', lastName: 'Vermeulen', role: 'Senior stylist', tone: 'rose', color: 'blue', hours: '9:00–18:00' },
+{ id: 'lucas', name: 'Lucas Bogaert', firstName: 'Lucas', lastName: 'Bogaert', role: 'Barber', tone: 'sky', color: 'violet', hours: '9:00–17:30' },
+{ id: 'sofia', name: 'Sofia Mertens', firstName: 'Sofia', lastName: 'Mertens', role: 'Nail artist', tone: 'sage', color: 'emerald', hours: '9:00–17:00' },
+{ id: 'mila', name: 'Mila Claessens', firstName: 'Mila', lastName: 'Claessens', role: 'Lash & brow artist', tone: 'lilac', color: 'orange', hours: '9:30–16:30' }];
 
 
 export const calendarSummary = ['19 appointments', '5 booked online', '86% booked', '€1,284 taken today'];
@@ -43,11 +43,13 @@ export const calendarAppointments: Appointment[] = [
 
 export const selectedAppointmentDetail = {
   client: 'Charlotte De Smet',
+  phone: '+32 470 12 34 56',
+  email: 'charlotte.desmet@email.be',
   clientMeta: 'Regular · 14 visits',
   treatment: 'Balayage',
-  time: '10:15 – 12:00',
+  time: '10:15 - 12:00',
   durationLabel: '105 min',
-  professional: 'Emma',
+  professional: 'Emma Vermeulen',
   note: 'Sensitive scalp — use the low-ammonia colour line. Likes an oat flat white.',
-  price: '€145.00'
+  price: '€145'
 };

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AccountMenu } from "@/components/auth/AccountMenu";
 import { ChevronDownIcon, GlobeIcon, MenuIcon } from "lucide-react";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { Logo } from "@/components/ui/Logo";
@@ -18,8 +19,6 @@ type SiteHeaderProps = {
   availableLocales?: readonly Locale[];
 };
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.gleami.eu";
-
 export function SiteHeader({
   locale,
   route,
@@ -30,7 +29,7 @@ export function SiteHeader({
   const links =
     mode === "business"
       ? [
-          { label: copy.business.overviewTitle, href: "#product" },
+          { label: copy.nav.product, href: "#product" },
           { label: copy.nav.discover, href: routeFor(locale, { kind: "salons" }) },
           { label: copy.nav.treatments, href: routeFor(locale, { kind: "treatments" }) },
           { label: copy.business.faqEyebrow, href: "#faq" },
@@ -45,7 +44,7 @@ export function SiteHeader({
     <header className="sticky top-0 z-50 border-b border-line/80 bg-canvas/90 backdrop-blur-xl">
       <nav
         aria-label="Main"
-        className="relative mx-auto flex h-16 max-w-7xl items-center justify-between px-5 md:px-8"
+        className="relative mx-auto grid h-16 max-w-7xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-5 md:px-8"
       >
         <Link
           href={routeFor(locale, { kind: "home" })}
@@ -55,12 +54,12 @@ export function SiteHeader({
           <Logo />
         </Link>
 
-        <ul className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 lg:flex">
+        <ul className="no-scrollbar hidden min-w-0 items-center justify-center gap-0.5 overflow-x-auto lg:flex">
           {links.map((link) => (
-            <li key={link.label}>
+            <li key={link.label} className="shrink-0">
               <Link
                 href={link.href}
-                className="rounded-full px-3.5 py-2 text-[14px] text-ink/70 transition-colors hover:bg-ink/[0.04] hover:text-ink"
+                className="whitespace-nowrap rounded-full px-2.5 py-2 text-[14px] text-ink/70 transition-colors hover:bg-ink/[0.04] hover:text-ink"
               >
                 {link.label}
               </Link>
@@ -68,11 +67,12 @@ export function SiteHeader({
           ))}
         </ul>
 
+        <div className="flex items-center justify-end gap-2">
         <div className="hidden items-center gap-2 lg:flex">
           <details className="group relative">
-            <summary className="flex h-9 cursor-pointer list-none items-center gap-2 rounded-full px-3 text-[13px] text-muted hover:bg-ink/[0.04] hover:text-ink">
+            <summary className="flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-full px-2.5 text-[13px] text-muted hover:bg-ink/[0.04] hover:text-ink">
               <GlobeIcon aria-hidden="true" className="h-4 w-4" />
-              {localeConfig[locale].label}
+              {localeConfig[locale].hreflang.slice(0, 2).toUpperCase()}
               <ChevronDownIcon
                 aria-hidden="true"
                 className="h-3.5 w-3.5 transition group-open:rotate-180"
@@ -96,17 +96,12 @@ export function SiteHeader({
               ))}
             </div>
           </details>
-          <a
-            href={appUrl}
-            className="rounded-full px-3.5 py-2 text-[14px] text-ink/70 transition-colors hover:text-ink"
-          >
-            {copy.nav.login}
-          </a>
+          <AccountMenu locale={locale} />
           <ButtonLink
             href={routeFor(locale, { kind: "business" }) + "#contact"}
             size="sm"
           >
-            {copy.actions.start}
+            {copy.nav.business}
           </ButtonLink>
         </div>
 
@@ -142,14 +137,16 @@ export function SiteHeader({
                 </Link>
               ))}
             </div>
+            <AccountMenu locale={locale} stacked />
             <ButtonLink
               href={routeFor(locale, { kind: "business" }) + "#contact"}
               className="mt-5 w-full"
             >
-              {copy.actions.start}
+              {copy.nav.business}
             </ButtonLink>
           </div>
         </details>
+        </div>
       </nav>
     </header>
   );

@@ -194,7 +194,7 @@ export async function setLike(userId: string, locationId: string, liked: boolean
     const { error } = await supabase
       .from("marketplace_location_like")
       .insert({ user_id: userId, location_id: locationId });
-    if (error) throw new Error(error.message);
+    if (error && error.code !== "23505") throw new Error(error.message);
     return;
   }
   const { error } = await supabase
@@ -203,6 +203,49 @@ export async function setLike(userId: string, locationId: string, liked: boolean
     .eq("user_id", userId)
     .eq("location_id", locationId);
   if (error) throw new Error(error.message);
+}
+
+export async function isLiked(userId: string, locationId: string): Promise<boolean> {
+  const { data, error } = await client()
+    .from("marketplace_location_like")
+    .select("location_id")
+    .eq("user_id", userId)
+    .eq("location_id", locationId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return Boolean(data);
+}
+
+export type MyAppointment = {
+  id: string;
+  startsAt: string;
+  locationName: string;
+  locationSlug: string;
+  locationCity: string | null;
+  services: string[];
+  isCanceled: boolean;
+  price: number | null;
+};
+
+export async function listMyAppointments(): Promise<MyAppointment[]> {
+  const { data, error } = await client().rpc("marketplace_my_appointments", { p_limit: 50 });
+  if (error) throw new Error(error.message);
+  const rows = Array.isArray(data) ? data : [];
+  return rows.flatMap((row) => {
+    if (!row || typeof row !== "object") return [];
+    const item = row as Record<string, unknown>;
+    if (typeof item.id !== "string" || typeof item.location_name !== "string") return [];
+    return [{
+      id: item.id,
+      startsAt: String(item.starts_at ?? ""),
+      locationName: item.location_name,
+      locationSlug: String(item.location_slug ?? ""),
+      locationCity: item.location_city ? String(item.location_city) : null,
+      services: Array.isArray(item.services) ? item.services.filter((name) => typeof name === "string") : [],
+      isCanceled: Boolean(item.is_canceled),
+      price: item.price == null ? null : Number(item.price),
+    }];
+  });
 }
 
 export async function listFavorites(userId: string): Promise<FavoriteSalon[]> {

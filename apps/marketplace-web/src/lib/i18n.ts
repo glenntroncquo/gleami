@@ -379,7 +379,9 @@ export type RouteDescriptor =
       city: CityKey | string;
     }
   | { kind: "blog" }
-  | { kind: "blog-post"; post: BlogPostKey };
+  | { kind: "blog-post"; post: BlogPostKey }
+  | { kind: "account" }
+  | { kind: "favorites" };
 
 export function localizedCitySlug(
   locale: Locale,
@@ -416,6 +418,10 @@ export function routeFor(locale: Locale, route: RouteDescriptor): string {
       return `${prefix}/${paths.blog}`;
     case "blog-post":
       return `${prefix}/${paths.blog}/${blogPostSlugs[route.post][locale]}`;
+    case "account":
+      return `${prefix}/account`;
+    case "favorites":
+      return `${prefix}/account/favorieten`;
   }
 }
 

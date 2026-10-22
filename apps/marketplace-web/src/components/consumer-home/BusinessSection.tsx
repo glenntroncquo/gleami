@@ -1,16 +1,16 @@
 import Link from "next/link";
 import { ArrowRightIcon } from "lucide-react";
-import { CalendarMock } from "./CalendarMock";
+import { CalendarMockup } from "@/components/mockups/CalendarMockup";
+import { ScaleToFit } from "@/components/ui/ScaleToFit";
 import type { Locale } from "@/lib/i18n";
 import type { HomeCopy } from "./messages";
 
 type BusinessSectionProps = {
   locale: Locale;
-  businessHref: string;
   copy: HomeCopy;
 };
 
-export function BusinessSection({ locale, businessHref, copy }: BusinessSectionProps) {
+export function BusinessSection({ locale, copy }: BusinessSectionProps) {
   return (
     <section id="business" aria-labelledby="business-title" className="scroll-mt-20 bg-navy">
       <div className="mx-auto grid max-w-7xl gap-16 px-5 py-24 md:px-8 lg:grid-cols-[1fr_1.15fr] lg:items-center lg:py-32">
@@ -24,14 +24,14 @@ export function BusinessSection({ locale, businessHref, copy }: BusinessSectionP
           <p className="mt-6 max-w-md text-lg leading-relaxed text-white/75">{copy.businessBody}</p>
           <div className="mt-10 flex flex-wrap gap-3">
             <Link
-              href={businessHref}
+              href="https://pro.gleami.eu"
               className="inline-flex h-12 items-center gap-2 whitespace-nowrap rounded-full bg-peri px-6 text-[15px] font-semibold text-white transition-colors duration-150 hover:bg-peri-dark"
             >
               {copy.businessStart}
               <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
             </Link>
             <Link
-              href={`${businessHref}#contact`}
+              href="https://calendly.com/glenntroncquo1/30min"
               className="inline-flex h-12 items-center whitespace-nowrap rounded-full border border-white/25 px-6 text-[15px] font-semibold text-white transition-colors duration-150 hover:bg-navy-700"
             >
               {copy.businessDemo}
@@ -46,7 +46,13 @@ export function BusinessSection({ locale, businessHref, copy }: BusinessSectionP
           </figure>
         </div>
 
-        <CalendarMock locale={locale} copy={copy} />
+        <div className="rounded-[18px] bg-white p-1.5 shadow-device ring-1 ring-white/10 md:rounded-[28px] md:p-2">
+          <div className="overflow-hidden rounded-[13px] ring-1 ring-line md:rounded-[21px]">
+            <ScaleToFit width={1180}>
+              <CalendarMockup locale={locale} />
+            </ScaleToFit>
+          </div>
+        </div>
       </div>
     </section>
   );

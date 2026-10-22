@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { AccountMenu } from "@/components/auth/AccountMenu";
 import { localeConfig, launchLocales, routeFor, type Locale } from "@/lib/i18n";
 import { Logo } from "./Logo";
 import { homeCopy, languageShort, type HomeCopy } from "./messages";
-
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.gleami.eu";
 
 type HeaderProps = {
   locale: Locale;
@@ -65,18 +64,7 @@ export function Header({ locale, homeHref, businessHref, copy = homeCopy(locale)
           >
             {copy.forBusiness}
           </Link>
-          <a
-            href={appUrl}
-            className="hidden rounded-full px-4 py-2 text-[15px] font-medium text-navy transition-colors duration-150 hover:bg-surface sm:inline-flex"
-          >
-            {copy.login}
-          </a>
-          <a
-            href={appUrl}
-            className="whitespace-nowrap rounded-full bg-navy px-5 py-2.5 text-[15px] font-semibold text-white transition-colors duration-150 hover:bg-navy-700"
-          >
-            {copy.signup}
-          </a>
+          <AccountMenu locale={locale} variant="home" />
         </nav>
       </div>
     </header>

@@ -8,7 +8,8 @@ import { Footer } from "./Footer";
 import { Header } from "./Header";
 import { Hero } from "./Hero";
 import type { HomeSalon } from "./VenueCard";
-import { useMarketplaceUser } from "./useMarketplaceUser";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { rememberLike } from "@/components/auth/pending-like";
 import { cityKeyFromName, localizedCitySlug, routeFor, type Locale } from "@/lib/i18n";
 import { homeCopy } from "./messages";
 import {
@@ -67,7 +68,7 @@ export function ConsumerHome({
   businessHref = routeFor("nl-be", { kind: "business" }),
 }: ConsumerHomeProps) {
   const copy = homeCopy(locale);
-  const { user } = useMarketplaceUser();
+  const { user, openAuth } = useAuth();
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [categories, setCategories] = useState<MarketplaceCategory[]>([]);
@@ -178,9 +179,39 @@ export function ConsumerHome({
     document.getElementById("explore")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  useEffect(() => {
+    const refresh = () => {
+      if (!user) return;
+      void listFavorites(user.id)
+        .then((rows) => {
+          setFavorites(
+            rows.map((row) => ({
+              id: row.locationId,
+              name: row.name,
+              href: salonHref(locale, row.slug, row.city),
+              image: row.imageUrl,
+              city: row.city ?? "",
+              distance: null,
+              category: "",
+              rating: null,
+              reviews: 0,
+            })),
+          );
+          setSavedIds(new Set(rows.map((row) => row.locationId)));
+        })
+        .catch(() => undefined);
+    };
+    window.addEventListener("gleami-likes", refresh);
+    return () => window.removeEventListener("gleami-likes", refresh);
+  }, [user, locale]);
+
   const toggleFavorite = useCallback(
     (id: string) => {
-      if (!user) return;
+      if (!user) {
+        rememberLike(id);
+        openAuth({ purpose: "save" });
+        return;
+      }
       const liked = !savedIds.has(id);
       setSavedIds((previous) => {
         const next = new Set(previous);
@@ -203,7 +234,7 @@ export function ConsumerHome({
         });
       });
     },
-    [user, savedIds, cards],
+    [user, savedIds, cards, openAuth],
   );
 
   const pills = [
@@ -220,7 +251,7 @@ export function ConsumerHome({
           venues={cards}
           favorites={favorites}
           savedIds={savedIds}
-          showFavorite={Boolean(user)}
+          showFavorite
           query={query}
           nearby={center != null}
           copy={copy}
@@ -233,7 +264,7 @@ export function ConsumerHome({
           onClearQuery={() => setQuery("")}
           onToggleFavorite={toggleFavorite}
         />
-        <BusinessSection locale={locale} businessHref={businessHref} copy={copy} />
+        <BusinessSection locale={locale} copy={copy} />
       </main>
       <Footer locale={locale} copy={copy} />
     </div>

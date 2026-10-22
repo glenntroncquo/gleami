@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { notFound } from "next/navigation";
 import "../globals.css";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { getCopy } from "@/lib/copy";
 import { isLocale, localeConfig, locales } from "@/lib/i18n";
@@ -62,8 +63,10 @@ export default async function LocaleLayout({
         >
           {copy.skip}
         </a>
-        <JsonLd data={[organizationJsonLd(), websiteJsonLd(value)]} />
-        {children}
+        <AuthProvider locale={value}>
+          <JsonLd data={[organizationJsonLd(), websiteJsonLd(value)]} />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

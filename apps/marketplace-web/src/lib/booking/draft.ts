@@ -18,12 +18,20 @@ export type DraftSlot = {
   staffName: string;
 };
 
+export type DraftContact = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+};
+
 export type BookingDraft = {
   items: DraftItem[];
   dayKey: string | null;
   slot: DraftSlot | null;
   note: string;
   bookingId: string | null;
+  contact: DraftContact | null;
 };
 
 const EMPTY: BookingDraft = {
@@ -32,6 +40,7 @@ const EMPTY: BookingDraft = {
   slot: null,
   note: "",
   bookingId: null,
+  contact: null,
 };
 
 function key(slug: string): string {
@@ -50,6 +59,7 @@ export function readDraft(slug: string): BookingDraft {
       slot: parsed.slot ?? null,
       note: parsed.note ?? "",
       bookingId: parsed.bookingId ?? null,
+      contact: parsed.contact ?? null,
     };
   } catch {
     return EMPTY;

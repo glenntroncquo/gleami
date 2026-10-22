@@ -28,8 +28,8 @@ type BusinessLandingProps = {
   locale: Locale;
 };
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.gleami.eu";
-const demoUrl = "mailto:hello@gleami.eu?subject=Gleami%20demo";
+const appUrl = "https://pro.gleami.eu";
+const demoUrl = "https://calendly.com/glenntroncquo1/30min";
 const featureIcons = [
   CalendarDaysIcon,
   CalendarCheckIcon,
@@ -93,13 +93,13 @@ export function BusinessLanding({ locale }: BusinessLandingProps) {
           <div className="rounded-[18px] bg-white p-1.5 shadow-device ring-1 ring-line md:rounded-[28px] md:p-2">
             <div className="overflow-hidden rounded-[13px] ring-1 ring-line md:rounded-[21px]">
               <ScaleToFit width={1180}>
-                <CalendarMockup />
+                <CalendarMockup locale={locale} />
               </ScaleToFit>
             </div>
           </div>
           <div
             aria-hidden="true"
-            className="absolute -left-4 top-[16%] hidden w-[270px] rounded-2xl bg-white p-4 shadow-float ring-1 ring-line xl:block"
+            className="absolute -left-4 top-[46%] hidden w-[270px] rounded-2xl bg-white p-4 shadow-float ring-1 ring-line xl:block"
           >
             <div className="flex items-center gap-2 text-[12px] font-medium text-lilac-700">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-lilac-100">
@@ -336,7 +336,7 @@ export function BusinessLanding({ locale }: BusinessLandingProps) {
               className="overflow-hidden rounded-t-[11px] md:rounded-t-[17px]"
             >
               <ScaleToFit width={1180}>
-                <CalendarMockup />
+                <CalendarMockup locale={locale} />
               </ScaleToFit>
             </div>
           </div>

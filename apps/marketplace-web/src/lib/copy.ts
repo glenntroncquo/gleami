@@ -10,13 +10,14 @@ type Feature = {
   description: string;
 };
 
-type Copy = {
+export type Copy = {
   skip: string;
   nav: {
     discover: string;
     treatments: string;
     business: string;
     login: string;
+    product: string;
     menu: string;
     close: string;
   };
@@ -95,6 +96,18 @@ type Copy = {
     unavailable: string;
     noReviews: string;
     illustrative: string;
+    home: string;
+    beautySalons: string;
+    directions: string;
+    share: string;
+    save: string;
+    saved: string;
+    seeAllImages: string;
+    gallery: string;
+    linkCopied: string;
+    opensToday: (time: string) => string;
+    opensOn: (day: string, time: string) => string;
+    openUntil: (time: string) => string;
   };
   treatment: {
     indexTitle: string;
@@ -133,6 +146,7 @@ const nl: Copy = {
     treatments: "Behandelingen",
     business: "Voor bedrijven",
     login: "Inloggen",
+    product: "Platform",
     menu: "Menu openen",
     close: "Menu sluiten",
   },
@@ -263,7 +277,7 @@ const nl: Copy = {
   },
   salon: {
     services: "Diensten",
-    about: "Over deze salon",
+    about: "Over dit salon",
     hours: "Openingsuren",
     team: "Team",
     reviews: "Reviews",
@@ -286,6 +300,18 @@ const nl: Copy = {
     noReviews: "Nog geen geverifieerde reviews",
     illustrative:
       "Dit is illustratieve voorbeeldinhoud en geen echte salonvermelding.",
+    home: "Home",
+    beautySalons: "Beautysalons",
+    directions: "Route",
+    share: "Delen",
+    save: "Bewaren",
+    saved: "Bewaard",
+    seeAllImages: "Alle foto's",
+    gallery: "Fotogalerij",
+    linkCopied: "Link gekopieerd",
+    opensToday: (time) => `opent vandaag om ${time}`,
+    opensOn: (day, time) => `opent ${day} om ${time}`,
+    openUntil: (time) => `tot ${time}`,
   },
   treatment: {
     indexTitle: "Vind de juiste behandeling voor jou.",
@@ -335,6 +361,7 @@ const fr: Copy = {
     treatments: "Prestations",
     business: "Pour les pros",
     login: "Se connecter",
+    product: "Plateforme",
     menu: "Ouvrir le menu",
     close: "Fermer le menu",
   },
@@ -490,6 +517,18 @@ const fr: Copy = {
     noReviews: "Pas encore d’avis vérifiés",
     illustrative:
       "Ce contenu est illustratif et ne correspond pas à un véritable établissement.",
+    home: "Accueil",
+    beautySalons: "Salons de beauté",
+    directions: "Itinéraire",
+    share: "Partager",
+    save: "Enregistrer",
+    saved: "Enregistré",
+    seeAllImages: "Voir toutes les photos",
+    gallery: "Galerie",
+    linkCopied: "Lien copié",
+    opensToday: (time) => `ouvre aujourd’hui à ${time}`,
+    opensOn: (day, time) => `ouvre ${day} à ${time}`,
+    openUntil: (time) => `jusqu’à ${time}`,
   },
   treatment: {
     indexTitle: "Trouvez la prestation qui vous correspond.",
@@ -540,6 +579,7 @@ const de: Copy = {
     treatments: "Behandlungen",
     business: "Für Betriebe",
     login: "Anmelden",
+    product: "Plattform",
     menu: "Menü öffnen",
     close: "Menü schließen",
   },
@@ -629,6 +669,18 @@ const de: Copy = {
     noReviews: "Noch keine verifizierten Bewertungen",
     illustrative:
       "Dieser Inhalt ist nur ein Beispiel und kein echter Saloneintrag.",
+    home: "Start",
+    beautySalons: "Beautysalons",
+    directions: "Route",
+    share: "Teilen",
+    save: "Speichern",
+    saved: "Gespeichert",
+    seeAllImages: "Alle Fotos",
+    gallery: "Bildergalerie",
+    linkCopied: "Link kopiert",
+    opensToday: (time) => `öffnet heute um ${time}`,
+    opensOn: (day, time) => `öffnet ${day} um ${time}`,
+    openUntil: (time) => `bis ${time}`,
   },
   treatment: {
     indexTitle: "Finde die passende Behandlung.",
@@ -678,6 +730,7 @@ const en: Copy = {
     treatments: "Treatments",
     business: "For businesses",
     login: "Log in",
+    product: "Platform",
     menu: "Open menu",
     close: "Close menu",
   },
@@ -828,6 +881,18 @@ const en: Copy = {
     unavailable: "Not listed",
     noReviews: "No verified reviews yet",
     illustrative: "This is sample content, not a real salon listing.",
+    home: "Home",
+    beautySalons: "Beauty salons",
+    directions: "Get directions",
+    share: "Share",
+    save: "Save",
+    saved: "Saved",
+    seeAllImages: "See all images",
+    gallery: "Image gallery",
+    linkCopied: "Link copied",
+    opensToday: (time) => `opens today at ${time}`,
+    opensOn: (day, time) => `opens on ${day} at ${time}`,
+    openUntil: (time) => `until ${time}`,
   },
   treatment: {
     indexTitle: "Find the right treatment for you.",

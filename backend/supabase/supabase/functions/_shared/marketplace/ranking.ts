@@ -53,6 +53,13 @@ export const MAX_SUGGEST_LIMIT = 20;
 export const MIN_SUGGEST_SIMILARITY = 0.3;
 
 /**
+ * Strict word-similarity cutoff for marketplace_search (`<<%` on a token of
+ * 4+ characters). pg_trgm's default is 0.5, which misses a one-character typo
+ * in a short word. The search function sets this for its own transaction.
+ */
+export const MIN_STRICT_WORD_SIMILARITY = 0.4;
+
+/**
  * How much wider than LIMIT the location candidate window is. Whole-string
  * distance penalises length, so a short query can rank outside the nearest
  * LIMIT names of a long salon name. Take a wider window, then re-rank it by

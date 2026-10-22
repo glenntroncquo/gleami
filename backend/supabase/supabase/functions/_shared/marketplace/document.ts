@@ -102,19 +102,37 @@ export function pickDefaultVariant(variants: VariantSource[]): VariantSource | n
   return active[0] ?? null;
 }
 
+/** Apostrophes people type in salon and treatment names, including curly quotes. */
+const APOSTROPHE = /['’‘`´ʼ‛]/g;
+
+/**
+ * Drops accents and apostrophes so "d'ana" and "liège" are also stored as
+ * "dana" and "liege". The written spelling stays in the same string.
+ */
+export function foldSearchText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(APOSTROPHE, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function buildSearchText(parts: {
   name: string;
   city: string | null;
   categoryNames: string[];
   serviceNames: string[];
 }): string {
-  return [parts.name, parts.city ?? "", ...parts.categoryNames, ...parts.serviceNames]
+  const text = [parts.name, parts.city ?? "", ...parts.categoryNames, ...parts.serviceNames]
     .map((part) => part.trim())
     .filter((part) => part.length > 0)
     .join(" ")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+  const folded = foldSearchText(text);
+  return folded === text ? text : `${text} ${folded}`;
 }
 
 /**

@@ -151,12 +151,39 @@ describe("buildMarketplaceSearchDocument", () => {
     expect(document?.searchText).toContain("keratine");
     expect(document?.searchText).toContain("keratin");
     expect(document?.searchText).toContain("kératine");
+    expect(document?.searchText).toContain("keratine");
     expect(document?.searchText).toContain("keratin treatment");
     expect(document?.searchText).toContain("kort");
     expect(document?.searchText).toContain("short");
     expect(document?.searchText).toContain("court");
     expect(document?.searchText).not.toContain("lang");
     expect(document?.searchText).not.toContain("long");
+  });
+
+  it("keeps the written spelling and appends a copy without apostrophes or accents", () => {
+    const document = buildMarketplaceSearchDocument(source({
+      name: "D'ana Hair",
+      city: "Liège",
+      categoryIds: [],
+      services: [
+        service({
+          name: "Coupe d'été",
+          variants: [{
+            id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+            displayOrder: 1,
+            isActive: true,
+            isDeleted: false,
+          }],
+        }),
+      ],
+    }));
+    expect(document?.name).toBe("D'ana Hair");
+    expect(document?.searchText).toContain("d'ana hair");
+    expect(document?.searchText).toContain("dana hair");
+    expect(document?.searchText).toContain("liège");
+    expect(document?.searchText).toContain("liege");
+    expect(document?.searchText).toContain("coupe d'été");
+    expect(document?.searchText).toContain("coupe dete");
   });
 
   it("keeps the salon's categories when no service is tagged", () => {

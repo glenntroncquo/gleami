@@ -4,8 +4,8 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Gleami",
     short_name: "Gleami",
-    description: "Juridische documenten van Gleami.",
-    start_url: "/nl-be",
+    description: "Gleami legal documents.",
+    start_url: "/overview",
     display: "standalone",
     background_color: "#F7F8FC",
     theme_color: "#F7F8FC",

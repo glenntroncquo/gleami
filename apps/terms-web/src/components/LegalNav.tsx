@@ -1,21 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { documents, documentPath, overviewPath, type DocId } from "@/content/documents";
-import { getCopy } from "@/lib/copy";
-import { languageOf } from "@/lib/i18n";
-import { useLegalRoute } from "@/lib/route";
+import { usePathname } from "next/navigation";
+import { documentBySlug, documentPath, documents, overviewPath, type DocId } from "@/content/documents";
+import { copy } from "@/lib/copy";
 
 export function LegalNav() {
-  const { locale, active } = useLegalRoute();
-  const language = languageOf(locale);
-  const copy = getCopy(language);
+  const pathname = usePathname();
+  const slug = pathname.split("/").filter(Boolean)[0] ?? "";
+  const active: DocId | "overview" = documentBySlug(slug)?.id ?? "overview";
   const items: Array<{ id: DocId | "overview"; href: string; label: string }> = [
-    { id: "overview", href: overviewPath(locale), label: copy.overview },
+    { id: "overview", href: overviewPath, label: copy.overview },
     ...documents.map((document) => ({
       id: document.id,
-      href: documentPath(locale, document.id),
-      label: document.nav[language],
+      href: documentPath(document.id),
+      label: document.nav,
     })),
   ];
 

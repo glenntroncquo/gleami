@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { headers } from "next/headers";
 import "./globals.css";
-import { HtmlLang } from "@/components/HtmlLang";
-import { isLocale, localeConfig } from "@/lib/i18n";
+import { Footer } from "@/components/Footer";
+import { Header } from "@/components/Header";
+import { LegalNav } from "@/components/LegalNav";
+import { copy } from "@/lib/copy";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -34,18 +35,24 @@ export const viewport: Viewport = {
   themeColor: "#F7F8FC",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const headerStore = await headers();
-  const value = headerStore.get("x-locale");
-  const lang = value && isLocale(value) ? localeConfig[value].htmlLang : "nl-BE";
-
   return (
-    <html lang={lang} className={`${inter.variable} bg-canvas`} data-scroll-behavior="smooth">
+    <html lang="en" className={`${inter.variable} bg-canvas`} data-scroll-behavior="smooth">
       <body className="min-h-screen bg-canvas font-sans text-ink">
-        <HtmlLang />
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-ink focus:px-4 focus:py-2 focus:text-white"
+        >
+          {copy.skip}
+        </a>
+        <div className="sticky top-0 z-30">
+          <Header />
+          <LegalNav />
+        </div>
         {children}
+        <Footer />
       </body>
     </html>
   );

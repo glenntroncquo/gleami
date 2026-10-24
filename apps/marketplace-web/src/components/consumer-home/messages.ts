@@ -103,8 +103,8 @@ const nl: HomeCopy = {
   save: (name) => `${name} bewaren`,
   unsave: (name) => `${name} uit bewaarde salons halen`,
   businessEyebrow: "Gleami voor bedrijven",
-  businessTitleLead: "Een rustigere,",
-  businessTitleRest: "vollere salon.",
+  businessTitleLead: "Een rustiger,",
+  businessTitleRest: "voller salon.",
   businessBody:
     "Agenda, betalingen en klantnotities op één rustige plek, plus een marketplace van mensen die je willen boeken.",
   businessStart: "Gratis starten",

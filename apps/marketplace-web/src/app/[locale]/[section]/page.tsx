@@ -15,7 +15,11 @@ import {
   type Locale,
   type RouteDescriptor,
 } from "@/lib/i18n";
-import { createPageMetadata } from "@/lib/seo";
+import {
+  BUSINESS_SOCIAL_IMAGE,
+  businessSocialCopy,
+  createPageMetadata,
+} from "@/lib/seo";
 import { breadcrumbJsonLd } from "@/lib/structured-data";
 
 type Props = PageProps<"/[locale]/[section]">;
@@ -53,11 +57,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const route = routeForSection(kind);
 
   if (kind === "business") {
+    const dutch = localeConfig[value].language === "nl";
     return createPageMetadata({
       locale: value,
       route,
       title: `${copy.business.title} ${copy.business.mutedTitle} | Gleami`,
       description: copy.business.description,
+      ...(dutch
+        ? {
+            socialTitle: businessSocialCopy.title,
+            socialDescription: businessSocialCopy.description,
+            image: BUSINESS_SOCIAL_IMAGE,
+          }
+        : {}),
     });
   }
 

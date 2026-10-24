@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AccountMenu } from "@/components/auth/AccountMenu";
 import { ChevronDownIcon, GlobeIcon, MenuIcon } from "lucide-react";
 import { ButtonLink } from "@/components/ui/ButtonLink";
+import { DismissableDetails } from "@/components/ui/DismissableDetails";
 import { Logo } from "@/components/ui/Logo";
 import { getCopy } from "@/lib/copy";
 import {
@@ -69,7 +70,7 @@ export function SiteHeader({
 
         <div className="flex items-center justify-end gap-2">
         <div className="hidden items-center gap-2 lg:flex">
-          <details className="group relative">
+          <DismissableDetails className="group relative">
             <summary className="flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-full px-2.5 text-[13px] text-muted hover:bg-ink/[0.04] hover:text-ink">
               <GlobeIcon aria-hidden="true" className="h-4 w-4" />
               {localeConfig[locale].hreflang.slice(0, 2).toUpperCase()}
@@ -95,7 +96,7 @@ export function SiteHeader({
                 </Link>
               ))}
             </div>
-          </details>
+          </DismissableDetails>
           <AccountMenu locale={locale} />
           <ButtonLink
             href={routeFor(locale, { kind: "business" }) + "#contact"}

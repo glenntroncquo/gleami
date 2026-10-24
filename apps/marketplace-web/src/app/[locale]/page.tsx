@@ -12,7 +12,11 @@ import {
   routeFor,
   type Locale,
 } from "@/lib/i18n";
-import { createPageMetadata } from "@/lib/seo";
+import {
+  createPageMetadata,
+  HOME_SOCIAL_IMAGE,
+  homeSocialCopy,
+} from "@/lib/seo";
 import { breadcrumbJsonLd } from "@/lib/structured-data";
 
 type Props = PageProps<"/[locale]">;
@@ -31,6 +35,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     route: { kind: "home" },
     title: `${home.pageTitle} | Gleami`,
     description: copy.consumer.description,
+    ...(value === "nl-be"
+      ? {
+          socialTitle: homeSocialCopy.title,
+          socialDescription: homeSocialCopy.description,
+          image: HOME_SOCIAL_IMAGE,
+        }
+      : {}),
     alternateLocales,
   });
 }

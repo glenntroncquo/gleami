@@ -7,25 +7,35 @@ import {
   localeConfig,
   routeFor,
   type BlogPostKey,
+  type Language,
   type Locale,
 } from "@/lib/i18n";
 
+const blogLabel = "Blog";
+
+const indexTitle: Record<Language, string> = {
+  nl: "Het blog van Gleami.",
+  fr: "Le blog de Gleami.",
+  en: "The Gleami blog.",
+  de: "Der Gleami-Blog.",
+};
+
+const readMore: Record<Language, string> = {
+  nl: "Lees het artikel",
+  fr: "Lire l’article",
+  en: "Read the article",
+  de: "Artikel lesen",
+};
+
 export function BlogIndex({ locale }: { locale: Locale }) {
-  const copy = getCopy(locale);
   const language = localeConfig[locale].language;
   const posts = Object.keys(blogPostSlugs) as BlogPostKey[];
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-16 md:px-8 md:py-24">
-      <p className="text-[14px] font-medium text-rose-600">
-        {copy.footer.company}
-      </p>
+      <p className="text-[14px] font-medium text-rose-600">{blogLabel}</p>
       <h1 className="mt-4 max-w-4xl text-balance text-[48px] font-semibold leading-[1.03] tracking-tightest md:text-[72px]">
-        {language === "fr"
-          ? "Conseils pour faire grandir votre salon."
-          : language === "de"
-            ? "Ideen für einen ruhigen Salonalltag."
-            : "Inzichten voor een salon die vlot draait."}
+        {indexTitle[language]}
       </h1>
       <div className="mt-16 grid gap-5 md:grid-cols-2">
         {posts.map((postKey) => {
@@ -48,10 +58,7 @@ export function BlogIndex({ locale }: { locale: Locale }) {
                 href={routeFor(locale, { kind: "blog-post", post: postKey })}
                 className="mt-8 inline-flex items-center gap-2 text-[14px] font-medium"
               >
-                {copy.actions.viewSalon.replace(
-                  /salon|le salon|Salon/,
-                  language === "fr" ? "l’article" : language === "de" ? "Artikel" : "artikel",
-                )}
+                {readMore[language]}
                 <ArrowRightIcon aria-hidden="true" className="h-4 w-4" />
               </Link>
             </article>
@@ -79,9 +86,7 @@ export function BlogArticle({
       >
         <Link href={routeFor(locale, { kind: "home" })}>Gleami</Link>
         <ChevronRightIcon aria-hidden="true" className="h-3.5 w-3.5" />
-        <Link href={routeFor(locale, { kind: "blog" })}>
-          {copy.footer.company}
-        </Link>
+        <Link href={routeFor(locale, { kind: "blog" })}>{blogLabel}</Link>
         <ChevronRightIcon aria-hidden="true" className="h-3.5 w-3.5" />
         <span className="text-ink">{post.category}</span>
       </nav>
@@ -100,9 +105,11 @@ export function BlogArticle({
         </p>
       </header>
 
-      <div className="mt-14 rounded-[28px] bg-white p-7 text-[18px] leading-8 text-ink ring-1 ring-line md:p-10">
-        {post.intro}
-      </div>
+      {post.intro && post.intro !== post.description ? (
+        <div className="mt-14 rounded-[28px] bg-white p-7 text-[18px] leading-8 text-ink ring-1 ring-line md:p-10">
+          {post.intro}
+        </div>
+      ) : null}
 
       <div className="mt-16 space-y-16">
         {post.sections.map((section) => (
@@ -110,11 +117,13 @@ export function BlogArticle({
             <h2 className="text-[30px] font-semibold tracking-tight md:text-[38px]">
               {section.title}
             </h2>
-            <div className="mt-5 space-y-5 text-[17px] leading-8 text-muted">
-              {section.paragraphs.map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
-              ))}
-            </div>
+            {section.paragraphs.length > 0 ? (
+              <div className="mt-5 space-y-5 text-[17px] leading-8 text-muted">
+                {section.paragraphs.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+              </div>
+            ) : null}
             {section.bullets ? (
               <ul className="mt-6 space-y-3 rounded-[24px] bg-sage-50 p-6 ring-1 ring-sage-100">
                 {section.bullets.map((bullet) => (
@@ -131,6 +140,12 @@ export function BlogArticle({
           </section>
         ))}
       </div>
+
+      {post.closing ? (
+        <p className="mt-16 max-w-2xl text-[18px] leading-8 text-ink">
+          {post.closing}
+        </p>
+      ) : null}
 
       <aside className="mt-20 rounded-[28px] bg-ink p-8 text-white md:p-10">
         <h2 className="text-[28px] font-semibold">{copy.business.finalTitle}</h2>

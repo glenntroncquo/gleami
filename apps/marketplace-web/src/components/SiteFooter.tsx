@@ -7,6 +7,7 @@ import {
   localeConfig,
   locales,
   routeFor,
+  supportedCitiesForLocale,
   type Locale,
   type RouteDescriptor,
 } from "@/lib/i18n";
@@ -24,7 +25,7 @@ export function SiteFooter({
 }: SiteFooterProps) {
   const copy = getCopy(locale);
   const language = localeConfig[locale].language;
-  const cities = ["ghent", "antwerp", "brussels"] as const;
+  const cities = supportedCitiesForLocale(locale);
 
   return (
     <footer className="border-t border-line bg-canvas">
@@ -78,6 +79,14 @@ export function SiteFooter({
             <div>
               <p className="text-[14px] font-semibold">{copy.footer.company}</p>
               <ul className="mt-4 space-y-2.5">
+                <li>
+                  <Link
+                    href={routeFor(locale, { kind: "blog" })}
+                    className="text-[14px] text-muted hover:text-ink"
+                  >
+                    Blog
+                  </Link>
+                </li>
                 <li>
                   <Link
                     href={routeFor(locale, { kind: "business" })}

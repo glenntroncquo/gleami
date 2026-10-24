@@ -35,7 +35,7 @@ export const localeConfig: Record<Locale, LocaleConfig> = {
       salons: "salons",
       treatments: "behandelingen",
       business: "voor-salons",
-      blog: "inspiratie",
+      blog: "blog",
     },
   },
   "fr-be": {
@@ -51,7 +51,7 @@ export const localeConfig: Record<Locale, LocaleConfig> = {
       salons: "salons",
       treatments: "traitements",
       business: "pour-salons",
-      blog: "inspiration",
+      blog: "blog",
     },
   },
   en: {
@@ -67,7 +67,7 @@ export const localeConfig: Record<Locale, LocaleConfig> = {
       salons: "salons",
       treatments: "treatments",
       business: "for-salons",
-      blog: "inspiration",
+      blog: "blog",
     },
   },
   "nl-nl": {
@@ -83,7 +83,7 @@ export const localeConfig: Record<Locale, LocaleConfig> = {
       salons: "salons",
       treatments: "behandelingen",
       business: "voor-salons",
-      blog: "inspiratie",
+      blog: "blog",
     },
   },
   "fr-fr": {
@@ -99,7 +99,7 @@ export const localeConfig: Record<Locale, LocaleConfig> = {
       salons: "salons",
       treatments: "traitements",
       business: "pour-salons",
-      blog: "inspiration",
+      blog: "blog",
     },
   },
   "de-de": {
@@ -115,7 +115,7 @@ export const localeConfig: Record<Locale, LocaleConfig> = {
       salons: "salons",
       treatments: "behandlungen",
       business: "fuer-salons",
-      blog: "inspiration",
+      blog: "blog",
     },
   },
 };
@@ -258,6 +258,13 @@ export function localesForCity(city: CityKey): Locale[] {
   );
 }
 
+/** City landing pages and treatment-in-city pages that we publish. */
+export const supportedCities: readonly CityKey[] = ["merelbeke"];
+
+export function supportedCitiesForLocale(locale: Locale): CityKey[] {
+  return supportedCities.filter((city) => localesForCity(city).includes(locale));
+}
+
 export const treatmentSlugs = {
   balayage: {
     "nl-be": "balayage",
@@ -335,13 +342,13 @@ export function slugify(value: string): string {
 }
 
 export const blogPostSlugs = {
-  onlineBooking: {
-    "nl-be": "online-boeken-voor-je-salon",
-    "fr-be": "reservation-en-ligne-pour-votre-salon",
-    en: "online-booking-for-your-salon",
-    "nl-nl": "online-boeken-voor-je-salon",
-    "fr-fr": "reservation-en-ligne-pour-votre-salon",
-    "de-de": "online-buchung-fuer-deinen-salon",
+  whatIsGleami: {
+    "nl-be": "wat-is-gleami",
+    "fr-be": "qu-est-ce-que-gleami",
+    en: "what-is-gleami",
+    "nl-nl": "wat-is-gleami",
+    "fr-fr": "qu-est-ce-que-gleami",
+    "de-de": "was-ist-gleami",
   },
 } as const satisfies Record<string, Record<Locale, string>>;
 

@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AccountMenu } from "@/components/auth/AccountMenu";
-import { localeConfig, launchLocales, routeFor, type Locale } from "@/lib/i18n";
+import { LanguagePicker } from "@/components/LanguagePicker";
+import type { Locale } from "@/lib/i18n";
 import { Logo } from "./Logo";
-import { homeCopy, languageShort, type HomeCopy } from "./messages";
+import { homeCopy, type HomeCopy } from "./messages";
 
 type HeaderProps = {
   locale: Locale;
@@ -39,25 +40,7 @@ export function Header({ locale, homeHref, businessHref, copy = homeCopy(locale)
           <Logo />
         </Link>
         <nav aria-label={copy.navLabel} className="flex items-center gap-1 sm:gap-2">
-          <nav className="mr-1 flex items-center gap-0.5" aria-label={copy.languageLabel}>
-            {launchLocales.map((item) => {
-              const active = item === locale;
-              return (
-                <Link
-                  key={item}
-                  href={routeFor(item, { kind: "home" })}
-                  hrefLang={localeConfig[item].hreflang}
-                  lang={localeConfig[item].htmlLang}
-                  aria-current={active ? "true" : undefined}
-                  className={`rounded-full px-2 py-1 text-[13px] font-semibold tracking-wide transition-colors duration-150 ${
-                    active ? "text-navy" : "text-ink-faint hover:text-navy"
-                  }`}
-                >
-                  {languageShort[item]}
-                </Link>
-              );
-            })}
-          </nav>
+          <LanguagePicker locale={locale} route={{ kind: "home" }} variant="home" />
           <Link
             href={businessHref}
             className="hidden rounded-full px-4 py-2 text-[15px] font-medium text-navy transition-colors duration-150 hover:bg-surface md:inline-flex"

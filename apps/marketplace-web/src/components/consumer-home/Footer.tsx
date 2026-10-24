@@ -1,9 +1,7 @@
 import Link from "next/link";
-import { cityNames, localeConfig, routeFor, type CityKey, type Locale } from "@/lib/i18n";
+import { cityNames, localeConfig, routeFor, supportedCitiesForLocale, type Locale } from "@/lib/i18n";
 import { Logo } from "./Logo";
 import { homeCopy, type HomeCopy } from "./messages";
-
-const cities = ["brussels", "antwerp", "ghent"] as const satisfies readonly CityKey[];
 
 type FooterProps = {
   locale: Locale;
@@ -22,7 +20,7 @@ export function Footer({ locale, copy = homeCopy(locale) }: FooterProps) {
     },
     {
       title: copy.footerCities,
-      links: cities.map((city) => ({
+      links: supportedCitiesForLocale(locale).map((city) => ({
         label: cityNames[city][language],
         href: routeFor(locale, { kind: "city", city }),
       })),
@@ -30,13 +28,14 @@ export function Footer({ locale, copy = homeCopy(locale) }: FooterProps) {
     {
       title: copy.footerCompany,
       links: [
+        { label: "Blog", href: routeFor(locale, { kind: "blog" }) },
         {
           label: copy.forBusiness,
           href: routeFor(locale, { kind: "business" }),
         },
       ],
     },
-  ];
+  ].filter((column) => column.links.length > 0);
 
   return (
     <footer className="bg-white">

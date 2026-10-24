@@ -180,13 +180,13 @@ export default async function LocalizedContentPage({ params }: Props) {
         data={[
           breadcrumbJsonLd(locale, [
             { name: "Gleami", route: { kind: "home" } },
-            { name: copy.footer.company, route: { kind: "blog" } },
+            { name: "Blog", route: { kind: "blog" } },
             { name: post.title, route },
           ]),
           articleJsonLd,
         ]}
       />
-      <SiteHeader locale={locale} route={route} mode="business" />
+      <SiteHeader locale={locale} route={route} mode="marketplace" />
       <main id="main">
         <BlogArticle locale={locale} post={post} />
       </main>

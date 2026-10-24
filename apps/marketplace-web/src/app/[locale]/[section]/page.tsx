@@ -83,17 +83,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const language = localeConfig[value].language;
-  const title =
+  const title = "Blog | Gleami";
+  const description =
     language === "fr"
-      ? "Conseils pour les salons | Gleami"
+      ? "Gleami est une plateforme en ligne et un système de gestion tout-en-un pour coiffeurs, barbiers, instituts d’ongles et salons de beauté."
       : language === "de"
-        ? "Tipps für Salons | Gleami"
-        : "Inzichten voor salons | Gleami";
+        ? "Gleami ist eine Online-Plattform und ein All-in-one-System für Friseure, Barbiere, Nagelstudios und Kosmetiksalons."
+        : language === "en"
+          ? "Gleami is an online platform and an all-in-one management system for hairdressers, barbers, nail studios and beauty salons."
+          : "Gleami is een online platform en alles-in-één-beheersysteem voor kappers, barbers, nagelstudio’s en schoonheidssalons.";
   return createPageMetadata({
     locale: value,
     route,
     title,
-    description: copy.business.overviewBody,
+    description,
   });
 }
 
@@ -112,7 +115,7 @@ export default async function LocalizedSectionPage({ params }: Props) {
       ? copy.nav.business
       : kind === "treatments"
         ? copy.nav.treatments
-        : copy.footer.company;
+        : "Blog";
 
   return (
     <>

@@ -7,7 +7,8 @@ export type BlogPost = {
   readingTime: string;
   publishedAt: string;
   updatedAt: string;
-  intro: string;
+  intro?: string;
+  closing?: string;
   sections: Array<{
     title: string;
     paragraphs: string[];
@@ -16,151 +17,127 @@ export type BlogPost = {
 };
 
 export const blogPosts: Record<BlogPostKey, Record<Language, BlogPost>> = {
-  onlineBooking: {
+  whatIsGleami: {
     nl: {
-      title: "Online boeken voor je salon: een rustige start",
+      title: "Wat is Gleami?",
       description:
-        "Praktische stappen om online afspraken in te voeren zonder je salonplanning ingewikkelder te maken.",
-      category: "Salonbeheer",
-      readingTime: "5 min leestijd",
-      publishedAt: "2026-10-05",
-      updatedAt: "2026-10-05",
-      intro:
-        "Online boeken werkt pas echt wanneer het aansluit op de manier waarop je salon al werkt. Begin daarom niet bij een knop op je website, maar bij een duidelijke agenda, correcte diensten en realistische beschikbaarheid.",
+        "Gleami is een online platform en alles-in-één-beheersysteem voor kappers, barbers, nagelstudio’s en schoonheidssalons.",
+      category: "Gleami",
+      readingTime: "2 min leestijd",
+      publishedAt: "2026-10-24",
+      updatedAt: "2026-10-24",
+      closing:
+        "Wil je een afspraak boeken, of gebruik je Gleami om je salon te runnen?",
       sections: [
         {
-          title: "Begin met je diensten",
-          paragraphs: [
-            "Geef elke dienst een herkenbare naam, een correcte duur en een prijs die de klant begrijpt. Vermijd interne afkortingen. Beschrijf wat inbegrepen is, zeker bij kleurbehandelingen en diensten die afhangen van haarlengte.",
-          ],
+          title: "Wat doet Gleami voor klanten?",
+          paragraphs: [],
           bullets: [
-            "Maak varianten alleen wanneer ze de keuze echt verduidelijken.",
-            "Voorzie tijd voor voorbereiding en afwerking.",
-            "Koppel alleen medewerkers die de dienst uitvoeren.",
+            "Online afspraken boeken: je plant zelf een behandeling bij een salon, ook buiten de openingsuren, zonder te bellen.",
+            "Zoeken en vergelijken: je zoekt op behandeling en plaats, en vergelijkt aanbod, prijzen en locatie. Beoordelingen staan erbij wanneer die beschikbaar zijn.",
+            "Afspraken en favorieten: in je account zie je je geboekte afspraken en de salons die je bewaard hebt.",
           ],
         },
         {
-          title: "Publiceer beschikbaarheid die klopt",
-          paragraphs: [
-            "Een klant verwacht dat een zichtbaar tijdstip ook echt beschikbaar is. Werkuren, pauzes, verlof en bestaande afspraken moeten daarom uit dezelfde planning komen.",
-            "Start eventueel met een beperkt boekbaar venster en breid uit zodra je team vertrouwd is met de nieuwe werkwijze.",
-          ],
-        },
-        {
-          title: "Maak de volgende stap duidelijk",
-          paragraphs: [
-            "Laat na de boeking meteen zien wat er is vastgelegd, waar de afspraak doorgaat en hoe de klant contact kan opnemen. Een duidelijke bevestiging voorkomt losse berichten en onzekerheid.",
+          title: "Wat doet Gleami voor salons?",
+          paragraphs: [],
+          bullets: [
+            "Salonsoftware: agenda, klanten, team en betalingen zitten in één systeem. Per medewerker stel je werkuren, diensten en rechten in.",
+            "Online boeken: klanten boeken via je boekingslink, je salonprofiel of de marketplace. De afspraak staat meteen in je agenda.",
+            "Zichtbaarheid: na publicatie kunnen mensen in de buurt je salon vinden op plaats en behandeling.",
           ],
         },
       ],
     },
     fr: {
-      title: "Réservation en ligne pour votre salon : bien démarrer",
+      title: "Qu’est-ce que Gleami ?",
       description:
-        "Des étapes concrètes pour proposer la réservation en ligne sans compliquer l’organisation du salon.",
-      category: "Gestion du salon",
-      readingTime: "5 min de lecture",
-      publishedAt: "2026-10-05",
-      updatedAt: "2026-10-05",
-      intro:
-        "La réservation en ligne fonctionne lorsqu’elle suit la réalité du salon. Commencez donc par un agenda fiable, des prestations claires et des disponibilités réalistes plutôt que par un simple bouton sur le site.",
+        "Gleami est une plateforme en ligne et un système de gestion tout-en-un pour coiffeurs, barbiers, instituts d’ongles et salons de beauté.",
+      category: "Gleami",
+      readingTime: "2 min de lecture",
+      publishedAt: "2026-10-24",
+      updatedAt: "2026-10-24",
+      closing:
+        "Vous voulez réserver, ou vous utilisez Gleami pour gérer votre salon ?",
       sections: [
         {
-          title: "Commencez par les prestations",
-          paragraphs: [
-            "Donnez à chaque prestation un nom compréhensible, une durée correcte et un prix clair. Évitez les abréviations internes et précisez ce qui est compris, surtout pour la coloration et les services liés à la longueur.",
-          ],
+          title: "Que fait Gleami pour les clients ?",
+          paragraphs: [],
           bullets: [
-            "Créez des variantes uniquement lorsqu’elles facilitent le choix.",
-            "Prévoyez le temps de préparation et de finition.",
-            "Associez seulement les professionnels qui réalisent la prestation.",
+            "Réserver en ligne : vous planifiez vous-même une prestation, aussi en dehors des heures d’ouverture, sans appeler.",
+            "Chercher et comparer : vous cherchez par prestation et par lieu, et vous comparez l’offre, les prix et l’adresse. Les avis apparaissent lorsqu’ils sont disponibles.",
+            "Rendez-vous et favoris : dans votre compte, vous retrouvez vos rendez-vous et les salons que vous avez enregistrés.",
           ],
         },
         {
-          title: "Publiez des créneaux fiables",
-          paragraphs: [
-            "Un client s’attend à ce qu’un horaire visible soit réellement disponible. Heures de travail, pauses, congés et rendez-vous existants doivent venir du même planning.",
-            "Vous pouvez commencer avec une fenêtre de réservation limitée, puis l’élargir lorsque l’équipe maîtrise le nouveau fonctionnement.",
-          ],
-        },
-        {
-          title: "Clarifiez la suite",
-          paragraphs: [
-            "Après la réservation, confirmez immédiatement la prestation, l’heure, l’adresse et la façon de contacter le salon. Une confirmation claire évite les messages dispersés.",
+          title: "Que fait Gleami pour les salons ?",
+          paragraphs: [],
+          bullets: [
+            "Logiciel de salon : agenda, clients, équipe et paiements sont dans un seul système. Pour chaque membre de l’équipe, vous réglez les horaires, les prestations et les droits.",
+            "Réservation en ligne : les clients réservent via votre lien, votre profil ou la marketplace. Le rendez-vous arrive directement dans votre agenda.",
+            "Visibilité : une fois publié, les gens à proximité trouvent votre salon par lieu et par prestation.",
           ],
         },
       ],
     },
     en: {
-      title: "Online booking for your salon: a calm start",
+      title: "What is Gleami?",
       description:
-        "Practical steps for taking appointments online without making your salon schedule more complicated.",
-      category: "Salon management",
-      readingTime: "5 min read",
-      publishedAt: "2026-10-05",
-      updatedAt: "2026-10-05",
-      intro:
-        "Online booking works when it follows how your salon already runs. Start with a reliable calendar, clear services and realistic availability, not with a button on the website.",
+        "Gleami is an online platform and an all-in-one management system for hairdressers, barbers, nail studios and beauty salons.",
+      category: "Gleami",
+      readingTime: "2 min read",
+      publishedAt: "2026-10-24",
+      updatedAt: "2026-10-24",
+      closing:
+        "Do you want to book an appointment, or do you use Gleami to run your salon?",
       sections: [
         {
-          title: "Start with your services",
-          paragraphs: [
-            "Give every service a recognisable name, a correct duration and a price the client understands. Skip internal abbreviations. Say what is included, especially for colour and services that depend on hair length.",
-          ],
+          title: "What does Gleami do for clients?",
+          paragraphs: [],
           bullets: [
-            "Add variants only when they make the choice clearer.",
-            "Leave time for preparation and finishing.",
-            "Assign only the team members who perform the service.",
+            "Book online: you schedule a treatment yourself, including outside opening hours, without calling.",
+            "Search and compare: you search by treatment and place, and compare what is offered, the prices and the location. Reviews appear when they are available.",
+            "Appointments and favourites: your account shows the appointments you booked and the salons you saved.",
           ],
         },
         {
-          title: "Publish availability that is true",
-          paragraphs: [
-            "A client expects a visible time to be genuinely free. Working hours, breaks, leave and existing appointments should come from the same schedule.",
-            "You can start with a short booking window and widen it once the team is used to the new way of working.",
-          ],
-        },
-        {
-          title: "Make the next step clear",
-          paragraphs: [
-            "Right after booking, show what was reserved, where the appointment takes place and how the client can get in touch. A clear confirmation avoids scattered messages.",
+          title: "What does Gleami do for salons?",
+          paragraphs: [],
+          bullets: [
+            "Salon software: calendar, clients, team and payments sit in one system. For each team member you set working hours, services and permissions.",
+            "Online booking: clients book through your booking link, your salon profile or the marketplace. The appointment lands straight in your calendar.",
+            "Visibility: once you publish, people nearby can find your salon by place and treatment.",
           ],
         },
       ],
     },
     de: {
-      title: "Online-Buchung für deinen Salon: ruhig starten",
+      title: "Was ist Gleami?",
       description:
-        "Praktische Schritte für Online-Termine, ohne die Salonplanung komplizierter zu machen.",
-      category: "Salonmanagement",
-      readingTime: "5 Min. Lesezeit",
-      publishedAt: "2026-10-05",
-      updatedAt: "2026-10-05",
-      intro:
-        "Online-Buchung funktioniert dann gut, wenn sie zum echten Salonalltag passt. Starte deshalb mit einem verlässlichen Kalender, klaren Leistungen und realistischen Verfügbarkeiten.",
+        "Gleami ist eine Online-Plattform und ein All-in-one-System für Friseure, Barbiere, Nagelstudios und Kosmetiksalons.",
+      category: "Gleami",
+      readingTime: "2 Min. Lesezeit",
+      publishedAt: "2026-10-24",
+      updatedAt: "2026-10-24",
+      closing:
+        "Willst du einen Termin buchen, oder nutzt du Gleami, um deinen Salon zu führen?",
       sections: [
         {
-          title: "Beginne mit deinen Leistungen",
-          paragraphs: [
-            "Gib jeder Leistung einen verständlichen Namen, eine passende Dauer und einen klaren Preis. Erkläre, was enthalten ist, besonders bei Farbe und längenabhängigen Leistungen.",
-          ],
+          title: "Was macht Gleami für Kunden?",
+          paragraphs: [],
           bullets: [
-            "Nutze Varianten nur, wenn sie die Auswahl erleichtern.",
-            "Plane Zeit für Vorbereitung und Abschluss ein.",
-            "Ordne nur Mitarbeitende zu, die die Leistung anbieten.",
+            "Online buchen: du planst eine Behandlung selbst, auch außerhalb der Öffnungszeiten, ohne anzurufen.",
+            "Suchen und vergleichen: du suchst nach Behandlung und Ort und vergleichst Angebot, Preise und Standort. Bewertungen stehen dabei, wenn sie vorhanden sind.",
+            "Termine und Favoriten: in deinem Konto siehst du gebuchte Termine und gespeicherte Salons.",
           ],
         },
         {
-          title: "Zeige verlässliche Verfügbarkeit",
-          paragraphs: [
-            "Kunden erwarten, dass sichtbare Zeiten wirklich frei sind. Arbeitszeiten, Pausen, Urlaub und bestehende Termine sollten deshalb aus derselben Planung stammen.",
-            "Du kannst mit einem kurzen Buchungszeitraum beginnen und ihn später erweitern.",
-          ],
-        },
-        {
-          title: "Erkläre den nächsten Schritt",
-          paragraphs: [
-            "Bestätige nach der Buchung Leistung, Zeit, Adresse und Kontaktweg. Eine klare Bestätigung verhindert Rückfragen und verstreute Nachrichten.",
+          title: "Was macht Gleami für Salons?",
+          paragraphs: [],
+          bullets: [
+            "Salonsoftware: Kalender, Kunden, Team und Zahlungen liegen in einem System. Pro Mitarbeiter legst du Arbeitszeiten, Leistungen und Rechte fest.",
+            "Online-Buchung: Kunden buchen über deinen Link, dein Salonprofil oder den Marketplace. Der Termin steht sofort im Kalender.",
+            "Sichtbarkeit: nach der Veröffentlichung finden Menschen in der Nähe deinen Salon nach Ort und Behandlung.",
           ],
         },
       ],

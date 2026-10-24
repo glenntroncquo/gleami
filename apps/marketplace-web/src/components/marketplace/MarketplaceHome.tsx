@@ -13,6 +13,7 @@ import {
   cityNames,
   localeConfig,
   routeFor,
+  supportedCitiesForLocale,
   treatmentNames,
   treatmentSlugs,
   type CityKey,
@@ -35,21 +36,12 @@ const cityImages: Record<CityKey, string> = {
   cologne: "/bffac2f4-5acb-4c67-b55f-1909523c2416.jpg",
   ghent: "/8ac9a3fa-97f7-4191-ab3a-0564c2356ee1.jpg",
   kruishoutem: "/bffac2f4-5acb-4c67-b55f-1909523c2416.jpg",
-  merelbeke: "/c22595c4-33c0-4e1b-9d3b-228dabf74ef8.jpg",
+  merelbeke: "/og/home.jpg",
   paris: "/7dffc13d-fe3b-49a8-b10d-0ab518d31b7a.jpg",
 };
 
 function featuredCities(locale: Locale): CityKey[] {
-  switch (localeConfig[locale].country) {
-    case "BE":
-      return ["ghent", "antwerp", "brussels"];
-    case "NL":
-      return ["amsterdam"];
-    case "FR":
-      return ["paris"];
-    case "DE":
-      return ["cologne"];
-  }
+  return supportedCitiesForLocale(locale);
 }
 
 const treatmentIcons = [

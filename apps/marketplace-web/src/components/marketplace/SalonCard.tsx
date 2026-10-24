@@ -23,7 +23,7 @@ export function SalonCard({
     salon: salon.slug,
   };
   const image =
-    salon.imageUrl ?? "/c22595c4-33c0-4e1b-9d3b-228dabf74ef8.jpg";
+    salon.imageUrl ?? "/og/home.jpg";
 
   return (
     <article className="group">

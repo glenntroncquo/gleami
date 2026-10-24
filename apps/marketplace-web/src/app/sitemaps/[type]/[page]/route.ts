@@ -8,12 +8,12 @@ import {
 import { blogPosts } from "@/data/blog";
 import {
   blogPostSlugs,
-  cityNames,
   localeConfig,
   launchLocales,
   locales,
   localesForCity,
   routeFor,
+  supportedCities,
   treatmentSlugs,
   type BlogPostKey,
   type CityKey,
@@ -124,7 +124,7 @@ async function cityEntries(): Promise<SitemapEntry[]> {
   const cards = await getAllPublishedSalonCards();
   const counts = new Map<CityKey, number>();
   for (const card of cards) {
-    if (!card.cityKey) continue;
+    if (!card.cityKey || !supportedCities.includes(card.cityKey)) continue;
     counts.set(card.cityKey, (counts.get(card.cityKey) ?? 0) + 1);
   }
 
@@ -153,8 +153,7 @@ async function treatmentEntries(): Promise<SitemapEntry[]> {
     }
   }
 
-  const candidateCities = Object.keys(cityNames) as CityKey[];
-  for (const city of candidateCities) {
+  for (const city of supportedCities) {
     const supported = localesForCity(city);
     for (const treatment of treatments) {
       const locale = supported[0];

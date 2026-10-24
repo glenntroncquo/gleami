@@ -38,7 +38,7 @@ function salonHref(locale: Locale, slug: string, city: string | null): string {
   const key = city ? cityKeyFromName(city) : null;
   return routeFor(locale, {
     kind: "salon",
-    city: key ?? localizedCitySlug(locale, city || "gent"),
+    city: key ?? localizedCitySlug(locale, city || "merelbeke"),
     salon: slug,
   });
 }

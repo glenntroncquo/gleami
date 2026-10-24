@@ -180,7 +180,7 @@ type LocationResponse = {
 };
 
 const demoImages = {
-  hair: "/c22595c4-33c0-4e1b-9d3b-228dabf74ef8.jpg",
+  hair: "/og/home.jpg",
   nails: "/7dffc13d-fe3b-49a8-b10d-0ab518d31b7a.jpg",
   barber: "/bffac2f4-5acb-4c67-b55f-1909523c2416.jpg",
   stylist: "/8ac9a3fa-97f7-4191-ab3a-0564c2356ee1.jpg",

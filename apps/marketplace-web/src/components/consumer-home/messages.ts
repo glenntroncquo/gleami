@@ -317,12 +317,3 @@ const messages: Record<Language, HomeCopy> = { nl, fr, en, de };
 export function homeCopy(locale: Locale): HomeCopy {
   return messages[localeConfig[locale].language];
 }
-
-export const languageShort: Record<Locale, string> = {
-  "nl-be": "NL",
-  "fr-be": "FR",
-  en: "EN",
-  "nl-nl": "NL",
-  "fr-fr": "FR",
-  "de-de": "DE",
-};

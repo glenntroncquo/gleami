@@ -14,6 +14,7 @@ import {
   cityNames,
   localeConfig,
   routeFor,
+  supportedCitiesForLocale,
   treatmentNames,
   type CityKey,
   type Locale,
@@ -28,16 +29,7 @@ type TreatmentLandingProps = {
 };
 
 function suggestedCities(locale: Locale): CityKey[] {
-  switch (localeConfig[locale].country) {
-    case "BE":
-      return ["ghent", "antwerp", "brussels"];
-    case "NL":
-      return ["amsterdam"];
-    case "FR":
-      return ["paris"];
-    case "DE":
-      return ["cologne"];
-  }
+  return supportedCitiesForLocale(locale);
 }
 
 export function TreatmentLanding({

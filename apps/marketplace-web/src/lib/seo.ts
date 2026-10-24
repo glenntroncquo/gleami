@@ -12,8 +12,7 @@ export const SITE_NAME = "Gleami";
 export const SITE_ORIGIN = normalizeOrigin(
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://gleami.eu",
 );
-export const DEFAULT_SOCIAL_IMAGE =
-  "/c22595c4-33c0-4e1b-9d3b-228dabf74ef8.jpg";
+export const MARKETPLACE_IMAGE = "/og/home.jpg";
 
 export type SocialImage = {
   url: string;
@@ -24,7 +23,7 @@ export type SocialImage = {
 
 /** Dutch homepage card. The picture text is Belgium-specific. */
 export const HOME_SOCIAL_IMAGE: SocialImage = {
-  url: "/og/home.jpg",
+  url: MARKETPLACE_IMAGE,
   width: 1024,
   height: 535,
   alt: "Vind je salon. Boek wanneer je wil.",
@@ -110,7 +109,7 @@ export function createPageMetadata({
   description,
   socialTitle = title,
   socialDescription = description,
-  image = DEFAULT_SOCIAL_IMAGE,
+  image = HOME_SOCIAL_IMAGE,
   index = true,
   type = "website",
   alternateLocales = locales,

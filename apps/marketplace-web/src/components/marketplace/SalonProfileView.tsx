@@ -168,7 +168,7 @@ export function SalonProfileView({
   const images =
     salon.images.length > 0
       ? salon.images
-      : ["/c22595c4-33c0-4e1b-9d3b-228dabf74ef8.jpg"];
+      : ["/og/home.jpg"];
   const minimumPrice = minimumServicePrice(salon);
   const address = [salon.street, salon.postalCode, salon.city]
     .filter(Boolean)

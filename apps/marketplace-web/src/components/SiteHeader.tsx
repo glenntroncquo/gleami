@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { AccountMenu } from "@/components/auth/AccountMenu";
-import { ChevronDownIcon, GlobeIcon, MenuIcon } from "lucide-react";
+import { LanguagePicker } from "@/components/LanguagePicker";
+import { MenuIcon } from "lucide-react";
 import { ButtonLink } from "@/components/ui/ButtonLink";
-import { DismissableDetails } from "@/components/ui/DismissableDetails";
 import { Logo } from "@/components/ui/Logo";
 import { getCopy } from "@/lib/copy";
 import {
-  localeConfig,
   locales,
   routeFor,
   type Locale,
@@ -69,34 +68,8 @@ export function SiteHeader({
         </ul>
 
         <div className="flex items-center justify-end gap-2">
+        <LanguagePicker locale={locale} route={route} availableLocales={availableLocales} />
         <div className="hidden items-center gap-2 lg:flex">
-          <DismissableDetails className="group relative">
-            <summary className="flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-full px-2.5 text-[13px] text-muted hover:bg-ink/[0.04] hover:text-ink">
-              <GlobeIcon aria-hidden="true" className="h-4 w-4" />
-              {localeConfig[locale].hreflang.slice(0, 2).toUpperCase()}
-              <ChevronDownIcon
-                aria-hidden="true"
-                className="h-3.5 w-3.5 transition group-open:rotate-180"
-              />
-            </summary>
-            <div className="absolute right-0 mt-2 w-52 rounded-2xl bg-white p-2 shadow-float ring-1 ring-line">
-              {availableLocales.map((item) => (
-                <Link
-                  key={item}
-                  href={routeFor(item, route)}
-                  hrefLang={localeConfig[item].hreflang}
-                  className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-[13px] hover:bg-shell ${
-                    item === locale ? "font-semibold text-ink" : "text-muted"
-                  }`}
-                >
-                  <span>{localeConfig[item].label}</span>
-                  <span className="text-[11px] text-subtle">
-                    {localeConfig[item].regionLabel}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </DismissableDetails>
           <AccountMenu locale={locale} />
           <ButtonLink
             href={routeFor(locale, { kind: "business" }) + "#contact"}
@@ -124,20 +97,6 @@ export function SiteHeader({
                 </li>
               ))}
             </ul>
-            <div className="mt-5 flex flex-wrap gap-2">
-              {availableLocales.map((item) => (
-                <Link
-                  key={item}
-                  href={routeFor(item, route)}
-                  hrefLang={localeConfig[item].hreflang}
-                  className={`rounded-full px-3 py-2 text-[12px] ring-1 ring-line ${
-                    item === locale ? "bg-ink text-white" : "bg-white text-muted"
-                  }`}
-                >
-                  {localeConfig[item].hreflang}
-                </Link>
-              ))}
-            </div>
             <AccountMenu locale={locale} stacked />
             <ButtonLink
               href={routeFor(locale, { kind: "business" }) + "#contact"}

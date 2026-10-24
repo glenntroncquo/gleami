@@ -14,6 +14,8 @@ import {
   locales,
   localesForCity,
   localizedCitySlug,
+  supportedCities,
+  supportedCitiesForLocale,
   treatmentKeyFromSlug,
   treatmentNames,
   treatmentSlugs,
@@ -31,15 +33,6 @@ type Props = PageProps<"/[locale]/[section]/[slug]/[city]">;
 
 const LOCAL_PAGE_MINIMUM_SALONS = 3;
 
-const launchCities: Record<Locale, CityKey[]> = {
-  "nl-be": ["ghent", "antwerp", "brussels"],
-  "fr-be": ["ghent", "antwerp", "brussels"],
-  en: ["ghent", "antwerp", "brussels"],
-  "nl-nl": ["amsterdam"],
-  "fr-fr": ["paris"],
-  "de-de": ["cologne"],
-};
-
 function resolveParams(
   locale: Locale,
   section: string,
@@ -49,14 +42,14 @@ function resolveParams(
   if (section !== localeConfig[locale].paths.treatments) return null;
   const treatment = treatmentKeyFromSlug(locale, slug);
   const city = cityKeyFromSlug(locale, citySlug);
-  if (!treatment || !city) return null;
+  if (!treatment || !city || !supportedCities.includes(city)) return null;
   if (!localesForCity(city).includes(locale)) return null;
   return { treatment, city };
 }
 
 export function generateStaticParams() {
   return locales.flatMap((locale) =>
-    launchCities[locale].flatMap((city) =>
+    supportedCitiesForLocale(locale).flatMap((city) =>
       (Object.keys(treatmentSlugs) as TreatmentKey[]).map((treatment) => ({
         locale,
         section: localeConfig[locale].paths.treatments,

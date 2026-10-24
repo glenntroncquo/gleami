@@ -135,7 +135,7 @@ export function ExploreSection({
             </button>
           </div>
         ) : (
-          <motion.div layout className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
+          <motion.div layout className="grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <AnimatePresence mode="popLayout" initial={false}>
               {venues.map((venue) => (
                 <motion.div
@@ -181,12 +181,12 @@ function CategoryPillsSkeleton() {
 
 function SalonGridSkeleton() {
   return (
-    <div className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3" aria-hidden="true">
-      {Array.from({ length: 6 }, (_, index) => (
+    <div className="grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-hidden="true">
+      {Array.from({ length: 8 }, (_, index) => (
         <div key={index} className="flex flex-col">
-          <div className="aspect-[4/3] w-full rounded-2xl bg-navy/10 motion-safe:animate-pulse" />
-          <div className="mt-4 h-4 w-2/3 rounded-full bg-navy/10 motion-safe:animate-pulse" />
-          <div className="mt-2 h-3.5 w-1/2 rounded-full bg-navy/10 motion-safe:animate-pulse" />
+          <div className="aspect-[3/2] w-full rounded-xl bg-navy/10 motion-safe:animate-pulse" />
+          <div className="mt-2.5 h-3.5 w-2/3 rounded-full bg-navy/10 motion-safe:animate-pulse" />
+          <div className="mt-1.5 h-3 w-1/2 rounded-full bg-navy/10 motion-safe:animate-pulse" />
         </div>
       ))}
     </div>

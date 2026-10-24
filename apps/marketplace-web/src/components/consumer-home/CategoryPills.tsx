@@ -62,8 +62,9 @@ export function CategoryPills({ categories, active, label, onChange }: CategoryP
 
   function onPointerDown(event: PointerEvent<HTMLDivElement>) {
     if (event.pointerType !== "mouse" || event.button !== 0) return;
-    const el = scroller.current;
-    if (!el || el.scrollWidth <= el.clientWidth) return;
+    const node = scroller.current;
+    if (!node || node.scrollWidth <= node.clientWidth) return;
+    const el = node;
 
     stopMomentum();
     const pointerId = event.pointerId;

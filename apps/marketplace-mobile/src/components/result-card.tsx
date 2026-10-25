@@ -30,7 +30,7 @@ export const ResultCard = React.memo(function ResultCard({
   const likes = useToggleLike();
   const liked = likes.likedIds.has(item.locationId);
   const distance = formatDistance(item.distanceKm);
-  const images = galleryFromItem(item.images, item.imageUrl);
+  const images = galleryFromItem(item.images);
 
   const open = () => {
     router.push({ pathname: "/salon/[slug]", params: { slug: item.slug } });

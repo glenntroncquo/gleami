@@ -2,7 +2,7 @@ import Link from "next/link";
 import { documentPath, getDocument, type DocId, type Section } from "@/content/documents";
 import { copy } from "@/lib/copy";
 
-const MAIL = "support@gleami.be";
+const MAIL = "info@gleami.eu";
 
 export function DocumentView({ id }: { id: DocId }) {
   const document = getDocument(id);
@@ -64,7 +64,7 @@ function SectionView({ section }: { section: Section }) {
 }
 
 function RichText({ text }: { text: string }) {
-  const parts = text.split(/\{(privacy|terms|service|partner|data|cookies|mail)\}/g);
+  const parts = text.split(/\{(privacy|terms|service|data|cookies|mail)\}/g);
   return parts.map((part, index) => {
     if (index % 2 === 0) return part;
     if (part === "mail") {

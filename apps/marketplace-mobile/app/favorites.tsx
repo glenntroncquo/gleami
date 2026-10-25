@@ -99,7 +99,7 @@ function FavoriteRow({
   liked: boolean;
   onUnlike: () => void;
 }) {
-  const cover = galleryFromItem(item.images, item.imageUrl)[0] ?? null;
+  const cover = galleryFromItem(item.images)[0] ?? null;
   return (
     <View className="mb-3 flex-row items-center gap-3 rounded-card bg-surface p-2">
       <Pressable

@@ -131,9 +131,12 @@ export type Copy = {
     marketplace: string;
     company: string;
     legal: string;
+    contact: string;
+    companyNumber: string;
     salons: string;
     cities: string;
     privacy: string;
+    service: string;
     terms: string;
     rights: string;
   };
@@ -346,10 +349,13 @@ const nl: Copy = {
     marketplace: "Marketplace",
     company: "Gleami voor bedrijven",
     legal: "Juridisch",
+    contact: "Contact",
+    companyNumber: "Ondernemingsnummer",
     salons: "Alle salons",
     cities: "Populaire steden",
-    privacy: "Privacy",
-    terms: "Voorwaarden",
+    privacy: "Privacybeleid",
+    service: "Servicevoorwaarden",
+    terms: "Gebruiksvoorwaarden",
     rights: "Alle rechten voorbehouden.",
   },
 };
@@ -563,10 +569,13 @@ const fr: Copy = {
     marketplace: "Marketplace",
     company: "Gleami pour les pros",
     legal: "Informations",
+    contact: "Contact",
+    companyNumber: "Numéro d'entreprise",
     salons: "Tous les salons",
     cities: "Villes populaires",
-    privacy: "Confidentialité",
-    terms: "Conditions",
+    privacy: "Politique de confidentialité",
+    service: "Conditions de service",
+    terms: "Conditions d'utilisation",
     rights: "Tous droits réservés.",
   },
 };
@@ -715,10 +724,13 @@ const de: Copy = {
     marketplace: "Marketplace",
     company: "Gleami für Betriebe",
     legal: "Rechtliches",
+    contact: "Kontakt",
+    companyNumber: "Unternehmensnummer",
     salons: "Alle Salons",
     cities: "Beliebte Städte",
-    privacy: "Datenschutz",
-    terms: "Bedingungen",
+    privacy: "Datenschutzerklärung",
+    service: "Servicebedingungen",
+    terms: "Nutzungsbedingungen",
     rights: "Alle Rechte vorbehalten.",
   },
 };
@@ -927,10 +939,13 @@ const en: Copy = {
     marketplace: "Marketplace",
     company: "Gleami for businesses",
     legal: "Legal",
+    contact: "Contact",
+    companyNumber: "Company number",
     salons: "All salons",
     cities: "Popular cities",
-    privacy: "Privacy",
-    terms: "Terms",
+    privacy: "Privacy Policy",
+    service: "Terms of service",
+    terms: "Terms of use",
     rights: "All rights reserved.",
   },
 };

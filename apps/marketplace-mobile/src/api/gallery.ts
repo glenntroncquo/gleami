@@ -1,7 +1,7 @@
 /**
  * Card galleries match `searchCardImages` in the marketplace edge:
- * at most five public URLs, cover first. When a location has no IMAGE
- * media, the list is `[imageUrl]` or empty.
+ * at most five public URLs, cover first. A location with no IMAGE media
+ * has an empty gallery. The salon profile picture is never used.
  */
 export const SEARCH_CARD_IMAGE_LIMIT = 5;
 
@@ -15,25 +15,14 @@ export function publicMarketplaceImageUrl(storagePath: string, supabaseUrl: stri
 }
 
 /** Paths from marketplace_media, already ordered by sort_order then id. */
-export function cardGallery(
-  storagePaths: string[],
-  imageUrl: string | null,
-  supabaseUrl: string,
-): string[] {
-  const gallery = storagePaths
+export function cardGallery(storagePaths: string[], supabaseUrl: string): string[] {
+  return storagePaths
     .filter((path) => path.length > 0)
     .slice(0, SEARCH_CARD_IMAGE_LIMIT)
     .map((path) => publicMarketplaceImageUrl(path, supabaseUrl));
-  if (gallery.length > 0) return gallery;
-  return imageUrl ? [imageUrl] : [];
 }
 
-/** Normalize a search or favorites payload. Prefer `images`, then `imageUrl`. */
-export function galleryFromItem(
-  images: string[] | null | undefined,
-  imageUrl: string | null | undefined,
-): string[] {
-  const gallery = (images ?? []).filter((url) => url.length > 0).slice(0, SEARCH_CARD_IMAGE_LIMIT);
-  if (gallery.length > 0) return gallery;
-  return imageUrl ? [imageUrl] : [];
+/** Marketplace photos already resolved to public URLs. */
+export function galleryFromItem(images: string[] | null | undefined): string[] {
+  return (images ?? []).filter((url) => url.length > 0).slice(0, SEARCH_CARD_IMAGE_LIMIT);
 }

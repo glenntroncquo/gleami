@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { XIcon } from "lucide-react";
+import { RecoveryPanel } from "@/components/recovery/RecoveryPanel";
+import type { Locale } from "@/lib/i18n";
 import { CategoryPills } from "./CategoryPills";
 import type { HomeCopy } from "./messages";
 import { VenueCard, type HomeSalon } from "./VenueCard";
 
 type ExploreSectionProps = {
+  locale: Locale;
   venues: HomeSalon[];
   favorites: HomeSalon[];
   savedIds: Set<string>;
@@ -26,6 +29,7 @@ type ExploreSectionProps = {
 };
 
 export function ExploreSection({
+  locale,
   venues,
   favorites,
   savedIds,
@@ -120,20 +124,13 @@ export function ExploreSection({
         {loading && venues.length === 0 ? (
           <SalonGridSkeleton />
         ) : venues.length === 0 ? (
-          <div className="rounded-3xl bg-surface px-6 py-16 text-center">
-            <p className="text-lg font-semibold text-navy">{copy.emptyTitle}</p>
-            <p className="mx-auto mt-2 max-w-sm text-ink-muted">{copy.emptyBody}</p>
-            <button
-              type="button"
-              onClick={() => {
-                onClearQuery();
-                onCategoryChange(null);
-              }}
-              className="mt-6 rounded-full bg-navy px-5 py-2.5 text-[15px] font-semibold text-white transition-colors duration-150 hover:bg-navy-700"
-            >
-              {copy.showAll}
-            </button>
-          </div>
+          <RecoveryPanel
+            locale={locale}
+            onReset={() => {
+              onClearQuery();
+              onCategoryChange(null);
+            }}
+          />
         ) : (
           <motion.div layout className="grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <AnimatePresence mode="popLayout" initial={false}>

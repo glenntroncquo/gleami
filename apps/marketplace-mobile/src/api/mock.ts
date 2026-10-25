@@ -49,7 +49,7 @@ function toItem(salon: MockSalon, origin: { lat: number; lng: number } | null): 
     name: salon.name,
     slug: salon.slug,
     imageUrl: salon.imageUrl || null,
-    images: galleryFromItem(salon.images, salon.imageUrl),
+    images: galleryFromItem(salon.images),
     city: salon.city,
     address: `${salon.street}, ${salon.postalCode} ${salon.city}`,
     lat: salon.lat,
@@ -223,7 +223,7 @@ export async function mockFavorites(): Promise<FavoriteSalon[]> {
       name: salon.name,
       slug: salon.slug,
       imageUrl: salon.imageUrl || null,
-      images: galleryFromItem(salon.images, salon.imageUrl),
+      images: galleryFromItem(salon.images),
       city: salon.city,
       likeCount: salon.likeCount,
     }));

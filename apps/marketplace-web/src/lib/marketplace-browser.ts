@@ -18,14 +18,20 @@ export type MarketplaceCategory = {
 
 export type SearchSalon = {
   locationId: string;
+  companyId: string;
   name: string;
   slug: string;
   imageUrl: string | null;
+  images: string[];
   city: string | null;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
   distanceKm: number | null;
   categoryIds: string[];
   rating: number | null;
   reviewCount: number;
+  likeCount: number;
 };
 
 export type FavoriteSalon = {
@@ -140,15 +146,20 @@ export async function searchSalons(input: {
 
 type SearchRpcRow = {
   location_id: string;
+  company_id: string;
   name: string;
   slug: string;
   image_url: string | null;
   image_paths: string[] | string | null;
   city: string | null;
+  address: string | null;
+  lat: number | string | null;
+  lng: number | string | null;
   distance_km: number | string | null;
   category_ids: string[] | null;
   rating: number | string | null;
   review_count: number | null;
+  like_count: number | null;
 };
 
 function publicMarketplaceImage(storagePath: string): string | null {
@@ -169,22 +180,34 @@ function imagePaths(value: SearchRpcRow["image_paths"]): string[] {
   }
 }
 
+function finite(value: number | string | null | undefined): number | null {
+  if (value == null) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function toSearchSalon(row: SearchRpcRow): SearchSalon {
-  const gallery = imagePaths(row.image_paths)
+  const images = imagePaths(row.image_paths)
     .map((path) => publicMarketplaceImage(path))
-    .find((url): url is string => Boolean(url));
-  const rating = row.rating == null ? null : Number(row.rating);
-  const distance = row.distance_km == null ? null : Number(row.distance_km);
+    .filter((url): url is string => Boolean(url));
+  const rating = finite(row.rating);
+  const distance = finite(row.distance_km);
   return {
     locationId: row.location_id,
+    companyId: row.company_id,
     name: row.name,
     slug: row.slug,
-    imageUrl: gallery ?? row.image_url,
+    imageUrl: images[0] ?? null,
+    images,
     city: row.city,
-    distanceKm: distance != null && Number.isFinite(distance) ? distance : null,
+    address: row.address ?? "",
+    latitude: finite(row.lat),
+    longitude: finite(row.lng),
+    distanceKm: distance,
     categoryIds: row.category_ids ?? [],
-    rating: rating != null && Number.isFinite(rating) ? rating : null,
+    rating,
     reviewCount: row.review_count ?? 0,
+    likeCount: row.like_count ?? 0,
   };
 }
 
@@ -260,9 +283,23 @@ export async function listFavorites(userId: string): Promise<FavoriteSalon[]> {
   if (ids.length === 0) return [];
   const { data: rows, error: rowError } = await supabase
     .from("marketplace_search_location")
-    .select("location_id, name, slug, image_url, city")
+    .select("location_id, name, slug, city")
     .in("location_id", ids);
   if (rowError) throw new Error(rowError.message);
+  const { data: mediaRows } = await supabase
+    .from("marketplace_media")
+    .select("location_id, storage_path, sort_order, id")
+    .eq("type", "IMAGE")
+    .in("location_id", ids)
+    .order("sort_order", { ascending: true })
+    .order("id", { ascending: true });
+  const covers = new Map<string, string>();
+  for (const media of mediaRows ?? []) {
+    const locationId = String(media.location_id);
+    if (covers.has(locationId)) continue;
+    const url = publicMarketplaceImage(String(media.storage_path ?? ""));
+    if (url) covers.set(locationId, url);
+  }
   const byId = new Map(
     (rows ?? []).map((row) => [
       String(row.location_id),
@@ -270,7 +307,7 @@ export async function listFavorites(userId: string): Promise<FavoriteSalon[]> {
         locationId: String(row.location_id),
         name: String(row.name),
         slug: String(row.slug),
-        imageUrl: row.image_url ? String(row.image_url) : null,
+        imageUrl: covers.get(String(row.location_id)) ?? null,
         city: row.city ? String(row.city) : null,
       } satisfies FavoriteSalon,
     ]),

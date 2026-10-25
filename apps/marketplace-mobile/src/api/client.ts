@@ -100,8 +100,7 @@ function locationFromRpc(data: unknown): LocationGetResponse {
         .filter((image): image is string => Boolean(image)),
     ),
   ];
-  const imageUrl = marketplaceImage(location.imageUrl);
-  const gallery = images.length > 0 ? images : imageUrl ? [imageUrl] : [];
+  const gallery = images;
 
   const categories = (Array.isArray(profile.categories) ? profile.categories : []).flatMap((item) => {
     if (!item || typeof item !== 'object') return [];
@@ -297,14 +296,14 @@ export async function listFavorites(userId: string): Promise<FavoriteSalon[]> {
   return ids.flatMap((locationId) => {
     const row = byId.get(locationId);
     if (!row?.slug || !row.name) return [];
-    const images = cardGallery(paths.get(locationId) ?? [], row.image_url, supabaseUrl);
+    const images = cardGallery(paths.get(locationId) ?? [], supabaseUrl);
     return [
       {
         locationId,
         companyId: row.company_id,
         name: row.name,
         slug: row.slug,
-        imageUrl: row.image_url,
+        imageUrl: images[0] ?? null,
         images,
         city: row.city ?? '',
         likeCount: Number(row.like_count ?? 0),

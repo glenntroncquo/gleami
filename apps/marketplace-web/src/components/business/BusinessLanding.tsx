@@ -15,6 +15,7 @@ import { MarketplaceMapScreen } from "@/components/mockups/marketplace/Marketpla
 import { MarketplaceSalonScreen } from "@/components/mockups/marketplace/MarketplaceSalonScreen";
 import { CalendarMockup } from "@/components/mockups/CalendarMockup";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { BookDemoButton } from "@/components/demo/BookDemoButton";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { LogoMark } from "@/components/ui/LogoMark";
 import { PhoneFrame } from "@/components/ui/PhoneFrame";
@@ -29,7 +30,6 @@ type BusinessLandingProps = {
 };
 
 const appUrl = "https://pro.gleami.eu";
-const demoUrl = "https://calendly.com/glenntroncquo1/30min";
 const featureIcons = [
   CalendarDaysIcon,
   CalendarCheckIcon,
@@ -75,14 +75,13 @@ export function BusinessLanding({ locale }: BusinessLandingProps) {
             <ButtonLink href={appUrl} size="lg" arrow className="w-full sm:w-auto">
               {copy.actions.start}
             </ButtonLink>
-            <ButtonLink
-              href={demoUrl}
+            <BookDemoButton
               variant="secondary"
               size="lg"
               className="w-full sm:w-auto"
             >
               {copy.actions.demo}
-            </ButtonLink>
+            </BookDemoButton>
           </div>
           <p className="mt-5 text-[14px] text-muted">
             {copy.business.reassurance}
@@ -262,14 +261,9 @@ export function BusinessLanding({ locale }: BusinessLandingProps) {
               <p className="mt-5 text-[17px] leading-relaxed text-muted">
                 {copy.business.faqBody}
               </p>
-              <ButtonLink
-                href={demoUrl}
-                variant="secondary"
-                arrow
-                className="mt-8"
-              >
+              <BookDemoButton variant="secondary" arrow className="mt-8">
                 {copy.actions.demo}
-              </ButtonLink>
+              </BookDemoButton>
             </div>
           </div>
           <div className="border-t border-line lg:col-span-8">
@@ -313,14 +307,13 @@ export function BusinessLanding({ locale }: BusinessLandingProps) {
             >
               {copy.actions.start}
             </ButtonLink>
-            <ButtonLink
-              href={demoUrl}
+            <BookDemoButton
               variant="outline"
               size="lg"
               className="w-full sm:w-auto"
             >
               {copy.actions.demo}
-            </ButtonLink>
+            </BookDemoButton>
           </div>
           <ul className="mx-auto mt-12 grid max-w-2xl gap-3 text-left text-[14px] text-white/75 sm:grid-cols-3">
             {copy.business.features.slice(0, 3).map((feature) => (

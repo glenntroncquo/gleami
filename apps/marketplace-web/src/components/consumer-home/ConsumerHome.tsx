@@ -168,16 +168,19 @@ export function ConsumerHome({
     };
   }, [user, locale]);
 
+  const handleSearch = (nextQuery: string) => {
+    setQuery(nextQuery.trim());
+    setCategoryId(null);
+    document.getElementById("explore")?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "start",
+    });
+  };
+
   const cards = useMemo(
     () => salons.map((item) => toCard(locale, item, categories)),
     [salons, locale, categories],
   );
-
-  const handleSearch = (nextQuery: string) => {
-    setQuery(nextQuery.trim());
-    setCategoryId(null);
-    document.getElementById("explore")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
 
   useEffect(() => {
     const refresh = () => {
@@ -246,8 +249,9 @@ export function ConsumerHome({
     <div className={`${figtree.className} min-h-screen w-full bg-page text-navy`}>
       <Header locale={locale} homeHref={homeHref} businessHref={businessHref} copy={copy} />
       <main id="main">
-        <Hero copy={copy} nearby={center != null} onSearch={handleSearch} />
+        <Hero locale={locale} copy={copy} nearby={center != null} near={center} onSearch={handleSearch} />
         <ExploreSection
+          locale={locale}
           venues={cards}
           favorites={favorites}
           savedIds={savedIds}

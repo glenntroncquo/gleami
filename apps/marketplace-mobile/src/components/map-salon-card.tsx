@@ -20,7 +20,7 @@ const shadow = {
 
 export function MapSalonCard({ item, onClose }: { item: SearchItem; onClose: () => void }) {
   const categories = useCategories();
-  const images = galleryFromItem(item.images, item.imageUrl);
+  const images = galleryFromItem(item.images);
   const distance = formatDistance(item.distanceKm);
   const place = [distance, item.city].filter(Boolean).join(' · ');
   const categoryName =

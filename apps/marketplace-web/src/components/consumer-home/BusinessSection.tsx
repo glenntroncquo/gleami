@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { ArrowRightIcon } from "lucide-react";
+import { BookDemoButton } from "@/components/demo/BookDemoButton";
 import { CalendarMockup } from "@/components/mockups/CalendarMockup";
 import { ScaleToFit } from "@/components/ui/ScaleToFit";
-import type { Locale } from "@/lib/i18n";
+import { routeFor, type Locale } from "@/lib/i18n";
 import type { HomeCopy } from "./messages";
 
 type BusinessSectionProps = {
@@ -24,18 +25,15 @@ export function BusinessSection({ locale, copy }: BusinessSectionProps) {
           <p className="mt-6 max-w-md text-lg leading-relaxed text-white/75">{copy.businessBody}</p>
           <div className="mt-10 flex flex-wrap gap-3">
             <Link
-              href="https://pro.gleami.eu"
+              href={routeFor(locale, { kind: "business" })}
               className="inline-flex h-12 items-center gap-2 whitespace-nowrap rounded-full bg-peri px-6 text-[15px] font-semibold text-white transition-colors duration-150 hover:bg-peri-dark"
             >
-              {copy.businessStart}
+              {copy.businessCta}
               <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
             </Link>
-            <Link
-              href="https://calendly.com/glenntroncquo1/30min"
-              className="inline-flex h-12 items-center whitespace-nowrap rounded-full border border-white/25 px-6 text-[15px] font-semibold text-white transition-colors duration-150 hover:bg-navy-700"
-            >
+            <BookDemoButton className="inline-flex h-12 items-center whitespace-nowrap rounded-full border border-white/25 px-6 text-[15px] font-semibold text-white transition-colors duration-150 hover:bg-navy-700">
               {copy.businessDemo}
-            </Link>
+            </BookDemoButton>
           </div>
 
           <figure className="mt-14 max-w-md border-t border-white/15 pt-8">

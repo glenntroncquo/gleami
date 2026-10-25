@@ -221,7 +221,7 @@ export default function SalonScreen() {
             contentContainerStyle={{ paddingBottom: barHeight + 24 }}>
             <Animated.View style={[{ height: HERO }, heroStyle]}>
               <MediaCarousel
-                images={data.location.images.length > 0 ? data.location.images : [data.location.imageUrl]}
+                images={data.location.images}
                 height={HERO}
                 label={data.location.name}
                 indicator="count"

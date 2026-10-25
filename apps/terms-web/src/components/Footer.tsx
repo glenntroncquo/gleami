@@ -8,7 +8,7 @@ const legalLinks: Array<{ id: DocId; label: string }> = [
   { id: "privacy", label: copy.footer.privacy },
   { id: "terms", label: copy.footer.terms },
   { id: "service", label: copy.footer.service },
-  { id: "partner", label: copy.footer.partner },
+  { id: "data", label: copy.footer.data },
   { id: "cookies", label: copy.footer.cookies },
 ];
 

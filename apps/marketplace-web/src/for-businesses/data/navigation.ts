@@ -1,3 +1,11 @@
+import { legalDocuments } from "../../lib/legal";
+
+const legalLabels = {
+  privacy: "Privacy Policy",
+  service: "Terms of service",
+  terms: "Terms of use",
+} as const;
+
 export const navLinks = [
 { label: 'Product', href: '#product' },
 { label: 'Solutions', href: '#solutions' },
@@ -64,10 +72,10 @@ export const footerColumns = [
 },
 {
   title: 'Legal',
-  links: [
-  { label: 'Privacy', href: '#' },
-  { label: 'Terms', href: '#' },
-  { label: 'Cookies', href: '#' }]
+  links: legalDocuments.map((document) => ({
+    label: legalLabels[document.id],
+    href: document.href,
+  })),
 
 }];
 

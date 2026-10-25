@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { GlobeIcon } from "lucide-react";
+import { CompanyContact } from "@/components/CompanyContact";
 import { Logo } from "@/components/ui/Logo";
 import { getCopy } from "@/lib/copy";
+import { legalDocuments } from "@/lib/legal";
 import {
   cityNames,
   localeConfig,
@@ -39,6 +41,13 @@ export function SiteFooter({
             <div className="mt-6 flex items-center gap-2 text-[13px] text-muted">
               <GlobeIcon aria-hidden="true" className="h-4 w-4" />
               {localeConfig[locale].label} · {localeConfig[locale].regionLabel}
+            </div>
+            <div className="mt-8">
+              <CompanyContact
+                title={copy.footer.contact}
+                numberLabel={copy.footer.companyNumber}
+                tone="site"
+              />
             </div>
           </div>
           <nav
@@ -116,22 +125,16 @@ export function SiteFooter({
             <div>
               <p className="text-[14px] font-semibold">{copy.footer.legal}</p>
               <ul className="mt-4 space-y-2.5">
-                <li>
-                  <a
-                    href="https://booking.salonify.co/privacy"
-                    className="text-[14px] text-muted hover:text-ink"
-                  >
-                    {copy.footer.privacy}
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://booking.salonify.co/terms"
-                    className="text-[14px] text-muted hover:text-ink"
-                  >
-                    {copy.footer.terms}
-                  </a>
-                </li>
+                {legalDocuments.map((document) => (
+                  <li key={document.id}>
+                    <a
+                      href={document.href}
+                      className="text-[14px] text-muted hover:text-ink"
+                    >
+                      {copy.footer[document.id]}
+                    </a>
+                  </li>
+                ))}
               </ul>
             </div>
           </nav>

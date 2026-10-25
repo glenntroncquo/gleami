@@ -129,7 +129,7 @@ export function mapSearchRows(
       name: row.name,
       slug: row.slug,
       imageUrl: row.image_url,
-      images: searchCardImages(asPathList(row.image_paths), row.image_url, supabaseUrl),
+      images: searchCardImages(asPathList(row.image_paths), supabaseUrl),
       city: row.city,
       address: row.address ?? "",
       lat: Number(row.lat),

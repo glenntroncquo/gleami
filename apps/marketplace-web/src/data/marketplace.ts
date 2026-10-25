@@ -97,6 +97,13 @@ export type SalonCard = Pick<
   address: string;
   treatmentNames: string[];
   minimumPrice: number | null;
+  latitude: number | null;
+  longitude: number | null;
+};
+
+export type SalonSearchCard = SalonCard & {
+  categories: SalonProfile["categories"];
+  services: SalonService[];
 };
 
 type SearchItem = {
@@ -137,6 +144,7 @@ type ProjectionRestRow = {
   rating: number | string | null;
   review_count: number | null;
   like_count: number | null;
+  coordinates?: string | null;
 };
 
 type LocationResponse = {
@@ -671,6 +679,28 @@ function treatmentKeysForName(name: string): TreatmentKey[] {
   return matches;
 }
 
+function pointFromEwkb(value: string | null | undefined): {
+  latitude: number;
+  longitude: number;
+} | null {
+  if (!value || value.length < 42 || value.length % 2 !== 0) return null;
+  const bytes = new Uint8Array(value.length / 2);
+  for (let index = 0; index < bytes.length; index += 1) {
+    const byte = Number.parseInt(value.slice(index * 2, index * 2 + 2), 16);
+    if (!Number.isFinite(byte)) return null;
+    bytes[index] = byte;
+  }
+  const view = new DataView(bytes.buffer);
+  const little = bytes[0] === 1;
+  const type = view.getUint32(1, little);
+  const offset = type & 0x20000000 ? 9 : 5;
+  if (bytes.length < offset + 16) return null;
+  const longitude = view.getFloat64(offset, little);
+  const latitude = view.getFloat64(offset + 8, little);
+  if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return null;
+  return { latitude, longitude };
+}
+
 function mapSearchItem(item: SearchItem): SalonCard {
   const city = item.city?.trim() || "België";
   return {
@@ -678,7 +708,7 @@ function mapSearchItem(item: SearchItem): SalonCard {
     companyId: item.companyId,
     name: item.name,
     slug: item.slug,
-    imageUrl: safeImageUrl(item.images[0] ?? item.imageUrl),
+    imageUrl: safeImageUrl(item.images[0]),
     images: item.images
       .map((image) => safeImageUrl(image))
       .filter((image): image is string => Boolean(image)),
@@ -692,11 +722,14 @@ function mapSearchItem(item: SearchItem): SalonCard {
     reviewCount: item.reviewCount,
     likeCount: item.likeCount,
     source: "live",
+    latitude: item.lat,
+    longitude: item.lng,
   };
 }
 
 function mapProjectionRow(row: ProjectionRestRow): SalonCard {
   const city = row.city?.trim() || "België";
+  const point = pointFromEwkb(row.coordinates);
   const rating =
     row.rating == null || !Number.isFinite(Number(row.rating))
       ? null
@@ -706,7 +739,7 @@ function mapProjectionRow(row: ProjectionRestRow): SalonCard {
     companyId: row.company_id,
     name: row.name,
     slug: row.slug,
-    imageUrl: safeImageUrl(row.image_url),
+    imageUrl: null,
     images: [],
     city,
     cityKey: cityKeyFromName(city),
@@ -718,6 +751,8 @@ function mapProjectionRow(row: ProjectionRestRow): SalonCard {
     reviewCount: row.review_count ?? 0,
     likeCount: row.like_count ?? 0,
     source: "live",
+    latitude: point?.latitude ?? null,
+    longitude: point?.longitude ?? null,
   };
 }
 
@@ -744,6 +779,8 @@ function cardFromProfile(salon: SalonProfile): SalonCard {
     reviewCount: salon.reviewCount,
     likeCount: salon.likeCount,
     source: salon.source,
+    latitude: salon.latitude,
+    longitude: salon.longitude,
   };
 }
 
@@ -850,7 +887,7 @@ function profileFromLocation(profile: LocationResponse): SalonProfile {
   const item = profile.location;
   const images = [
     ...new Set(
-      [...(item.images ?? []), item.imageUrl]
+      [...(item.images ?? [])]
         .map((image) => marketplaceImage(image))
         .filter((image): image is string => Boolean(image)),
     ),
@@ -922,6 +959,32 @@ export const getSalonBySlug = cache(async function getSalonBySlug(
   }
 });
 
+/** Use the public, cached catalog for real photos, prices and service previews. */
+export async function getSalonSearchCards(
+  salons: SalonCard[],
+  locale: Locale,
+): Promise<SalonSearchCard[]> {
+  const results: SalonSearchCard[] = [];
+  // Bound concurrent profile reads rather than opening a request for every result.
+  for (let offset = 0; offset < salons.length; offset += 8) {
+    const batch = await Promise.all(
+      salons.slice(offset, offset + 8).map(async (card) => {
+        const profile = await getSalonBySlug(card.slug, locale);
+        return {
+          ...card,
+          ...(profile ? cardFromProfile(profile) : {}),
+          latitude: profile?.latitude ?? card.latitude,
+          longitude: profile?.longitude ?? card.longitude,
+          categories: profile?.categories ?? [],
+          services: profile?.services ?? [],
+        };
+      }),
+    );
+    results.push(...batch);
+  }
+  return results;
+}
+
 async function profileFromProjection(slug: string): Promise<SalonProfile | null> {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
   const fields = [
@@ -962,7 +1025,7 @@ async function profileFromProjection(slug: string): Promise<SalonProfile | null>
     name: row.name,
     slug: row.slug,
     description: "",
-    imageUrl: safeImageUrl(row.image_url),
+    imageUrl: null,
     images: [],
     street: row.address,
     postalCode: null,
@@ -1051,6 +1114,7 @@ export async function getPublishedSalonCardsPage(
     "rating",
     "review_count",
     "like_count",
+    "coordinates",
   ].join(",");
   try {
     const response = await fetch(

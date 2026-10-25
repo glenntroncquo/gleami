@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { SalonDirectory } from "@/components/marketplace/SalonDirectory";
+import { SalonExplorer } from "@/components/marketplace/SalonExplorer";
+import { readExplorerSearch } from "@/components/marketplace/salon-explorer-utils";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { SiteFooter } from "@/components/SiteFooter";
-import { SiteHeader } from "@/components/SiteHeader";
-import { getSalons, hasLiveMarketplace } from "@/data/marketplace";
+import { getSalons, getSalonSearchCards, hasLiveMarketplace } from "@/data/marketplace";
 import { getCopy } from "@/lib/copy";
 import { isLocale, type Locale } from "@/lib/i18n";
 import { createPageMetadata } from "@/lib/seo";
@@ -43,15 +42,19 @@ export default async function SalonsPage({ params, searchParams }: Props) {
   if (!isLocale(value)) notFound();
   const locale: Locale = value;
   const filters = await searchParams;
-  const query = valueOf(filters.q);
-  const place = valueOf(filters.place);
-  const copy = getCopy(locale);
-  const salons = await getSalons({
-    locale,
-    q: query,
-    city: place || undefined,
-    limit: 48,
+  const search = readExplorerSearch({
+    q: valueOf(filters.q),
+    where: valueOf(filters.where),
+    lat: valueOf(filters.lat, 32),
+    lng: valueOf(filters.lng, 32),
+    date: valueOf(filters.date, 10),
+    part: valueOf(filters.part, 12),
   });
+  const copy = getCopy(locale);
+  const live = hasLiveMarketplace();
+  const salons = live
+    ? []
+    : await getSalonSearchCards(await getSalons({ locale, limit: 48 }), locale);
   const route = { kind: "salons" } as const;
 
   return (
@@ -62,20 +65,20 @@ export default async function SalonsPage({ params, searchParams }: Props) {
           { name: copy.nav.discover, route },
         ])}
       />
-      <SiteHeader locale={locale} route={route} />
       <main id="main">
-        <SalonDirectory
+        <SalonExplorer
           locale={locale}
-          route={route}
-          eyebrow={copy.consumer.eyebrow}
           title={copy.nav.discover}
-          description={copy.consumer.description}
+          live={live}
           salons={salons}
-          query={query}
-          place={place}
+          initialQuery={search.query}
+          initialWhere={search.where}
+          initialLat={search.lat}
+          initialLng={search.lng}
+          initialDate={search.date}
+          initialPart={search.part}
         />
       </main>
-      <SiteFooter locale={locale} route={route} />
     </>
   );
 }

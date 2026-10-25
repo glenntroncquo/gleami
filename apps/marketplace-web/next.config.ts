@@ -5,6 +5,9 @@ import { fileURLToPath } from "node:url";
 const nextConfig: NextConfig = {
   trailingSlash: false,
   poweredByHeader: false,
+  experimental: {
+    globalNotFound: true,
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [

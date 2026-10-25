@@ -9,7 +9,6 @@ describe("search card images", () => {
   it("uses up to five gallery paths and ignores a longer list", () => {
     const images = searchCardImages(
       ["co/a.jpg", "co/b.jpg", "co/c.jpg", "co/d.jpg", "co/e.jpg", "co/f.jpg"],
-      "https://cdn.example/card.jpg",
       base,
     );
     expect(images).toEqual([
@@ -21,11 +20,9 @@ describe("search card images", () => {
     ]);
   });
 
-  it("falls back to imageUrl when there is no media", () => {
-    expect(searchCardImages([], "https://cdn.example/card.jpg", base)).toEqual([
-      "https://cdn.example/card.jpg",
-    ]);
-    expect(searchCardImages(null, null, base)).toEqual([]);
+  it("returns no photos when the salon has no marketplace media", () => {
+    expect(searchCardImages([], base)).toEqual([]);
+    expect(searchCardImages(null, base)).toEqual([]);
   });
 });
 

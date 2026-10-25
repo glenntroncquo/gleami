@@ -69,7 +69,7 @@ export default function HomeScreen() {
   const discoverItems = items.slice(0, 10);
   const nearbyItems = [...items].filter((item) => item.distanceKm != null).sort((a, b) => a.distanceKm! - b.distanceKm!).slice(0, 10);
   const firstCovers = [...discoverItems.slice(0, 2), ...nearbyItems.slice(0, 2)]
-    .map((item) => galleryFromItem(item.images, item.imageUrl)[0])
+    .map((item) => galleryFromItem(item.images)[0])
     .filter((uri): uri is string => Boolean(uri));
   const coversReady = useImagesReady(firstCovers);
   const choices = [{ id: null, name: 'Alle', icon: 'grid-outline' as const }, ...(categories.data ?? []).map((c) => ({ ...c, icon: categoryIcon(c.name) }))];
@@ -146,7 +146,7 @@ function FavoritesRow({ items }: { items: FavoriteSalon[] }) {
     <RowHeader title={FAVORITES_TITLE} onMore={() => router.push('/favorites')} />
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}>
       {items.map((item) => {
-        const cover = galleryFromItem(item.images, item.imageUrl)[0] ?? null;
+        const cover = galleryFromItem(item.images)[0] ?? null;
         return <Pressable key={item.locationId} accessibilityRole="button" accessibilityLabel={item.name} onPress={() => router.push({ pathname: '/salon/[slug]', params: { slug: item.slug } })} style={{ width: 246 }}>
           {cover ? <Image source={{ uri: cover }} style={{ height: 148, borderRadius: 20 }} contentFit="cover" /> : <View style={{ height: 148, borderRadius: 20, backgroundColor: brandColors.line }} />}
           <Text numberOfLines={1} className="mt-3 text-base font-semibold text-ink">{item.name}</Text>

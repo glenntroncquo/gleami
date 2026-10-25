@@ -21,7 +21,28 @@ export type HomeCopy = {
   whenToday: string;
   whenTomorrow: string;
   whenWeekend: string;
+  cityPlaceholder: string;
+  cityEmpty: string;
+  cityError: string;
+  cityTitle: string;
+  currentLocation: string;
+  currentLocationError: string;
+  dateTitle: string;
+  whenMorning: string;
+  whenMorningHint: string;
+  whenAfternoon: string;
+  whenAfternoonHint: string;
+  whenEvening: string;
+  whenEveningHint: string;
+  pickerClear: string;
+  pickerDone: string;
   search: string;
+  showMap: string;
+  hideMap: string;
+  showMapBar: string;
+  anyDay: string;
+  showList: string;
+  priceFrom: string;
   placeBelgium: string;
   placeNear: string;
   allTreatments: string;
@@ -44,7 +65,7 @@ export type HomeCopy = {
   businessTitleLead: string;
   businessTitleRest: string;
   businessBody: string;
-  businessStart: string;
+  businessCta: string;
   businessDemo: string;
   businessQuote: string;
   businessQuoteBy: string;
@@ -81,7 +102,28 @@ const nl: HomeCopy = {
   whenToday: "Vandaag",
   whenTomorrow: "Morgen",
   whenWeekend: "Dit weekend",
+  cityPlaceholder: "Stad of gemeente",
+  cityEmpty: "Geen steden gevonden",
+  cityError: "Steden laden lukt niet",
+  cityTitle: "Locatie",
+  currentLocation: "Huidige locatie",
+  currentLocationError: "Locatie toestaan lukt niet",
+  dateTitle: "Datum en tijd",
+  whenMorning: "Ochtend",
+  whenMorningHint: "9–12 u",
+  whenAfternoon: "Namiddag",
+  whenAfternoonHint: "12–18 u",
+  whenEvening: "Avond",
+  whenEveningHint: "18–24 u",
+  pickerClear: "Wissen",
+  pickerDone: "Klaar",
   search: "Zoeken",
+  showMap: "Kaart",
+  hideMap: "Verberg kaart",
+  showMapBar: "Toon kaart",
+  anyDay: "Elke dag",
+  showList: "Lijst",
+  priceFrom: "vanaf",
   placeBelgium: "België",
   placeNear: "Bij jou",
   allTreatments: "Alle behandelingen",
@@ -107,7 +149,7 @@ const nl: HomeCopy = {
   businessTitleRest: "voller salon.",
   businessBody:
     "Agenda, betalingen en klantnotities op één rustige plek, plus een marketplace van mensen die je willen boeken.",
-  businessStart: "Gratis starten",
+  businessCta: "Ontdek voor bedrijven",
   businessDemo: "Boek een demo",
   businessQuote:
     "“In de eerste maand zaten bijna een derde meer stoelen vol, en de telefoon hield eindelijk op met rinkelen.”",
@@ -144,7 +186,28 @@ const fr: HomeCopy = {
   whenToday: "Aujourd’hui",
   whenTomorrow: "Demain",
   whenWeekend: "Ce week-end",
+  cityPlaceholder: "Ville ou commune",
+  cityEmpty: "Aucune ville trouvée",
+  cityError: "Impossible de charger les villes",
+  cityTitle: "Lieu",
+  currentLocation: "Position actuelle",
+  currentLocationError: "Impossible d’utiliser votre position",
+  dateTitle: "Date et heure",
+  whenMorning: "Matin",
+  whenMorningHint: "9 h – 12 h",
+  whenAfternoon: "Après-midi",
+  whenAfternoonHint: "12 h – 18 h",
+  whenEvening: "Soir",
+  whenEveningHint: "18 h – minuit",
+  pickerClear: "Effacer",
+  pickerDone: "OK",
   search: "Rechercher",
+  showMap: "Carte",
+  hideMap: "Masquer la carte",
+  showMapBar: "Afficher la carte",
+  anyDay: "Tous les jours",
+  showList: "Liste",
+  priceFrom: "dès",
   placeBelgium: "Belgique",
   placeNear: "Près de vous",
   allTreatments: "Toutes les prestations",
@@ -171,7 +234,7 @@ const fr: HomeCopy = {
   businessTitleRest: "et plus rempli.",
   businessBody:
     "Agenda, paiements et notes clients au même endroit, plus une marketplace de personnes prêtes à vous réserver.",
-  businessStart: "Commencer gratuitement",
+  businessCta: "Découvrir pour les pros",
   businessDemo: "Réserver une démo",
   businessQuote:
     "« Dès le premier mois, presque un tiers de chaises en plus étaient occupées, et le téléphone a enfin cessé de sonner. »",
@@ -208,7 +271,28 @@ const en: HomeCopy = {
   whenToday: "Today",
   whenTomorrow: "Tomorrow",
   whenWeekend: "This weekend",
+  cityPlaceholder: "City or town",
+  cityEmpty: "No cities found",
+  cityError: "Couldn’t load cities",
+  cityTitle: "Location",
+  currentLocation: "Current location",
+  currentLocationError: "Couldn’t use your location",
+  dateTitle: "Date and time",
+  whenMorning: "Morning",
+  whenMorningHint: "9am – 12pm",
+  whenAfternoon: "Afternoon",
+  whenAfternoonHint: "12pm – 6pm",
+  whenEvening: "Evening",
+  whenEveningHint: "6pm – 12am",
+  pickerClear: "Clear",
+  pickerDone: "Done",
   search: "Search",
+  showMap: "Map",
+  hideMap: "Hide map",
+  showMapBar: "Show map",
+  anyDay: "Any day",
+  showList: "List",
+  priceFrom: "from",
   placeBelgium: "Belgium",
   placeNear: "Near you",
   allTreatments: "All treatments",
@@ -234,7 +318,7 @@ const en: HomeCopy = {
   businessTitleRest: "fuller salon.",
   businessBody:
     "Calendar, payments and client notes in one quiet place, plus a marketplace of people looking to book you.",
-  businessStart: "Get started free",
+  businessCta: "Explore for business",
   businessDemo: "Book a demo",
   businessQuote:
     "“We filled almost a third more chairs in our first month, and the phone finally stopped ringing.”",
@@ -270,7 +354,28 @@ const de: HomeCopy = {
   whenToday: "Heute",
   whenTomorrow: "Morgen",
   whenWeekend: "Dieses Wochenende",
+  cityPlaceholder: "Stadt oder Ort",
+  cityEmpty: "Keine Städte gefunden",
+  cityError: "Städte konnten nicht geladen werden",
+  cityTitle: "Ort",
+  currentLocation: "Aktueller Standort",
+  currentLocationError: "Standort konnte nicht verwendet werden",
+  dateTitle: "Datum und Uhrzeit",
+  whenMorning: "Morgens",
+  whenMorningHint: "9–12 Uhr",
+  whenAfternoon: "Nachmittags",
+  whenAfternoonHint: "12–18 Uhr",
+  whenEvening: "Abends",
+  whenEveningHint: "18–24 Uhr",
+  pickerClear: "Löschen",
+  pickerDone: "Fertig",
   search: "Suchen",
+  showMap: "Karte",
+  hideMap: "Karte ausblenden",
+  showMapBar: "Karte zeigen",
+  anyDay: "Jeder Tag",
+  showList: "Liste",
+  priceFrom: "ab",
   placeBelgium: "Belgien",
   placeNear: "In deiner Nähe",
   allTreatments: "Alle Behandlungen",
@@ -297,7 +402,7 @@ const de: HomeCopy = {
   businessTitleRest: "vollerer Salon.",
   businessBody:
     "Kalender, Zahlungen und Kundennotizen an einem ruhigen Ort, plus ein Marketplace mit Menschen, die dich buchen möchten.",
-  businessStart: "Kostenlos starten",
+  businessCta: "Für Betriebe entdecken",
   businessDemo: "Demo buchen",
   businessQuote:
     "„Im ersten Monat waren fast ein Drittel mehr Stühle belegt, und das Telefon hat endlich aufgehört zu klingeln.“",

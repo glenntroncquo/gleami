@@ -55,15 +55,15 @@ test("local demo categories retain meaningful icons", () => {
 });
 
 test("zoomed-out markers are dots at their exact coordinates, even for co-located salons", () => {
-  for (const zoom of [3, 6, 9, CATEGORY_ICON_ZOOM - 0.01]) {
+  for (const zoom of [3, 6, 7.4, 8, CATEGORY_ICON_ZOOM - 0.01]) {
     for (const stack of [0, 1, 5, 47]) {
       assert.deepEqual(markerPresentation(zoom, stack), { compact: true, offset: [0, 0] });
     }
   }
 });
 
-test("neighbourhood zoom restores category icons and separates co-located salons", () => {
-  for (const zoom of [CATEGORY_ICON_ZOOM, 14, 18]) {
+test("regional zoom keeps category icons visible and separates co-located salons", () => {
+  for (const zoom of [8.5, 9, 9.5, 10, 11, 12, 14, 18]) {
     assert.equal(markerPresentation(zoom, 0).compact, false);
     assert.equal(Math.abs(markerPresentation(zoom, 0).offset[1]), 0);
     assert.deepEqual(markerPresentation(zoom, 1), { compact: false, offset: [0, -42] });

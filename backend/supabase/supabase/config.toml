@@ -400,3 +400,14 @@ verify_jwt = false
 
 [functions.sync-order-payment-state]
 verify_jwt = false
+
+# AI runtime. ai-command and ai-approval-decide re-check the caller's
+# memberships and permissions themselves; ai-worker is internal-secret only.
+[functions.ai-command]
+verify_jwt = true
+
+[functions.ai-approval-decide]
+verify_jwt = true
+
+[functions.ai-worker]
+verify_jwt = false

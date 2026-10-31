@@ -27,8 +27,8 @@ export function registerGetDaySchedule(server: McpServer, db: UserDb) {
   server.registerTool(
     "get_day_schedule",
     {
-      title: "Shop schedule",
-      description: "Use this when the owner asks what is on today, the schedule, who is coming, or the next client. Omit date for today in the shop timezone. Omit location_id when they have one shop. Times are the shop wall clock, not UTC.",
+      title: "Whole shop schedule",
+      description: "Use this for the shop day: schema, 'wat is het schema voor vandaag', what's on today, who is coming, or the next client. Returns every appointment in the shop for every staff member. Omit date for today in the shop timezone. Omit location_id when they have one shop. Omit staff_id. Pass staff_id only when they name one person. Times are the shop wall clock, not UTC.",
       inputSchema: z.object({
         location_id: z.string().uuid().optional(),
         date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -55,7 +55,7 @@ export function registerGetDaySchedule(server: McpServer, db: UserDb) {
         return `This login can open more than one shop. Ask which shop.\n${lines.join("\n")}`;
       }
       const visits = schedule.visits ?? [];
-      const header = `${schedule.location_name} · ${schedule.timezone} · ${schedule.date}`;
+      const header = `${schedule.location_name} · whole shop · ${schedule.timezone} · ${schedule.date}`;
       if (visits.length === 0) return `${header}\nNo visits.`;
       const lines = visits.map((visit) => {
         const services = visit.services.map((service) => {

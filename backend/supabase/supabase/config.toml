@@ -317,6 +317,11 @@ s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
 
+# ChatGPT MCP. The function checks the user token itself. The gateway must
+# let the unauthenticated OAuth discovery request through.
+[functions.mcp]
+verify_jwt = false
+
 [functions.register-salon-owner]
 verify_jwt = false
 

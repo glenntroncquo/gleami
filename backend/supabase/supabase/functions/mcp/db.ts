@@ -5,6 +5,7 @@ export type UserDb = {
   rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<DbResult<unknown>>;
   from: (table: string) => {
     select: (columns: string) => Query;
+    update: (values: Record<string, unknown>) => Query;
   };
   auth: {
     getUser: () => PromiseLike<{
@@ -15,6 +16,7 @@ export type UserDb = {
 };
 
 type Query = PromiseLike<DbResult<unknown>> & {
+  select: (columns: string) => Query;
   eq: (column: string, value: unknown) => Query;
   in: (column: string, values: unknown[]) => Query;
   gte: (column: string, value: unknown) => Query;
@@ -171,6 +173,38 @@ export function shopDayBounds(date: string, timeZone: string): { start: string; 
   const next = new Date(`${addDays(date, 1)}T00:00:00Z`);
   const end = new Date(next.getTime() - zoneOffsetMs(next, timeZone));
   return { start: start.toISOString(), end: end.toISOString() };
+}
+
+export async function hasShopPermission(db: UserDb, locationId: string, perm: string): Promise<boolean> {
+  const { data, error } = await db.rpc("has_permission", { perm, location_id: locationId });
+  if (error) throw new Error(error.message);
+  return data === true;
+}
+
+export async function callUserFunction(name: string, token: string, body: unknown): Promise<Record<string, unknown>> {
+  const base = Deno.env.get("SUPABASE_URL");
+  const anon = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!base || !anon || !token) throw new Error("This action is not configured.");
+  const response = await fetch(`${base}/functions/v1/${name}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: anon,
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => null) as Record<string, unknown> | null;
+  if (!response.ok) {
+    const message = typeof payload?.message === "string" ? payload.message : "";
+    const error = typeof payload?.error === "string" ? payload.error : "";
+    throw new Error(message || error || "The action failed.");
+  }
+  return payload ?? {};
+}
+
+export function money(value: number): string {
+  return value.toFixed(2);
 }
 
 export async function shopPermissions(db: UserDb, locationId: string): Promise<string[]> {

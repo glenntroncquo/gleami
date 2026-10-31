@@ -3,13 +3,15 @@ import { decideOAuthConsent, isAuthorizationId } from "@/lib/auth/oauth-consent"
 
 export async function POST(request: Request) {
   const formData = await request.formData();
-  const decision = formData.get("decision");
-  const authorizationId = formData.get("authorization_id");
+  const decisionValue = formData.get("decision");
+  const authorizationValue = formData.get("authorization_id");
+  const authorizationId = typeof authorizationValue === "string" ? authorizationValue : null;
+  const decision = decisionValue === "approve" || decisionValue === "deny" ? decisionValue : null;
 
-  if (!isAuthorizationId(typeof authorizationId === "string" ? authorizationId : null)) {
+  if (!isAuthorizationId(authorizationId)) {
     return NextResponse.json({ error: "Missing authorization request" }, { status: 400 });
   }
-  if (decision !== "approve" && decision !== "deny") {
+  if (!decision) {
     return NextResponse.json({ error: "Choose approve or deny" }, { status: 400 });
   }
 

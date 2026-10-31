@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { accountDestinationPath, safeInvitePath } from "@/lib/auth/account-access";
+import { accountDestinationPath, safeInvitePath, safeOAuthConsentPath } from "@/lib/auth/account-access";
 import { destinationForSnapshot, loadAccountSnapshot } from "@/lib/auth/account-resolver";
 import { NextResponse } from "next/server";
 import { defaultLocale, locales } from "@/i18n/config";
@@ -30,6 +30,10 @@ export async function GET(request: Request) {
       const userLocale = resolveLocale(
         (user?.user_metadata?.locale as string | undefined) ?? locale
       );
+      const consentPath = safeOAuthConsentPath(requestedNext);
+      if (consentPath) {
+        return NextResponse.redirect(`${origin}${consentPath}`);
+      }
       const snapshot = await loadAccountSnapshot(
         supabase as unknown as Parameters<typeof loadAccountSnapshot>[0],
       );

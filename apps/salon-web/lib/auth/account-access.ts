@@ -129,6 +129,23 @@ export function safeInvitePath(path: string | null | undefined, locale: string):
   return path;
 }
 
+const OAUTH_AUTHORIZATION_ID = /^[A-Za-z0-9_-]{8,200}$/;
+
+/** Only the consent page, and only with a single authorization id. */
+export function safeOAuthConsentPath(path: string | null | undefined): string | null {
+  if (!path || path.startsWith("//") || path.includes("\\")) return null;
+  let url: URL;
+  try {
+    url = new URL(path, "https://gleami.local");
+  } catch {
+    return null;
+  }
+  if (url.origin !== "https://gleami.local" || url.pathname !== "/oauth/consent") return null;
+  const authorizationId = url.searchParams.get("authorization_id");
+  if (!authorizationId || !OAUTH_AUTHORIZATION_ID.test(authorizationId)) return null;
+  return `/oauth/consent?authorization_id=${authorizationId}`;
+}
+
 export function resolveAccountDestination(input: {
   snapshot: AccountSnapshot;
   selectedCompanyId?: string | null;

@@ -11,6 +11,17 @@ const intlMiddleware = createIntlMiddleware({
 });
 
 export async function middleware(request: NextRequest) {
+  // Auth sends the salon owner to this exact path. A locale prefix would
+  // make the OAuth redirect miss the consent page.
+  const pathname = request.nextUrl.pathname;
+  if (
+    pathname === "/oauth" ||
+    pathname.startsWith("/oauth/") ||
+    pathname.startsWith("/api/oauth")
+  ) {
+    return updateSession(request);
+  }
+
   // Check if user is accessing root path without locale
   if (request.nextUrl.pathname === "/") {
     const savedLocale = request.cookies.get("locale")?.value;

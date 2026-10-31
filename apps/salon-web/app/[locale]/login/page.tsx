@@ -13,7 +13,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { LoadingDots } from "@/components/ui/loading-dots";
 import { createClient } from "@/lib/supabase/client";
 import { lookupAuthEmail, startEmailAuth, startSocialAuth } from "@/lib/api/auth/new-onboarding";
-import { accountDestinationPath } from "@/lib/auth/account-access";
+import { accountDestinationPath, safeOAuthConsentPath } from "@/lib/auth/account-access";
 import { loadBrowserAccountDestination } from "@/lib/auth/account-client";
 
 function GoogleMark() {
@@ -29,7 +29,7 @@ export default function StartPage() {
   const requestedNext = searchParams.get("next");
   const nextPath = requestedNext?.startsWith(`/${locale}/invite`) && !requestedNext.startsWith("//") && !requestedNext.includes("\\")
     ? requestedNext
-    : null;
+    : safeOAuthConsentPath(requestedNext);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");

@@ -49,6 +49,7 @@ export async function updateSession(request: NextRequest) {
     // These retired paths have been removed; allow Next.js to return 404.
     !/^\/[a-z]{2}\/(?:start|signup)(?:\/|$)/.test(request.nextUrl.pathname) &&
     !request.nextUrl.pathname.includes("/login") &&
+    !request.nextUrl.pathname.startsWith("/oauth") &&
     !request.nextUrl.pathname.includes("/auth") &&
     !request.nextUrl.pathname.includes("/reset-password") &&
     !request.nextUrl.pathname.includes("/update-password") &&

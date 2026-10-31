@@ -9,7 +9,7 @@ export function registerListStaff(server: McpServer, db: UserDb) {
     "list_staff",
     {
       title: "Staff at a shop",
-      description: "Use this to list who works at a shop. This is the staff directory, not who is booked today and not who is scheduled on the rota.",
+      description: "Who works at a shop. Call this before a schedule question that names a person, such as Shelsey, and pass the matching staff id to get_day_schedule. If nobody matches or several people match, ask which person. This is the staff directory, not the booked day and not the rota.",
       inputSchema: z.object({ location_id: z.string().uuid().optional() }),
       annotations: { readOnlyHint: true },
     },

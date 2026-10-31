@@ -28,7 +28,7 @@ export function registerGetDaySchedule(server: McpServer, db: UserDb) {
     "get_day_schedule",
     {
       title: "Whole shop schedule",
-      description: "Use this for the shop day: schema, 'wat is het schema voor vandaag', what's on today, who is coming, or the next client. Returns every appointment in the shop for every staff member. Omit date for today in the shop timezone. Omit location_id when they have one shop. Omit staff_id. Pass staff_id only when they name one person. Times are the shop wall clock, not UTC.",
+      description: "One shop day. Today with no date and no staff_id is every appointment for every staff member. A named day such as volgende week maandag: pass date as YYYY-MM-DD in the shop timezone. A named person: pass staff_id from list_staff. Person and day together: pass both. Omit location_id when they have one shop. Times are the shop wall clock, not UTC.",
       inputSchema: z.object({
         location_id: z.string().uuid().optional(),
         date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),

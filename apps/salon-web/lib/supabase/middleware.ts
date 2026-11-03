@@ -13,6 +13,16 @@ function nextWithPath(request: NextRequest) {
 }
 
 export async function updateSession(request: NextRequest) {
+  const legacyPassword = request.nextUrl.pathname.match(
+    /^\/(en|nl|fr|pt)\/(reset-password|update-password)\/?$/,
+  );
+  if (legacyPassword) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/${legacyPassword[1]}/login`;
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
   let supabaseResponse = nextWithPath(request);
 
   const supabase = createServerClient(
@@ -51,8 +61,6 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.includes("/login") &&
     !request.nextUrl.pathname.startsWith("/oauth") &&
     !request.nextUrl.pathname.includes("/auth") &&
-    !request.nextUrl.pathname.includes("/reset-password") &&
-    !request.nextUrl.pathname.includes("/update-password") &&
     !request.nextUrl.pathname.includes("/invite") &&
     !request.nextUrl.pathname.includes("/cancel-appointment")
   ) {

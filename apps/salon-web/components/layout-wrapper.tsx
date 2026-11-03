@@ -11,8 +11,6 @@ const AUTH_ROUTES = [
   "/setup",
   "/workspaces",
   "/account-unavailable",
-  "/reset-password",
-  "/update-password",
   "/invite",
 ];
 const PUBLIC_ROUTES = [
@@ -20,8 +18,6 @@ const PUBLIC_ROUTES = [
   "/setup",
   "/workspaces",
   "/account-unavailable",
-  "/reset-password",
-  "/update-password",
   "/invite",
   "/cancel-appointment",
 ];

@@ -360,6 +360,7 @@ verify_jwt = false
 # function additionally enforces company/location membership itself.
 [functions.payment-create-checkout]
 verify_jwt = true
+import_map = "./functions/payment-create-checkout/import_map.json"
 
 # Public marketplace reads still verify the anon (or user) JWT. The gateway
 # accepts the anon key. These three are called by database webhooks and

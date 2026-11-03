@@ -1,0 +1,15 @@
+import { Flow } from "@pgflow/dsl";
+import { syncPaymentState } from "./sync-payment-state.ts";
+
+type Input = {
+  orderId: string;
+  companyId: string | null;
+};
+
+export const PaymentDeleted = new Flow<Input>({
+  slug: "payment_deleted",
+})
+  .step(
+    { slug: "syncPaymentState", maxAttempts: 5, baseDelay: 2 },
+    async (input) => await syncPaymentState(input),
+  );

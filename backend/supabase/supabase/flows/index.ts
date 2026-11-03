@@ -5,4 +5,11 @@
 // names a missing file breaks "supabase start" with "failed to read file".
 
 export { AppointmentCreated, AppointmentUpdated } from "./appointments/index.ts";
-export { OrderItemCreated, OrderItemUpdated, OrderItemDeleted } from "./orders/index.ts";
+export {
+  OrderItemCreated,
+  OrderItemUpdated,
+  OrderItemDeleted,
+  PaymentCreated,
+  PaymentUpdated,
+  PaymentDeleted,
+} from "./orders/index.ts";

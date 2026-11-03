@@ -24,7 +24,6 @@ export type Database = {
           client_email: string | null
           client_id: string
           company_id: string
-          confirmation_sent: boolean | null
           created_at: string
           duration_in_minutes: number | null
           end: string
@@ -56,7 +55,6 @@ export type Database = {
           client_email?: string | null
           client_id: string
           company_id: string
-          confirmation_sent?: boolean | null
           created_at?: string
           duration_in_minutes?: number | null
           end: string
@@ -88,7 +86,6 @@ export type Database = {
           client_email?: string | null
           client_id?: string
           company_id?: string
-          confirmation_sent?: boolean | null
           created_at?: string
           duration_in_minutes?: number | null
           end?: string

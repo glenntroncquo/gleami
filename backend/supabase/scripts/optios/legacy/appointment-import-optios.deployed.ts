@@ -152,7 +152,6 @@ serve(async (req)=>{
                 canceled_by: null,
                 client_email: client.email,
                 reminder_sent: false,
-                confirmation_sent: false,
                 image_path: null,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()

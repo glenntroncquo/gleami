@@ -54,7 +54,6 @@ describe("domain mappers keep locationId for POS create", () => {
       image_path: null,
       staff_image_path: null,
       external_reference_id: null,
-      confirmation_sent: false,
       send_confirmation: true,
       reminder_sent: false,
       created_at: now,

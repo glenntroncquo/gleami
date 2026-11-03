@@ -60,7 +60,6 @@ export function toAppointment(row: AppointmentRow): Appointment {
     imagePath: row.image_path,
     staffImagePath: row.staff_image_path,
     externalReferenceId: row.external_reference_id,
-    confirmationSent: row.confirmation_sent,
     sendConfirmation: row.send_confirmation,
     reminderSent: row.reminder_sent,
     createdAt: row.created_at,

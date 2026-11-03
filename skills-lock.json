@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "pgflow-docs": {
+      "source": "pgflow-dev/pgflow",
+      "sourceType": "github",
+      "skillPath": "skills/pgflow-docs/SKILL.md",
+      "computedHash": "b531895dbd561103b06038fe0ddde3a531c6c6f368edbbda5ec81beaf7d0b1ae"
+    }
+  }
+}

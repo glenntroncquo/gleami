@@ -18,7 +18,6 @@ export interface Appointment {
   imagePath: string | null;
   staffImagePath: string | null;
   externalReferenceId: string | null;
-  confirmationSent: boolean | null;
   sendConfirmation: boolean | null;
   reminderSent: boolean | null;
   createdAt: string;

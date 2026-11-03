@@ -37,6 +37,14 @@
     "@/shared/notification-place": "./_shared/appointment/notifications/place.ts",
     "@/shared/notification-place-fetch": "./_shared/appointment/notifications/place-fetch.ts",
     "@/shared/reminder-window": "./_shared/appointment/notifications/reminder-window.ts",
-    "@/types/database": "../../types/supabase-types.ts"
+    "@/types/database": "../../types/supabase-types.ts",
+    "@pgflow/core": "npm:@pgflow/core@0.17.2",
+    "@pgflow/core/": "npm:@pgflow/core@0.17.2/",
+    "@pgflow/dsl": "npm:@pgflow/dsl@0.17.2",
+    "@pgflow/dsl/": "npm:@pgflow/dsl@0.17.2/",
+    "@pgflow/dsl/supabase": "npm:@pgflow/dsl@0.17.2/supabase",
+    "@pgflow/edge-worker": "npm:@pgflow/edge-worker@0.17.2",
+    "@pgflow/edge-worker/": "npm:@pgflow/edge-worker@0.17.2/",
+    "@pgflow/edge-worker/_internal": "npm:@pgflow/edge-worker@0.17.2/_internal"
   }
 }

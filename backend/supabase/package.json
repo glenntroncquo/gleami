@@ -17,7 +17,7 @@
   "devDependencies": {
     "@types/node": "^24.0.13",
     "@vitest/coverage-v8": "^3.2.4",
-    "supabase": "^2.30.4",
+    "supabase": "^2.122.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"

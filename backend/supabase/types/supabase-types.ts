@@ -47,7 +47,6 @@ export type Database = {
           client_email: string | null
           client_id: string
           company_id: string
-          confirmation_sent: boolean | null
           created_at: string
           deposit_amount: number | null
           deposit_paid_at: string | null
@@ -78,7 +77,6 @@ export type Database = {
           client_email?: string | null
           client_id: string
           company_id: string
-          confirmation_sent?: boolean | null
           created_at?: string
           deposit_amount?: number | null
           deposit_paid_at?: string | null
@@ -109,7 +107,6 @@ export type Database = {
           client_email?: string | null
           client_id?: string
           company_id?: string
-          confirmation_sent?: boolean | null
           created_at?: string
           deposit_amount?: number | null
           deposit_paid_at?: string | null

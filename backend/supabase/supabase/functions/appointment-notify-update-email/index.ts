@@ -429,18 +429,14 @@ serve(async (req) => {
     const oldReminderSent = old_record?.reminder_sent === true;
     const newReminderSent = record.reminder_sent === true;
 
-    const oldConfirmationSent = old_record?.confirmation_sent === true;
-    const newConfirmationSent = record.confirmation_sent === true;
-
-    // Check if reminder_sent or confirmation_sent changed from false to true
-    // If so, skip sending email (these are handled by other functions)
-    if ((!oldReminderSent && newReminderSent) || (!oldConfirmationSent && newConfirmationSent)) {
-      console.log("Skipping: reminder_sent or confirmation_sent was just set to true");
+    // The reminder job sets reminder_sent. That write is not a schedule change.
+    if (!oldReminderSent && newReminderSent) {
+      console.log("Skipping: reminder_sent was just set to true");
       return new Response(JSON.stringify({
         success: true,
-        message: "Skipping email - reminder or confirmation was just sent",
+        message: "Skipping email - reminder was just sent",
         appointmentId: appointment.id,
-        reason: !oldReminderSent && newReminderSent ? "reminder_sent" : "confirmation_sent"
+        reason: "reminder_sent"
       }), {
         status: 200,
         headers: {

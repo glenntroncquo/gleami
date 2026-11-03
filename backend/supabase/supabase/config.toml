@@ -31,7 +31,7 @@ shadow_port = 54320
 major_version = 15
 
 [db.pooler]
-enabled = false
+enabled = true
 # Port to use for the local connection pooler.
 port = 54329
 # Specifies when a server connection can be reused by other clients.
@@ -289,7 +289,7 @@ enabled = false
 enabled = true
 # Configure one of the supported request policies: `oneshot`, `per_worker`.
 # Use `oneshot` for hot reload, or `per_worker` for load testing.
-policy = "oneshot"
+policy = "per_worker"
 # Port to attach the Chrome inspector for debugging edge functions.
 inspector_port = 8083
 # The Deno major version to use.
@@ -382,6 +382,10 @@ verify_jwt = true
 # Internal trigger/cron-called functions. No JWT is embedded in pg_trigger or
 # cron.job; callers authenticate with INTERNAL_WEBHOOK_SECRET in the
 # x-internal-secret header (see 20260928120000_internal_webhook_secret_cutover.sql).
+[functions.appointment-created-worker]
+verify_jwt = false
+import_map = "./functions/appointment-created-worker/import_map.json"
+
 [functions.appointment-notify-confirmation-email]
 verify_jwt = false
 

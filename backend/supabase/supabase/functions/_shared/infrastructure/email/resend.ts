@@ -29,6 +29,8 @@ export interface SendEmailParams {
   subject: string;
   text?: string;
   html?: string;
+  /** Stable key so a retried send returns the original Resend message for 24 hours. */
+  idempotencyKey?: string;
 }
 
 export interface SendEmailResult {
@@ -36,13 +38,17 @@ export interface SendEmailResult {
 }
 
 export async function sendEmail(params: SendEmailParams): Promise<SendEmailResult> {
+  const { idempotencyKey, ...body } = params;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${RESEND_API_KEY}`,
+  };
+  if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
+
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${RESEND_API_KEY}`,
-    },
-    body: JSON.stringify(params),
+    headers,
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {

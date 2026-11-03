@@ -408,6 +408,18 @@ verify_jwt = false
 [functions.timetree-sync-delete]
 verify_jwt = false
 
+[functions.order-item-created-worker]
+verify_jwt = false
+import_map = "./functions/import_map.json"
+
+[functions.order-item-updated-worker]
+verify_jwt = false
+import_map = "./functions/import_map.json"
+
+[functions.order-item-deleted-worker]
+verify_jwt = false
+import_map = "./functions/import_map.json"
+
 [functions.sync-order-items-stock]
 verify_jwt = false
 

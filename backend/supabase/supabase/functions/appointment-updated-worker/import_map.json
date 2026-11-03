@@ -1,0 +1,14 @@
+{
+  "imports": {
+    "supabase": "https://esm.sh/@supabase/supabase-js@2",
+    "@/types/database": "../../../types/supabase-types.ts",
+    "@pgflow/core": "npm:@pgflow/core@0.17.2",
+    "@pgflow/core/": "npm:@pgflow/core@0.17.2/",
+    "@pgflow/dsl": "npm:@pgflow/dsl@0.17.2",
+    "@pgflow/dsl/": "npm:@pgflow/dsl@0.17.2/",
+    "@pgflow/dsl/supabase": "npm:@pgflow/dsl@0.17.2/supabase",
+    "@pgflow/edge-worker": "npm:@pgflow/edge-worker@0.17.2",
+    "@pgflow/edge-worker/": "npm:@pgflow/edge-worker@0.17.2/",
+    "@pgflow/edge-worker/_internal": "npm:@pgflow/edge-worker@0.17.2/_internal"
+  }
+}

@@ -69,6 +69,19 @@ export interface MarkPaymentSucceededParams {
   paidAt: string;
 }
 
+export interface UnpaidOrder {
+  id: string;
+  locationId: string;
+  clientId: string | null;
+  clientName: string | null;
+  orderNumber: string | null;
+  date: string | null;
+  status: string | null;
+  paymentStatus: string | null;
+  totalAmount: number | null;
+  amountPaid: number | null;
+}
+
 export interface PaymentRef {
   id: string;
   orderId: string | null;
@@ -102,6 +115,54 @@ export const orderRepository = {
     }
 
     return (data ?? []).map(toOrder);
+  },
+
+  /**
+   * Orders not fully paid, newest first. `payment_status` null counts as
+   * unpaid; cancelled orders are not outstanding.
+   */
+  async findUnpaid(params: {
+    companyId: string;
+    locationId: string | null;
+    limit: number;
+  }): Promise<UnpaidOrder[]> {
+    let query = supabaseAdmin
+      .from("order")
+      .select(
+        "id, location_id, client_id, order_number, date, status, payment_status, total_amount, amount_paid, client(first_name, last_name)",
+      )
+      .eq("company_id", params.companyId)
+      .or("payment_status.is.null,payment_status.neq.paid")
+      .or("status.is.null,status.not.in.(canceled,cancelled)")
+      .order("date", { ascending: false, nullsFirst: false })
+      .limit(params.limit);
+
+    if (params.locationId) {
+      query = query.eq("location_id", params.locationId);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      throw new RepositoryError("Failed to fetch unpaid orders", { cause: error });
+    }
+
+    return (data ?? []).map((row) => {
+      const client = Array.isArray(row.client) ? row.client[0] : row.client;
+      return {
+        id: row.id,
+        locationId: row.location_id,
+        clientId: row.client_id,
+        clientName: client
+          ? [client.first_name, client.last_name].filter(Boolean).join(" ") || null
+          : null,
+        orderNumber: row.order_number,
+        date: row.date,
+        status: row.status,
+        paymentStatus: row.payment_status,
+        totalAmount: row.total_amount,
+        amountPaid: row.amount_paid,
+      };
+    });
   },
 
   /** Short human-friendly reference, e.g. `ORD-8K3H9P`, unique per company. */

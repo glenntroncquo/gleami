@@ -39,6 +39,180 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_agent_run: {
+        Row: {
+          actor_type: string
+          actor_user_id: string | null
+          agent_key: string
+          attempt_count: number
+          company_id: string
+          completed_at: string | null
+          created_at: string
+          error: string | null
+          id: string
+          idempotency_key: string | null
+          input: Json
+          lease_expires_at: string | null
+          lease_owner: string | null
+          lease_version: number
+          location_id: string | null
+          max_attempts: number
+          next_attempt_at: string
+          output: Json | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          actor_type: string
+          actor_user_id?: string | null
+          agent_key: string
+          attempt_count?: number
+          company_id: string
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          idempotency_key?: string | null
+          input: Json
+          lease_expires_at?: string | null
+          lease_owner?: string | null
+          lease_version?: number
+          location_id?: string | null
+          max_attempts?: number
+          next_attempt_at?: string
+          output?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          actor_type?: string
+          actor_user_id?: string | null
+          agent_key?: string
+          attempt_count?: number
+          company_id?: string
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          idempotency_key?: string | null
+          input?: Json
+          lease_expires_at?: string | null
+          lease_owner?: string | null
+          lease_version?: number
+          location_id?: string | null
+          max_attempts?: number
+          next_attempt_at?: string
+          output?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_agent_step: {
+        Row: {
+          approval_id: string | null
+          company_id: string
+          completed_at: string | null
+          created_at: string
+          error: string | null
+          id: string
+          input: Json | null
+          input_tokens: number | null
+          kind: string
+          model: string | null
+          output: Json | null
+          output_tokens: number | null
+          run_id: string
+          sequence: number
+          status: string
+          tool_call_id: string | null
+          tool_name: string | null
+        }
+        Insert: {
+          approval_id?: string | null
+          company_id: string
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          input?: Json | null
+          input_tokens?: number | null
+          kind: string
+          model?: string | null
+          output?: Json | null
+          output_tokens?: number | null
+          run_id: string
+          sequence: number
+          status: string
+          tool_call_id?: string | null
+          tool_name?: string | null
+        }
+        Update: {
+          approval_id?: string | null
+          company_id?: string
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          input?: Json | null
+          input_tokens?: number | null
+          kind?: string
+          model?: string | null
+          output?: Json | null
+          output_tokens?: number | null
+          run_id?: string
+          sequence?: number
+          status?: string
+          tool_call_id?: string | null
+          tool_name?: string | null
+        }
+        Relationships: []
+      }
+      ai_approval: {
+        Row: {
+          company_id: string
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          location_id: string | null
+          requested_at: string
+          risk: string
+          run_id: string
+          status: string
+          tool_call_id: string
+          tool_input: Json
+          tool_name: string
+        }
+        Insert: {
+          company_id: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          location_id?: string | null
+          requested_at?: string
+          risk: string
+          run_id: string
+          status?: string
+          tool_call_id: string
+          tool_input: Json
+          tool_name: string
+        }
+        Update: {
+          company_id?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          location_id?: string | null
+          requested_at?: string
+          risk?: string
+          run_id?: string
+          status?: string
+          tool_call_id?: string
+          tool_input?: Json
+          tool_name?: string
+        }
+        Relationships: []
+      }
       appointment: {
         Row: {
           allow_overlap: boolean | null

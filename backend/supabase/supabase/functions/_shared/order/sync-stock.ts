@@ -1,6 +1,36 @@
 import { createSupabaseClient } from "@/shared/supabase";
-import { syncOrderPaymentStateInFunction } from "../sync-order-payment-state/logic.ts";
-import type { OrderItemWebhookPayload } from "./schema.ts";
+import { syncOrderPaymentStateInFunction } from "./sync-payment-state.ts";
+
+type OrderItemRow = {
+  id: string;
+  order_id: string;
+  company_id: string;
+  product_id?: string | null;
+  quantity?: number | null;
+};
+
+export type OrderItemWebhookPayload =
+  | {
+    type: "INSERT";
+    table: string;
+    schema: string;
+    record: OrderItemRow;
+    old_record?: null;
+  }
+  | {
+    type: "UPDATE";
+    table: string;
+    schema: string;
+    record: OrderItemRow;
+    old_record: OrderItemRow;
+  }
+  | {
+    type: "DELETE";
+    table: string;
+    schema: string;
+    record?: null;
+    old_record: OrderItemRow;
+  };
 
 type SupabaseClient = ReturnType<typeof createSupabaseClient>;
 
@@ -189,8 +219,9 @@ export type WebhookSyncResult =
   | ({ skipped: false } & SyncResult);
 
 /**
- * Applies stock + order totals + payment state for a Supabase Database Webhook on `order_item`.
- * DELETE uses `old_record` only (row is already gone). UPDATE compares `old_record` vs `record`.
+ * Applies stock, order totals, and payment state for an order item snapshot.
+ * DELETE uses old_record only, because the row is already gone.
+ * UPDATE compares old_record with record.
  */
 export async function syncOrderItemsStockFromWebhook(
   supabase: SupabaseClient,

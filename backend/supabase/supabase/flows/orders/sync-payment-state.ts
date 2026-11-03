@@ -1,5 +1,5 @@
 import { createSupabaseClient } from "../../functions/_shared/infrastructure/supabase/client.ts";
-import { syncOrderPaymentStateInFunction } from "../../functions/sync-order-payment-state/logic.ts";
+import { syncOrderPaymentStateInFunction } from "../../functions/_shared/order/sync-payment-state.ts";
 
 type Input = {
   orderId: string;

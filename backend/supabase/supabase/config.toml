@@ -414,9 +414,6 @@ import_map = "./functions/import_map.json"
 verify_jwt = false
 import_map = "./functions/import_map.json"
 
-[functions.sync-order-items-stock]
-verify_jwt = false
-
 [functions.payment-created-worker]
 verify_jwt = false
 import_map = "./functions/import_map.json"
@@ -428,6 +425,3 @@ import_map = "./functions/import_map.json"
 [functions.payment-deleted-worker]
 verify_jwt = false
 import_map = "./functions/import_map.json"
-
-[functions.sync-order-payment-state]
-verify_jwt = false

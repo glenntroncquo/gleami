@@ -5,7 +5,7 @@ import { clientRepository } from "../../../client/repository.ts";
 import { supabaseAdmin } from "../../../infrastructure/supabase/client.ts";
 import { stripe } from "../../../infrastructure/stripe/client.ts";
 import { resolveBookingLocation } from "../../../location/resolve.ts";
-import { syncOrderItemsStockInFunction } from "../../../../sync-order-items-stock/logic.ts";
+import { syncOrderItemsStockInFunction } from "../../sync-stock.ts";
 import { calculateTotals } from "./calculate-totals.ts";
 import { loadCatalogPrices } from "./pricing.ts";
 import { resolveCreateOrderLocationId } from "./location.ts";

@@ -93,4 +93,3 @@ export async function syncOrderPaymentStateInFunction(
     remaining_due: remainingDue,
   };
 }
-

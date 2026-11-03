@@ -1,6 +1,8 @@
 import { createSupabaseClient } from "../../functions/_shared/infrastructure/supabase/client.ts";
-import { syncOrderItemsStockFromWebhook } from "../../functions/sync-order-items-stock/logic.ts";
-import type { OrderItemWebhookPayload } from "../../functions/sync-order-items-stock/schema.ts";
+import {
+  syncOrderItemsStockFromWebhook,
+  type OrderItemWebhookPayload,
+} from "../../functions/_shared/order/sync-stock.ts";
 
 export async function syncStock(payload: OrderItemWebhookPayload) {
   const result = await syncOrderItemsStockFromWebhook(createSupabaseClient(), payload);

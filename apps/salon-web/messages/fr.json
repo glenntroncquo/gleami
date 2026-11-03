@@ -1519,6 +1519,8 @@
     "resendEmail": "Renvoyer le code",
     "resendIn": "Renvoyer dans {seconds}s",
     "codeLabel": "Code de vérification",
-    "verifyCode": "Vérifier et continuer"
+    "verifyCode": "Vérifier et continuer",
+    "newPasswordTitle": "Choisissez un nouveau mot de passe",
+    "newPasswordBody": "Cela remplace le mot de passe de {email}."
   }
 }

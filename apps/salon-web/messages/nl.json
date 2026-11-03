@@ -1519,6 +1519,8 @@
     "resendEmail": "Code opnieuw versturen",
     "resendIn": "Opnieuw versturen over {seconds}s",
     "codeLabel": "Verificatiecode",
-    "verifyCode": "Verifiëren en doorgaan"
+    "verifyCode": "Verifiëren en doorgaan",
+    "newPasswordTitle": "Kies een nieuw wachtwoord",
+    "newPasswordBody": "Dit vervangt het wachtwoord voor {email}."
   }
 }

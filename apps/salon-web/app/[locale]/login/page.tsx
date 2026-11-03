@@ -33,10 +33,11 @@ export default function StartPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
-  const [step, setStep] = useState<"email" | "password" | "verify">("email");
+  const [step, setStep] = useState<"email" | "password" | "verify" | "new-password">("email");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [creatingAccount, setCreatingAccount] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [verificationKind, setVerificationKind] = useState<"signup" | "signin">("signup");
+  const [verificationKind, setVerificationKind] = useState<"signup" | "signin" | "recovery">("signup");
   const [resendSeconds, setResendSeconds] = useState(0);
 
   const cooldownKey = `gleami:email-resend:${email.trim().toLowerCase()}`;
@@ -145,10 +146,17 @@ export default function StartPage() {
       const { data, error } = await supabase.auth.verifyOtp({
         email: email.trim().toLowerCase(),
         token: otp.trim(),
-        type: verificationKind === "signup" ? "signup" : "email",
+        type: verificationKind === "signup" ? "signup" : verificationKind === "recovery" ? "recovery" : "email",
       });
       if (error) throw error;
       if (!data.user) throw new Error(t("error"));
+      if (verificationKind === "recovery") {
+        setPassword("");
+        setConfirmPassword("");
+        setOtp("");
+        setStep("new-password");
+        return;
+      }
       await routeAfterAuthentication();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("error"));
@@ -161,18 +169,65 @@ export default function StartPage() {
     if (busy || resendSeconds > 0) return;
     setBusy(true);
     try {
+      const supabase = createClient();
       if (verificationKind === "signup") {
-        const supabase = createClient();
         const { error } = await supabase.auth.resend({
           type: "signup",
           email: email.trim().toLowerCase(),
         });
+        if (error) throw error;
+      } else if (verificationKind === "recovery") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
         if (error) throw error;
       } else {
         await startEmailAuth(email);
       }
       beginResendCooldown();
       toast.success(common("auth.confirmationEmailResent"));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("error"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const sendReset = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
+      if (error) throw error;
+      setVerificationKind("recovery");
+      setOtp("");
+      setPassword("");
+      setConfirmPassword("");
+      beginResendCooldown();
+      setStep("verify");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("error"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitNewPassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (password !== confirmPassword) {
+      toast.error(common("auth.passwordsDontMatch"));
+      return;
+    }
+    if (password.length < 8) {
+      toast.error(common("auth.passwordMinLength"));
+      return;
+    }
+    setBusy(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+      toast.success(common("auth.passwordUpdatedSuccessfully"));
+      await routeAfterAuthentication();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("error"));
     } finally {
@@ -200,10 +255,13 @@ export default function StartPage() {
               <p className="mt-6 rounded-2xl bg-[#F7F8FC] px-4 py-3 text-sm text-[#4F5667]">{common("auth.emailNotConfirmed")}</p>
             )}
             <h1 className="mt-6 text-[30px] font-semibold leading-tight tracking-[-0.035em] sm:text-[34px]">
-              {step === "verify" ? t("checkEmailTitle") : step === "password" ? (creatingAccount ? t("createPasswordTitle") : t("passwordTitle")) : t("startTitle")}
+              {step === "new-password" ? t("newPasswordTitle") : step === "verify" ? t("checkEmailTitle") : step === "password" ? (creatingAccount ? t("createPasswordTitle") : t("passwordTitle")) : t("startTitle")}
             </h1>
             <p className="mx-auto mt-2 max-w-[460px] text-base leading-6 text-[#777A82] sm:text-[18px]">
-              {step === "verify" ? t("checkEmailBody", { email }) : step === "password" ? (creatingAccount ? t("createPasswordBody") : t("passwordBody", { email })) : t("startBody")}
+              {step === "new-password" ? t("newPasswordBody", { email })
+                : step === "verify" ? t("checkEmailBody", { email })
+                : step === "password" ? (creatingAccount ? t("createPasswordBody") : t("passwordBody", { email }))
+                : t("startBody")}
             </p>
           </div>
 
@@ -250,10 +308,25 @@ export default function StartPage() {
                 </Button>
               </form>
               <div className="mt-5 flex flex-col items-center gap-3 text-sm">
-                {!creatingAccount && <a href={`/${locale}/reset-password`} className="font-medium text-[#4361DB] hover:underline">{common("auth.forgotPassword")}</a>}
+                {!creatingAccount && (
+                  <button type="button" onClick={() => void sendReset()} disabled={busy} className="font-medium text-[#4361DB] hover:underline disabled:opacity-60">
+                    {common("auth.forgotPassword")}
+                  </button>
+                )}
                 <button type="button" onClick={() => { setStep("email"); setPassword(""); }} className="text-[#777A82] hover:underline">{t("changeEmail")}</button>
               </div>
             </>
+          ) : step === "new-password" ? (
+              <form onSubmit={submitNewPassword} className="space-y-3">
+                <label htmlFor="new-password" className="block text-[15px] font-semibold">{common("auth.newPassword")}</label>
+                <PasswordInput id="new-password" autoFocus autoComplete="new-password" required minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} showPasswordLabel={common("auth.showPassword")} hidePasswordLabel={common("auth.hidePassword")} className="h-[58px] rounded-[13px] border-[#D7D7D9] bg-white px-4 text-base shadow-none focus-visible:border-[#5B7CF0] focus-visible:ring-2 focus-visible:ring-[#5B7CF0]/20" />
+                <label htmlFor="confirm-password" className="mt-4 block text-[15px] font-semibold">{common("auth.confirmNewPassword")}</label>
+                <PasswordInput id="confirm-password" autoComplete="new-password" required minLength={8} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} showPasswordLabel={common("auth.showPassword")} hidePasswordLabel={common("auth.hidePassword")} className="h-[58px] rounded-[13px] border-[#D7D7D9] bg-white px-4 text-base shadow-none focus-visible:border-[#5B7CF0] focus-visible:ring-2 focus-visible:ring-[#5B7CF0]/20" />
+                <p className="text-sm text-[#777A82]">{common("auth.passwordMinLength")}</p>
+                <Button disabled={busy} className="mt-7 h-[58px] w-full rounded-full bg-[#0B1C3F] text-[17px] font-semibold text-white hover:bg-[#14295A]">
+                  {busy ? <LoadingDots label={t("loadingLabel")} /> : common("auth.updatePassword")}
+                </Button>
+              </form>
           ) : (
             <div className="rounded-2xl border border-[#E3E7F2] bg-[#F7F8FC] p-5 text-sm leading-6 text-[#4F5667]">
               <Mail className="mb-3 h-5 w-5 text-[#4361DB]" />

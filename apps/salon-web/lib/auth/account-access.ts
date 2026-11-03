@@ -44,8 +44,6 @@ export type AccountDestination =
 
 const ANONYMOUS_PREFIXES = [
   "/login",
-  "/reset-password",
-  "/update-password",
   "/invite",
   "/cancel-appointment",
   "/auth",

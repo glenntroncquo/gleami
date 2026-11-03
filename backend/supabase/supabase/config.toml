@@ -390,12 +390,6 @@ import_map = "./functions/appointment-created-worker/import_map.json"
 verify_jwt = false
 import_map = "./functions/appointment-updated-worker/import_map.json"
 
-[functions.appointment-notify-confirmation-email]
-verify_jwt = false
-
-[functions.appointment-notify-update-email]
-verify_jwt = false
-
 [functions.appointment-notify-reminder-email]
 verify_jwt = false
 

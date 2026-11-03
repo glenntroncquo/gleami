@@ -1495,30 +1495,6 @@ export type Database = {
           },
         ]
       }
-      order_item_webhook_event: {
-        Row: {
-          created_at: string
-          event_type: string
-          fingerprint: string
-          id: string
-          order_item_id: string
-        }
-        Insert: {
-          created_at?: string
-          event_type: string
-          fingerprint: string
-          id?: string
-          order_item_id: string
-        }
-        Update: {
-          created_at?: string
-          event_type?: string
-          fingerprint?: string
-          id?: string
-          order_item_id?: string
-        }
-        Relationships: []
-      }
       payment: {
         Row: {
           amount: number | null
@@ -2784,14 +2760,6 @@ export type Database = {
       }
       check_rate_limit: {
         Args: { p_key: string; p_limit: number; p_window_seconds: number }
-        Returns: boolean
-      }
-      claim_order_item_webhook: {
-        Args: {
-          p_event_type: string
-          p_fingerprint: string
-          p_order_item_id: string
-        }
         Returns: boolean
       }
       create_appointment: {

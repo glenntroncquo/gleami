@@ -161,5 +161,5 @@ jobs:
           while IFS= read -r name; do
             [ -z "$name" ] && continue
             echo "Deploying ${name}"
-            supabase functions deploy "$name" --project-ref "$SUPABASE_PROJECT_ID"
+            supabase functions deploy "$name" --project-ref "$SUPABASE_PROJECT_ID" --yes
           done <<< "${{ steps.detect.outputs.functions }}"
